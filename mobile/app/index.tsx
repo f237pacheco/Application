@@ -3,6 +3,7 @@ import { View, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/lib/supabase/client';
 
 export default function IndexScreen() {
   const router = useRouter();
@@ -13,19 +14,33 @@ export default function IndexScreen() {
 
     const navigate = async () => {
       if (user) {
-        router.replace('/(dashboard)/home');
+        // Check if user has completed profile setup
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('id', user.id)
+          .single();
+
+        if (profile) {
+          router.replace('/(dashboard)/home');
+        } else {
+          router.replace('/(auth)/profile-setup');
+        }
         return;
       }
+
       const lang = await AsyncStorage.getItem('velona_language');
       if (!lang) {
         router.replace('/language');
         return;
       }
+
       const onboarded = await AsyncStorage.getItem('velona_onboarded');
       if (!onboarded) {
         router.replace('/onboarding');
         return;
       }
+
       router.replace('/(auth)/login');
     };
 
