@@ -7,6 +7,7 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   size?: 'sm' | 'md' | 'lg';
   loading?: boolean;
   fullWidth?: boolean;
+  label?: string;
 }
 
 export function Button({
@@ -14,6 +15,7 @@ export function Button({
   size = 'md',
   loading = false,
   fullWidth = false,
+  label,
   className,
   children,
   disabled,
@@ -41,7 +43,7 @@ export function Button({
       {loading && (
         <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
       )}
-      {children}
+      {children ?? label}
     </button>
   );
 }
