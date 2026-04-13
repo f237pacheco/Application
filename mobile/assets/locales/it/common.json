@@ -1,0 +1,41 @@
+{
+  "app": { "name": "Velona", "tagline": "Servizi IA per la tua azienda" },
+  "language": { "title": "Scegli la tua lingua", "subtitle": "Seleziona la lingua in cui desideri usare Velona" },
+  "onboarding": {
+    "slide1": { "title": "Servizi IA per la tua azienda, in un tap", "subtitle": "Accedi alla potenza dell'intelligenza artificiale per trasformare la tua attività" },
+    "slide2": { "title": "Crea il tuo sito, gestisci appuntamenti, automatizza le chiamate", "subtitle": "Tutte le esigenze della tua azienda coperte da un'unica piattaforma intelligente" },
+    "slide3": { "title": "Prova gratis 3 giorni, senza impegno", "subtitle": "Nessuna carta di credito richiesta per iniziare la tua prova gratuita" },
+    "start": "Inizia", "next": "Avanti", "skip": "Salta"
+  },
+  "auth": {
+    "title": "Crea il tuo account", "subtitle": "Accedi con Google per iniziare",
+    "googleBtn": "Continua con Google", "accountType": "Tipo di account",
+    "individual": "Privato", "professional": "Professionista",
+    "firstName": "Nome", "companyName": "Nome dell'azienda", "sector": "Settore",
+    "continue": "Continua", "terms": "Continuando, accetti i nostri termini di servizio e la nostra politica sulla privacy",
+    "errors": { "googleFailed": "Accesso Google fallito. Riprova.", "required": "Questo campo è obbligatorio" }
+  },
+  "home": { "welcome": "Benvenuto {{name}}, cosa vuoi fare oggi?", "services": "I nostri servizi IA", "addService": "Aggiungi un servizio" },
+  "services": {
+    "website": { "name": "Creatore di siti web IA", "description": "Crea un sito professionale in pochi minuti con l'IA", "placeholder": "Es: Sono un pasticcere a Roma, voglio un sito moderno con i miei prezzi, una galleria foto e un modulo di contatto" },
+    "voiceAgent": { "name": "Agente vocale IA", "description": "Un agente IA risponde alle tue chiamate 24/7", "placeholder": "Es: Voglio un agente che risponda alle chiamate del mio ristorante e prenda le prenotazioni" },
+    "videoEditing": { "name": "Montaggio video IA", "description": "Trasforma i tuoi filmati in video professionali automaticamente", "placeholder": "Es: Ho video dei miei prodotti, voglio un montaggio dinamico con musica per Instagram" },
+    "appointments": { "name": "Gestione appuntamenti", "description": "Sistema di prenotazione intelligente sincronizzato con il tuo calendario", "placeholder": "Es: Sono un personal trainer, ho bisogno di un sistema di prenotazione online per le mie sessioni di 1 ora" },
+    "socialMedia": { "name": "Gestione social media IA", "description": "Crea e pianifica contenuti su tutti i tuoi social automaticamente", "placeholder": "Es: Voglio pubblicare 3 volte a settimana su Instagram e LinkedIn per la mia azienda" },
+    "analytics": { "name": "Analytics e report aziendali", "description": "Dashboard intelligenti e report automatizzati della tua attività", "placeholder": "Es: Voglio monitorare le mie vendite e ricevere un report settimanale via email" },
+    "describe": "Descrivi esattamente cosa vuoi", "helpText": "Più sei preciso, migliore sarà il risultato", "continue": "Continua"
+  },
+  "plans": {
+    "title": "Scegli il tuo piano", "subtitle": "3 giorni gratuiti su ogni piano, senza impegno",
+    "monthly": "Mensile", "annual": "Annuale", "annualDiscount": "−20%",
+    "tryFree": "Prova gratis 3 giorni", "back": "Indietro", "perMonth": "/mese", "recommended": "Miglior rapporto qualità/prezzo",
+    "starter": { "name": "Starter", "tagline": "Ideale per iniziare", "features": ["2 servizi a scelta", "5 generazioni/mese per servizio", "Supporto email", "IA standard"] },
+    "pro": { "name": "Pro", "tagline": "Per andare oltre", "features": ["Tutti i servizi sbloccati", "30 generazioni/mese per servizio", "Supporto prioritario (chat)", "IA avanzata"] },
+    "enterprise": { "name": "Enterprise", "tagline": "Per grandi organizzazioni", "features": ["Tutto illimitato", "Accesso API", "Onboarding dedicato", "Account manager", "IA ultra-potente", "Supporto dedicato 24/7"] }
+  },
+  "businessInfo": { "title": "Informazioni aziendali", "subtitle": "Queste informazioni ci permettono di personalizzare l'IA per la tua azienda e generare le tue fatture", "siret": "Numero SIRET", "vat": "Numero IVA", "billingAddress": "Indirizzo di fatturazione", "continue": "Continua al pagamento" },
+  "payment": { "title": "Pagamento sicuro", "freeTrialNotice": "Non ti verrà addebitato nulla per 3 giorni", "payWithCard": "Paga con carta", "payWithPaypal": "Paga con PayPal", "secure": "Pagamento 100% sicuro — SSL", "errors": { "failed": "Pagamento fallito. Riprova o scegli un altro metodo di pagamento." } },
+  "dashboard": { "myServices": "I miei servizi", "history": "Cronologia", "account": "Account", "help": "Aiuto", "activeServices": "I miei servizi attivi", "addService": "Aggiungi un servizio", "usageThisMonth": "Utilizzi questo mese", "limitWarning": "Stai avvicinandoti al tuo limite mensile", "upgradePlan": "Aggiorna piano" },
+  "partner": { "title": "Programma partner", "description": "Condividi Velona sui tuoi social e guadagna un mese gratuito o un upgrade del piano", "yourCode": "Il tuo codice promo", "submitLink": "Invia un link", "linkPlaceholder": "https://...", "submit": "Invia", "status": { "pending": "In attesa di validazione", "approved": "Approvato — ricompensa attivata", "rejected": "Non idoneo" } },
+  "common": { "back": "Indietro", "loading": "Caricamento...", "error": "Si è verificato un errore", "retry": "Riprova", "save": "Salva", "cancel": "Annulla", "confirm": "Conferma", "close": "Chiudi" }
+}

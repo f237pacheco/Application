@@ -1,0 +1,41 @@
+{
+  "app": { "name": "Velona", "tagline": "为您的企业提供AI服务" },
+  "language": { "title": "选择您的语言", "subtitle": "选择您希望使用Velona的语言" },
+  "onboarding": {
+    "slide1": { "title": "一键获取企业AI服务", "subtitle": "利用人工智能的力量，转型您的业务" },
+    "slide2": { "title": "创建网站、管理预约、自动化通话", "subtitle": "一个智能平台满足您所有的业务需求" },
+    "slide3": { "title": "免费试用3天，无需承诺", "subtitle": "开始免费试用无需信用卡" },
+    "start": "开始", "next": "下一步", "skip": "跳过"
+  },
+  "auth": {
+    "title": "创建您的账户", "subtitle": "使用Google登录开始使用",
+    "googleBtn": "使用Google继续", "accountType": "账户类型",
+    "individual": "个人", "professional": "企业",
+    "firstName": "名字", "companyName": "公司名称", "sector": "行业",
+    "continue": "继续", "terms": "继续即表示您同意我们的服务条款和隐私政策",
+    "errors": { "googleFailed": "Google登录失败。请重试。", "required": "此字段为必填项" }
+  },
+  "home": { "welcome": "欢迎 {{name}}，您今天想做什么？", "services": "我们的AI服务", "addService": "添加服务" },
+  "services": {
+    "website": { "name": "AI网站构建器", "description": "用AI在几分钟内创建专业网站", "placeholder": "例：我是上海的甜点师，我想要一个带有价格、图片库和联系表单的现代网站" },
+    "voiceAgent": { "name": "AI语音代理", "description": "AI代理全天候响应您的电话", "placeholder": "例：我想要一个代理来接听我餐厅的电话并接受预订" },
+    "videoEditing": { "name": "AI视频剪辑", "description": "自动将您的素材转换为专业视频", "placeholder": "例：我有产品视频，想要为Instagram制作带音乐的动感剪辑" },
+    "appointments": { "name": "客户预约管理", "description": "与您的日历同步的智能预约系统", "placeholder": "例：我是健身教练，需要一个在线预约系统来管理我的1小时课程" },
+    "socialMedia": { "name": "AI社交媒体管理", "description": "自动在所有社交网络上创建和发布内容", "placeholder": "例：我想每周在Instagram和LinkedIn上为我的公司发布3条帖子" },
+    "analytics": { "name": "分析与业务报告", "description": "智能仪表板和自动化业务报告", "placeholder": "例：我想跟踪我的销售情况并每周通过电子邮件收到报告" },
+    "describe": "精确描述您想要什么", "helpText": "您越精确，结果越好", "continue": "继续"
+  },
+  "plans": {
+    "title": "选择您的方案", "subtitle": "每个方案均可免费试用3天，无需承诺",
+    "monthly": "月付", "annual": "年付", "annualDiscount": "−20%",
+    "tryFree": "免费试用3天", "back": "返回", "perMonth": "/月", "recommended": "最佳性价比",
+    "starter": { "name": "Starter", "tagline": "适合入门", "features": ["2个自选服务", "每服务每月5次生成", "邮件支持", "标准AI"] },
+    "pro": { "name": "Pro", "tagline": "更进一步", "features": ["所有服务解锁", "每服务每月30次生成", "优先支持（聊天）", "高级AI"] },
+    "enterprise": { "name": "Enterprise", "tagline": "适合大型企业", "features": ["一切无限制", "API访问", "专属入职培训", "客户经理", "超强AI", "专属24/7支持"] }
+  },
+  "businessInfo": { "title": "企业信息", "subtitle": "这些信息使我们能够为您的企业定制AI并生成发票", "siret": "SIRET编号", "vat": "增值税号", "billingAddress": "账单地址", "continue": "继续付款" },
+  "payment": { "title": "安全支付", "freeTrialNotice": "3天内不会扣款", "payWithCard": "信用卡支付", "payWithPaypal": "PayPal支付", "secure": "100%安全支付 — SSL", "errors": { "failed": "支付失败。请重试或选择其他支付方式。" } },
+  "dashboard": { "myServices": "我的服务", "history": "历史记录", "account": "账户", "help": "帮助", "activeServices": "我的活跃服务", "addService": "添加服务", "usageThisMonth": "本月使用次数", "limitWarning": "您正在接近每月限额", "upgradePlan": "升级方案" },
+  "partner": { "title": "合作伙伴计划", "description": "在您的社交网络上分享Velona，赢取一个月免费或方案升级", "yourCode": "您的促销码", "submitLink": "提交链接", "linkPlaceholder": "https://...", "submit": "提交", "status": { "pending": "等待审核", "approved": "已批准 — 奖励已激活", "rejected": "不符合条件" } },
+  "common": { "back": "返回", "loading": "加载中...", "error": "发生错误", "retry": "重试", "save": "保存", "cancel": "取消", "confirm": "确认", "close": "关闭" }
+}

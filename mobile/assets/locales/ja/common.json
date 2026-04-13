@@ -1,0 +1,41 @@
+{
+  "app": { "name": "Velona", "tagline": "ビジネス向けAIサービス" },
+  "language": { "title": "言語を選択", "subtitle": "Velonaを使用する言語を選択してください" },
+  "onboarding": {
+    "slide1": { "title": "ビジネス向けAIサービス、ワンタップで", "subtitle": "人工知能の力を活用して、ビジネスを変革しましょう" },
+    "slide2": { "title": "ウェブサイト作成、予約管理、通話自動化", "subtitle": "すべてのビジネスニーズを1つのインテリジェントプラットフォームで" },
+    "slide3": { "title": "3日間無料トライアル、縛りなし", "subtitle": "無料トライアルを始めるにはクレジットカード不要" },
+    "start": "始める", "next": "次へ", "skip": "スキップ"
+  },
+  "auth": {
+    "title": "アカウントを作成", "subtitle": "Googleでサインインして始めましょう",
+    "googleBtn": "Googleで続ける", "accountType": "アカウントの種類",
+    "individual": "個人", "professional": "法人",
+    "firstName": "名前", "companyName": "会社名", "sector": "業種",
+    "continue": "続ける", "terms": "続けることで、利用規約とプライバシーポリシーに同意したことになります",
+    "errors": { "googleFailed": "Googleログインに失敗しました。もう一度お試しください。", "required": "このフィールドは必須です" }
+  },
+  "home": { "welcome": "ようこそ {{name}}、今日は何をしますか？", "services": "AIサービス", "addService": "サービスを追加" },
+  "services": {
+    "website": { "name": "AIウェブサイトビルダー", "description": "AIで数分でプロのウェブサイトを作成", "placeholder": "例：私は東京のパティシエです。価格表、フォトギャラリー、お問い合わせフォームを備えたモダンなサイトが欲しいです" },
+    "voiceAgent": { "name": "AI音声エージェント", "description": "AIエージェントが24時間365日電話に応答します", "placeholder": "例：レストランの電話に応答し、予約を受け付けるエージェントが欲しいです" },
+    "videoEditing": { "name": "AI動画編集", "description": "映像素材を自動的にプロの動画に変換します", "placeholder": "例：商品の動画があります。Instagram用に音楽とテロップ付きのダイナミックな編集をしたいです" },
+    "appointments": { "name": "予約管理", "description": "カレンダーと同期したスマートな予約システム", "placeholder": "例：パーソナルトレーナーです。1時間セッションのオンライン予約システムが必要です" },
+    "socialMedia": { "name": "AIソーシャルメディア管理", "description": "すべてのSNSにコンテンツを自動作成・投稿", "placeholder": "例：会社のInstagramとLinkedInに週3回投稿したいです" },
+    "analytics": { "name": "分析＆ビジネスレポート", "description": "インテリジェントなダッシュボードと自動レポート", "placeholder": "例：売上を追跡して、毎週メールでレポートを受け取りたいです" },
+    "describe": "ご要望を詳しく教えてください", "helpText": "詳しく書くほど、より良い結果が得られます", "continue": "続ける"
+  },
+  "plans": {
+    "title": "プランを選択", "subtitle": "全プラン3日間無料トライアル、縛りなし",
+    "monthly": "月払い", "annual": "年払い", "annualDiscount": "−20%",
+    "tryFree": "3日間無料で試す", "back": "戻る", "perMonth": "/月", "recommended": "コストパフォーマンス最高",
+    "starter": { "name": "Starter", "tagline": "始めるのに最適", "features": ["2サービス選択可", "サービスあたり月5回生成", "メールサポート", "標準AI"] },
+    "pro": { "name": "Pro", "tagline": "さらに上を目指す", "features": ["全サービス利用可能", "サービスあたり月30回生成", "優先サポート（チャット）", "高度なAI"] },
+    "enterprise": { "name": "Enterprise", "tagline": "大規模組織向け", "features": ["全て無制限", "APIアクセス", "専用オンボーディング", "アカウントマネージャー", "超高性能AI", "専用24時間サポート"] }
+  },
+  "businessInfo": { "title": "会社情報", "subtitle": "この情報により、貴社のAIをカスタマイズし、請求書を発行します", "siret": "SIRET番号", "vat": "VAT番号", "billingAddress": "請求先住所", "continue": "お支払いへ" },
+  "payment": { "title": "安全な支払い", "freeTrialNotice": "3日間は請求されません", "payWithCard": "クレジットカードで支払う", "payWithPaypal": "PayPalで支払う", "secure": "100%安全な支払い — SSL", "errors": { "failed": "支払いに失敗しました。もう一度お試しください。" } },
+  "dashboard": { "myServices": "マイサービス", "history": "履歴", "account": "アカウント", "help": "ヘルプ", "activeServices": "利用中のサービス", "addService": "サービスを追加", "usageThisMonth": "今月の利用回数", "limitWarning": "月間制限に近づいています", "upgradePlan": "プランをアップグレード" },
+  "partner": { "title": "パートナープログラム", "description": "SNSでVelonaをシェアして1ヶ月無料またはプランアップグレードをゲット", "yourCode": "あなたのプロモコード", "submitLink": "リンクを提出", "linkPlaceholder": "https://...", "submit": "提出", "status": { "pending": "審査中", "approved": "承認済み — 特典有効", "rejected": "対象外" } },
+  "common": { "back": "戻る", "loading": "読み込み中...", "error": "エラーが発生しました", "retry": "再試行", "save": "保存", "cancel": "キャンセル", "confirm": "確認", "close": "閉じる" }
+}

@@ -1,0 +1,179 @@
+{
+  "app": {
+    "name": "Velona",
+    "tagline": "Services IA pour votre entreprise"
+  },
+  "language": {
+    "title": "Choisissez votre langue",
+    "subtitle": "Sélectionnez la langue dans laquelle vous souhaitez utiliser Velona"
+  },
+  "onboarding": {
+    "slide1": {
+      "title": "Des services IA pour votre entreprise, en un tap",
+      "subtitle": "Accédez à la puissance de l'intelligence artificielle pour transformer votre activité"
+    },
+    "slide2": {
+      "title": "Créez votre site, gérez vos RDV, automatisez vos appels",
+      "subtitle": "Tous vos besoins métier couverts par une seule plateforme intelligente"
+    },
+    "slide3": {
+      "title": "Essayez 3 jours gratuitement, sans engagement",
+      "subtitle": "Aucune carte de crédit requise pour commencer votre essai gratuit"
+    },
+    "start": "Commencer",
+    "next": "Suivant",
+    "skip": "Passer"
+  },
+  "auth": {
+    "title": "Créez votre compte",
+    "subtitle": "Connectez-vous avec Google pour commencer",
+    "googleBtn": "Continuer avec Google",
+    "accountType": "Type de compte",
+    "individual": "Particulier",
+    "professional": "Professionnel",
+    "firstName": "Prénom",
+    "companyName": "Nom de l'entreprise",
+    "sector": "Secteur d'activité",
+    "continue": "Continuer",
+    "terms": "En continuant, vous acceptez nos conditions d'utilisation et notre politique de confidentialité",
+    "errors": {
+      "googleFailed": "Échec de la connexion Google. Veuillez réessayer.",
+      "required": "Ce champ est requis"
+    }
+  },
+  "home": {
+    "welcome": "Bienvenue {{name}}, que voulez-vous faire aujourd'hui ?",
+    "services": "Nos services IA",
+    "addService": "Ajouter un service"
+  },
+  "services": {
+    "website": {
+      "name": "Création de site web IA",
+      "description": "Créez un site professionnel en quelques minutes grâce à l'IA",
+      "placeholder": "Ex : Je suis pâtissier à Lyon, je veux un site moderne avec mes tarifs, une galerie photo et un formulaire de contact"
+    },
+    "voiceAgent": {
+      "name": "Agent IA vocal",
+      "description": "Un agent IA répond à vos appels 24h/7j avec la voix de votre choix",
+      "placeholder": "Ex : Je veux un agent qui répond aux appels de mon restaurant, prend les réservations et renseigne sur les horaires"
+    },
+    "videoEditing": {
+      "name": "Montage vidéo IA",
+      "description": "Transformez vos rushs en vidéos professionnelles automatiquement",
+      "placeholder": "Ex : J'ai des vidéos de mes produits, je veux un montage dynamique avec musique et sous-titres pour Instagram"
+    },
+    "appointments": {
+      "name": "Gestion des RDV clients",
+      "description": "Système de réservation intelligent synchronisé avec votre agenda",
+      "placeholder": "Ex : Je suis coach sportif, j'ai besoin d'un système de réservation en ligne pour mes séances de 1h"
+    },
+    "socialMedia": {
+      "name": "Gestion réseaux sociaux IA",
+      "description": "Créez et planifiez votre contenu sur tous vos réseaux automatiquement",
+      "placeholder": "Ex : Je veux publier 3 posts par semaine sur Instagram et LinkedIn pour mon cabinet de conseil"
+    },
+    "analytics": {
+      "name": "Analytics & rapports business",
+      "description": "Tableaux de bord intelligents et rapports automatisés de votre activité",
+      "placeholder": "Ex : Je veux suivre mes ventes, mes clients et recevoir un rapport hebdomadaire par email"
+    },
+    "describe": "Décrivez précisément ce que vous souhaitez",
+    "helpText": "Plus vous êtes précis, meilleur sera le résultat",
+    "continue": "Continuer"
+  },
+  "plans": {
+    "title": "Choisissez votre plan",
+    "subtitle": "3 jours gratuits sur chaque plan, sans engagement",
+    "monthly": "Mensuel",
+    "annual": "Annuel",
+    "annualDiscount": "−20%",
+    "tryFree": "Essayer 3 jours gratuits",
+    "back": "Retour",
+    "perMonth": "/mois",
+    "recommended": "Meilleur rapport qualité/prix",
+    "starter": {
+      "name": "Starter",
+      "tagline": "Idéal pour démarrer",
+      "features": [
+        "2 services au choix",
+        "5 générations/mois par service",
+        "Support email",
+        "IA standard"
+      ]
+    },
+    "pro": {
+      "name": "Pro",
+      "tagline": "Pour aller plus loin",
+      "features": [
+        "Tous les services débloqués",
+        "30 générations/mois par service",
+        "Support prioritaire (chat)",
+        "IA avancée"
+      ]
+    },
+    "enterprise": {
+      "name": "Enterprise",
+      "tagline": "Pour les grandes structures",
+      "features": [
+        "Tout illimité",
+        "Accès API",
+        "Onboarding dédié",
+        "Account manager",
+        "IA ultra-puissante",
+        "Support dédié 24h/7j"
+      ]
+    }
+  },
+  "businessInfo": {
+    "title": "Informations professionnelles",
+    "subtitle": "Ces informations permettent de personnaliser l'IA à votre entreprise et de générer vos factures",
+    "siret": "Numéro SIRET",
+    "vat": "Numéro de TVA",
+    "billingAddress": "Adresse de facturation",
+    "continue": "Continuer vers le paiement"
+  },
+  "payment": {
+    "title": "Paiement sécurisé",
+    "freeTrialNotice": "Vous ne serez pas débité pendant 3 jours",
+    "payWithCard": "Payer par carte bancaire",
+    "payWithPaypal": "Payer avec PayPal",
+    "secure": "Paiement 100% sécurisé — SSL",
+    "errors": {
+      "failed": "Le paiement a échoué. Veuillez réessayer ou choisir un autre moyen de paiement."
+    }
+  },
+  "dashboard": {
+    "myServices": "Mes Services",
+    "history": "Historique",
+    "account": "Compte",
+    "help": "Aide",
+    "activeServices": "Mes services actifs",
+    "addService": "Ajouter un service",
+    "usageThisMonth": "Utilisations ce mois",
+    "limitWarning": "Vous approchez de votre limite mensuelle",
+    "upgradePlan": "Passer au plan supérieur"
+  },
+  "partner": {
+    "title": "Programme partenaire",
+    "description": "Partagez Velona sur vos réseaux et gagnez un mois offert ou un upgrade de plan",
+    "yourCode": "Votre code promo",
+    "submitLink": "Soumettre un lien",
+    "linkPlaceholder": "https://...",
+    "submit": "Soumettre",
+    "status": {
+      "pending": "En attente de validation",
+      "approved": "Approuvé — récompense activée",
+      "rejected": "Non éligible"
+    }
+  },
+  "common": {
+    "back": "Retour",
+    "loading": "Chargement...",
+    "error": "Une erreur est survenue",
+    "retry": "Réessayer",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "confirm": "Confirmer",
+    "close": "Fermer"
+  }
+}

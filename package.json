@@ -1,0 +1,20 @@
+{
+  "name": "velona",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "web",
+    "mobile",
+    "backend"
+  ],
+  "scripts": {
+    "web": "npm run dev --workspace=web",
+    "mobile": "npm run start --workspace=mobile",
+    "backend": "npm run dev --workspace=backend",
+    "dev": "concurrently \"npm run web\" \"npm run backend\"",
+    "install:all": "npm install"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

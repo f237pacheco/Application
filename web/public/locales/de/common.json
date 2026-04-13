@@ -1,0 +1,41 @@
+{
+  "app": { "name": "Velona", "tagline": "KI-Dienste für Ihr Unternehmen" },
+  "language": { "title": "Wählen Sie Ihre Sprache", "subtitle": "Wählen Sie die Sprache, in der Sie Velona verwenden möchten" },
+  "onboarding": {
+    "slide1": { "title": "KI-Dienste für Ihr Unternehmen, mit einem Tap", "subtitle": "Nutzen Sie die Kraft der künstlichen Intelligenz für Ihr Unternehmen" },
+    "slide2": { "title": "Website erstellen, Termine verwalten, Anrufe automatisieren", "subtitle": "Alle Geschäftsanforderungen auf einer intelligenten Plattform" },
+    "slide3": { "title": "3 Tage kostenlos testen, ohne Verpflichtung", "subtitle": "Keine Kreditkarte erforderlich für Ihre kostenlose Testphase" },
+    "start": "Loslegen", "next": "Weiter", "skip": "Überspringen"
+  },
+  "auth": {
+    "title": "Konto erstellen", "subtitle": "Mit Google anmelden, um zu beginnen",
+    "googleBtn": "Mit Google fortfahren", "accountType": "Kontotyp",
+    "individual": "Privatperson", "professional": "Unternehmen",
+    "firstName": "Vorname", "companyName": "Unternehmensname", "sector": "Branche",
+    "continue": "Weiter", "terms": "Mit der Fortsetzung stimmen Sie unseren Nutzungsbedingungen und Datenschutzrichtlinien zu",
+    "errors": { "googleFailed": "Google-Anmeldung fehlgeschlagen. Bitte erneut versuchen.", "required": "Dieses Feld ist erforderlich" }
+  },
+  "home": { "welcome": "Willkommen {{name}}, was möchten Sie heute tun?", "services": "Unsere KI-Dienste", "addService": "Dienst hinzufügen" },
+  "services": {
+    "website": { "name": "KI-Website-Builder", "description": "Erstellen Sie in Minuten eine professionelle Website mit KI", "placeholder": "z.B.: Ich bin Bäcker in Berlin, ich möchte eine moderne Website mit Preisen, Fotogalerie und Kontaktformular" },
+    "voiceAgent": { "name": "KI-Sprachagent", "description": "Ein KI-Agent beantwortet Ihre Anrufe 24/7", "placeholder": "z.B.: Ich möchte einen Agenten, der Anrufe für mein Restaurant beantwortet und Reservierungen entgegennimmt" },
+    "videoEditing": { "name": "KI-Videobearbeitung", "description": "Verwandeln Sie Ihr Filmmaterial automatisch in professionelle Videos", "placeholder": "z.B.: Ich habe Produktvideos, ich möchte einen dynamischen Schnitt mit Musik für Instagram" },
+    "appointments": { "name": "Terminverwaltung", "description": "Intelligentes Buchungssystem, synchronisiert mit Ihrem Kalender", "placeholder": "z.B.: Ich bin Personal Trainer, ich brauche ein Online-Buchungssystem für meine 1-Stunden-Sitzungen" },
+    "socialMedia": { "name": "KI-Social-Media-Management", "description": "Erstellen und planen Sie Inhalte für alle Ihre Netzwerke automatisch", "placeholder": "z.B.: Ich möchte 3-mal pro Woche auf Instagram und LinkedIn für mein Beratungsunternehmen posten" },
+    "analytics": { "name": "Analytics & Geschäftsberichte", "description": "Intelligente Dashboards und automatisierte Berichte Ihrer Aktivitäten", "placeholder": "z.B.: Ich möchte meine Verkäufe verfolgen und wöchentliche E-Mail-Berichte erhalten" },
+    "describe": "Beschreiben Sie genau, was Sie möchten", "helpText": "Je präziser Sie sind, desto besser das Ergebnis", "continue": "Weiter"
+  },
+  "plans": {
+    "title": "Wählen Sie Ihren Plan", "subtitle": "3 Tage kostenlos für jeden Plan, ohne Verpflichtung",
+    "monthly": "Monatlich", "annual": "Jährlich", "annualDiscount": "−20%",
+    "tryFree": "3 Tage kostenlos testen", "back": "Zurück", "perMonth": "/Monat", "recommended": "Bestes Preis-Leistungs-Verhältnis",
+    "starter": { "name": "Starter", "tagline": "Ideal zum Starten", "features": ["2 Dienste nach Wahl", "5 Generierungen/Monat pro Dienst", "E-Mail-Support", "Standard-KI"] },
+    "pro": { "name": "Pro", "tagline": "Für mehr Leistung", "features": ["Alle Dienste freigeschaltet", "30 Generierungen/Monat pro Dienst", "Prioritäts-Support (Chat)", "Erweiterte KI"] },
+    "enterprise": { "name": "Enterprise", "tagline": "Für große Organisationen", "features": ["Alles unbegrenzt", "API-Zugang", "Dediziertes Onboarding", "Account Manager", "Ultra-leistungsstarke KI", "Dedizierter 24/7-Support"] }
+  },
+  "businessInfo": { "title": "Unternehmensinformationen", "subtitle": "Diese Informationen ermöglichen es uns, die KI für Ihr Unternehmen anzupassen und Ihre Rechnungen zu erstellen", "siret": "SIRET-Nummer", "vat": "USt-IdNr.", "billingAddress": "Rechnungsadresse", "continue": "Weiter zur Zahlung" },
+  "payment": { "title": "Sichere Zahlung", "freeTrialNotice": "Sie werden 3 Tage lang nicht belastet", "payWithCard": "Mit Kreditkarte bezahlen", "payWithPaypal": "Mit PayPal bezahlen", "secure": "100% sichere Zahlung — SSL", "errors": { "failed": "Zahlung fehlgeschlagen. Bitte erneut versuchen." } },
+  "dashboard": { "myServices": "Meine Dienste", "history": "Verlauf", "account": "Konto", "help": "Hilfe", "activeServices": "Meine aktiven Dienste", "addService": "Dienst hinzufügen", "usageThisMonth": "Nutzung diesen Monat", "limitWarning": "Sie nähern sich Ihrem monatlichen Limit", "upgradePlan": "Plan upgraden" },
+  "partner": { "title": "Partnerprogramm", "description": "Teilen Sie Velona in Ihren Netzwerken und gewinnen Sie einen kostenlosen Monat oder ein Plan-Upgrade", "yourCode": "Ihr Promo-Code", "submitLink": "Link einreichen", "linkPlaceholder": "https://...", "submit": "Einreichen", "status": { "pending": "Ausstehende Validierung", "approved": "Genehmigt — Belohnung aktiviert", "rejected": "Nicht berechtigt" } },
+  "common": { "back": "Zurück", "loading": "Lädt...", "error": "Ein Fehler ist aufgetreten", "retry": "Wiederholen", "save": "Speichern", "cancel": "Abbrechen", "confirm": "Bestätigen", "close": "Schließen" }
+}

@@ -1,0 +1,179 @@
+{
+  "app": {
+    "name": "Velona",
+    "tagline": "AI Services for your business"
+  },
+  "language": {
+    "title": "Choose your language",
+    "subtitle": "Select the language you want to use Velona in"
+  },
+  "onboarding": {
+    "slide1": {
+      "title": "AI services for your business, in one tap",
+      "subtitle": "Access the power of artificial intelligence to transform your business"
+    },
+    "slide2": {
+      "title": "Build your website, manage appointments, automate calls",
+      "subtitle": "All your business needs covered by a single intelligent platform"
+    },
+    "slide3": {
+      "title": "Try free for 3 days, no commitment",
+      "subtitle": "No credit card required to start your free trial"
+    },
+    "start": "Get Started",
+    "next": "Next",
+    "skip": "Skip"
+  },
+  "auth": {
+    "title": "Create your account",
+    "subtitle": "Sign in with Google to get started",
+    "googleBtn": "Continue with Google",
+    "accountType": "Account type",
+    "individual": "Individual",
+    "professional": "Professional",
+    "firstName": "First name",
+    "companyName": "Company name",
+    "sector": "Industry sector",
+    "continue": "Continue",
+    "terms": "By continuing, you agree to our terms of service and privacy policy",
+    "errors": {
+      "googleFailed": "Google sign-in failed. Please try again.",
+      "required": "This field is required"
+    }
+  },
+  "home": {
+    "welcome": "Welcome {{name}}, what do you want to do today?",
+    "services": "Our AI services",
+    "addService": "Add a service"
+  },
+  "services": {
+    "website": {
+      "name": "AI Website Builder",
+      "description": "Create a professional website in minutes with AI",
+      "placeholder": "E.g.: I'm a bakery owner in London, I want a modern website with my prices, a photo gallery and a contact form"
+    },
+    "voiceAgent": {
+      "name": "AI Voice Agent",
+      "description": "An AI agent answers your calls 24/7 with the voice of your choice",
+      "placeholder": "E.g.: I want an agent that answers calls for my restaurant, takes reservations and provides opening hours"
+    },
+    "videoEditing": {
+      "name": "AI Video Editing",
+      "description": "Transform your footage into professional videos automatically",
+      "placeholder": "E.g.: I have product videos, I want a dynamic edit with music and subtitles for Instagram"
+    },
+    "appointments": {
+      "name": "Client Appointment Management",
+      "description": "Smart booking system synced with your calendar",
+      "placeholder": "E.g.: I'm a fitness coach, I need an online booking system for my 1-hour sessions"
+    },
+    "socialMedia": {
+      "name": "AI Social Media Management",
+      "description": "Create and schedule content across all your networks automatically",
+      "placeholder": "E.g.: I want to post 3 times a week on Instagram and LinkedIn for my consulting firm"
+    },
+    "analytics": {
+      "name": "Analytics & Business Reports",
+      "description": "Intelligent dashboards and automated reports of your activity",
+      "placeholder": "E.g.: I want to track my sales, customers and receive a weekly email report"
+    },
+    "describe": "Describe exactly what you want",
+    "helpText": "The more precise you are, the better the result",
+    "continue": "Continue"
+  },
+  "plans": {
+    "title": "Choose your plan",
+    "subtitle": "3 days free on every plan, no commitment",
+    "monthly": "Monthly",
+    "annual": "Annual",
+    "annualDiscount": "−20%",
+    "tryFree": "Try free for 3 days",
+    "back": "Back",
+    "perMonth": "/mo",
+    "recommended": "Best value",
+    "starter": {
+      "name": "Starter",
+      "tagline": "Perfect to get started",
+      "features": [
+        "2 services of your choice",
+        "5 generations/month per service",
+        "Email support",
+        "Standard AI"
+      ]
+    },
+    "pro": {
+      "name": "Pro",
+      "tagline": "Go further",
+      "features": [
+        "All services unlocked",
+        "30 generations/month per service",
+        "Priority support (chat)",
+        "Advanced AI"
+      ]
+    },
+    "enterprise": {
+      "name": "Enterprise",
+      "tagline": "For large organizations",
+      "features": [
+        "Everything unlimited",
+        "API access",
+        "Dedicated onboarding",
+        "Account manager",
+        "Ultra-powerful AI",
+        "Dedicated 24/7 support"
+      ]
+    }
+  },
+  "businessInfo": {
+    "title": "Business information",
+    "subtitle": "This information allows us to personalize the AI for your business and generate your invoices",
+    "siret": "SIRET number",
+    "vat": "VAT number",
+    "billingAddress": "Billing address",
+    "continue": "Continue to payment"
+  },
+  "payment": {
+    "title": "Secure payment",
+    "freeTrialNotice": "You will not be charged for 3 days",
+    "payWithCard": "Pay by credit card",
+    "payWithPaypal": "Pay with PayPal",
+    "secure": "100% secure payment — SSL",
+    "errors": {
+      "failed": "Payment failed. Please try again or choose a different payment method."
+    }
+  },
+  "dashboard": {
+    "myServices": "My Services",
+    "history": "History",
+    "account": "Account",
+    "help": "Help",
+    "activeServices": "My active services",
+    "addService": "Add a service",
+    "usageThisMonth": "Usage this month",
+    "limitWarning": "You are approaching your monthly limit",
+    "upgradePlan": "Upgrade plan"
+  },
+  "partner": {
+    "title": "Partner Program",
+    "description": "Share Velona on your networks and earn a free month or a plan upgrade",
+    "yourCode": "Your promo code",
+    "submitLink": "Submit a link",
+    "linkPlaceholder": "https://...",
+    "submit": "Submit",
+    "status": {
+      "pending": "Pending validation",
+      "approved": "Approved — reward activated",
+      "rejected": "Not eligible"
+    }
+  },
+  "common": {
+    "back": "Back",
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "retry": "Retry",
+    "save": "Save",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "close": "Close"
+  }
+}
