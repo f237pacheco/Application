@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { BackButton } from '@/components/ui/BackButton';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/hooks/useAuth';
-import { PLANS, getPrice, getMonthlyEquivalent, toPlanKey, type PlanId, type Billing } from '@/lib/plans';
+import { PLANS, getMonthlyEquivalent, type PlanId, type Billing } from '@/lib/plans';
 import { clsx } from 'clsx';
 
 type AccountType = 'individual' | 'professional';
@@ -25,10 +25,9 @@ export default function PlansPage() {
   const [loadingPlan, setLoadingPlan] = useState<PlanId | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const handleSelectPlan = async (planId: PlanId) => {
+  const handleSelectPlan = (planId: PlanId) => {
     try {
       setLoadingPlan(planId);
-      setError(null);
 
       const plan = PLANS.find((p) => p.id === planId)!;
 
@@ -44,26 +43,14 @@ export default function PlansPage() {
         return;
       }
 
-      // Direct to Stripe checkout
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/payments/create-checkout`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session?.access_token}`,
-        },
-        body: JSON.stringify({
-          planKey: toPlanKey(planId, accountType),
-          billing,
-          successUrl: `${window.location.origin}/dashboard?checkout=success`,
-          cancelUrl: `${window.location.origin}/plans`,
-        }),
+      // → Payment page (Stripe ou PayPal au choix)
+      const params = new URLSearchParams({
+        plan: planId,
+        billing,
+        ...(serviceId ? { service: serviceId } : {}),
+        ...(prompt ? { prompt } : {}),
       });
-
-      if (!res.ok) throw new Error('Checkout creation failed');
-      const { url } = await res.json();
-      window.location.href = url;
-    } catch {
-      setError(t('payment.errors.failed'));
+      router.push(`/checkout/payment?${params}`);
     } finally {
       setLoadingPlan(null);
     }

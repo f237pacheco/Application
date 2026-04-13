@@ -1,19 +1,28 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { stripe, PLANS } from '../lib/stripe';
+import { createSubscription, getSubscriptionDetails, PAYPAL_PLAN_IDS } from '../lib/paypal';
 import { supabase } from '../lib/supabase';
 import type { AuthRequest } from '../middleware/requireAuth';
 
 export const paymentsRouter = Router();
 
+// ─── Stripe ──────────────────────────────────────────────────────────────────
+
 const checkoutSchema = z.object({
-  planKey: z.enum(['starter_individual', 'starter_professional', 'pro_individual', 'pro_professional', 'enterprise']),
+  planKey: z.enum([
+    'starter_individual',
+    'starter_professional',
+    'pro_individual',
+    'pro_professional',
+    'enterprise',
+  ]),
   billing: z.enum(['monthly', 'annual']),
   successUrl: z.string().url(),
   cancelUrl: z.string().url(),
 });
 
-// POST /api/payments/create-checkout — create Stripe checkout session
+/** POST /api/payments/create-checkout — Stripe Checkout Session */
 paymentsRouter.post('/create-checkout', async (req: AuthRequest, res, next) => {
   try {
     const parsed = checkoutSchema.safeParse(req.body);
@@ -65,11 +74,10 @@ paymentsRouter.post('/create-checkout', async (req: AuthRequest, res, next) => {
   }
 });
 
-// POST /api/payments/create-portal — customer billing portal
+/** POST /api/payments/create-portal — Customer billing portal */
 paymentsRouter.post('/create-portal', async (req: AuthRequest, res, next) => {
   try {
     const { returnUrl } = req.body;
-
     const { data: profile } = await supabase
       .from('profiles')
       .select('stripe_customer_id')
@@ -87,6 +95,119 @@ paymentsRouter.post('/create-portal', async (req: AuthRequest, res, next) => {
     });
 
     res.json({ url: session.url });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── PayPal ──────────────────────────────────────────────────────────────────
+
+const paypalCheckoutSchema = z.object({
+  planKey: z.enum([
+    'starter_individual',
+    'starter_professional',
+    'pro_individual',
+    'pro_professional',
+    'enterprise',
+  ]),
+  billing: z.enum(['monthly', 'annual']),
+  successUrl: z.string().url(),
+  cancelUrl: z.string().url(),
+});
+
+/** POST /api/payments/create-paypal-subscription */
+paymentsRouter.post('/create-paypal-subscription', async (req: AuthRequest, res, next) => {
+  try {
+    const parsed = paypalCheckoutSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: 'Invalid data', details: parsed.error.flatten() });
+      return;
+    }
+
+    const { planKey, billing, successUrl, cancelUrl } = parsed.data;
+
+    // PayPal has separate plans for monthly/annual
+    const paypalKey = billing === 'annual' ? `${planKey}_annual` : planKey;
+    const paypalPlanId = PAYPAL_PLAN_IDS[paypalKey] ?? PAYPAL_PLAN_IDS[planKey];
+
+    if (!paypalPlanId) {
+      res.status(400).json({ error: `No PayPal plan configured for: ${paypalKey}` });
+      return;
+    }
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('email')
+      .eq('id', req.userId)
+      .single();
+
+    const subscription = await createSubscription({
+      planId: paypalPlanId,
+      returnUrl: successUrl,
+      cancelUrl: cancelUrl,
+      subscriberEmail: profile?.email ?? req.userEmail,
+    });
+
+    // Store pending PayPal subscription
+    await supabase.from('subscriptions').upsert({
+      user_id: req.userId,
+      stripe_subscription_id: null,
+      plan_key: planKey,
+      status: 'pending_paypal',
+      paypal_subscription_id: subscription.id,
+      updated_at: new Date().toISOString(),
+    });
+
+    res.json({ approveUrl: subscription.approveUrl, subscriptionId: subscription.id });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/** GET /api/payments/paypal-success?subscription_id=... */
+paymentsRouter.get('/paypal-success', async (req: AuthRequest, res, next) => {
+  try {
+    const { subscription_id } = req.query as { subscription_id?: string };
+    if (!subscription_id) {
+      res.status(400).json({ error: 'Missing subscription_id' });
+      return;
+    }
+
+    const details = await getSubscriptionDetails(subscription_id) as {
+      status: string;
+      plan_id: string;
+    };
+
+    if (details.status === 'ACTIVE') {
+      await supabase
+        .from('subscriptions')
+        .update({ status: 'active', updated_at: new Date().toISOString() })
+        .eq('paypal_subscription_id', subscription_id);
+    }
+
+    res.json({ status: details.status, activated: details.status === 'ACTIVE' });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/** GET /api/payments/subscription — current user's active subscription */
+paymentsRouter.get('/subscription', async (req: AuthRequest, res, next) => {
+  try {
+    const { data, error } = await supabase
+      .from('subscriptions')
+      .select('*')
+      .eq('user_id', req.userId)
+      .in('status', ['trialing', 'active'])
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (error) {
+      res.json(null);
+      return;
+    }
+    res.json(data);
   } catch (err) {
     next(err);
   }

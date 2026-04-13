@@ -5,7 +5,8 @@ import { supabase } from '../lib/supabase';
 
 export const webhooksRouter = Router();
 
-// POST /api/webhooks/stripe — handle Stripe events
+// ─── Stripe Webhook ───────────────────────────────────────────────────────────
+
 webhooksRouter.post('/stripe', async (req: Request, res: Response) => {
   const sig = req.headers['stripe-signature'];
   if (!sig) {
@@ -30,27 +31,39 @@ webhooksRouter.post('/stripe', async (req: Request, res: Response) => {
     switch (event.type) {
       case 'customer.subscription.created':
       case 'customer.subscription.updated': {
-        const sub = event.data.object as { id: string; customer: string; status: string; metadata: Record<string, string>; items: { data: { price: { id: string } }[] }; trial_end: number | null; current_period_end: number };
+        const sub = event.data.object as {
+          id: string;
+          customer: string;
+          status: string;
+          metadata: Record<string, string>;
+          trial_end: number | null;
+          current_period_end: number;
+        };
         const userId = sub.metadata.user_id;
         const planKey = sub.metadata.plan_key;
 
         if (userId) {
-          await supabase.from('subscriptions').upsert({
-            user_id: userId,
-            stripe_subscription_id: sub.id,
-            stripe_customer_id: sub.customer,
-            plan_key: planKey,
-            status: sub.status,
-            trial_end: sub.trial_end ? new Date(sub.trial_end * 1000).toISOString() : null,
-            current_period_end: new Date(sub.current_period_end * 1000).toISOString(),
-            updated_at: new Date().toISOString(),
-          }, { onConflict: 'stripe_subscription_id' });
+          await supabase.from('subscriptions').upsert(
+            {
+              user_id: userId,
+              stripe_subscription_id: sub.id,
+              stripe_customer_id: sub.customer,
+              plan_key: planKey,
+              status: sub.status,
+              trial_end: sub.trial_end
+                ? new Date(sub.trial_end * 1000).toISOString()
+                : null,
+              current_period_end: new Date(sub.current_period_end * 1000).toISOString(),
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: 'stripe_subscription_id' }
+          );
         }
         break;
       }
 
       case 'customer.subscription.deleted': {
-        const sub = event.data.object as { id: string; status: string };
+        const sub = event.data.object as { id: string };
         await supabase
           .from('subscriptions')
           .update({ status: 'canceled', updated_at: new Date().toISOString() })
@@ -72,7 +85,63 @@ webhooksRouter.post('/stripe', async (req: Request, res: Response) => {
 
     res.json({ received: true });
   } catch (err) {
-    console.error('Webhook handler error:', err);
+    console.error('Stripe webhook handler error:', err);
     res.status(500).send('Webhook handler failed');
+  }
+});
+
+// ─── PayPal Webhook ───────────────────────────────────────────────────────────
+
+webhooksRouter.post('/paypal', async (req: Request, res: Response) => {
+  // PayPal sends JSON (not raw body), so express.json() is applied normally
+  const event = req.body as {
+    event_type: string;
+    resource: {
+      id: string;
+      status: string;
+      plan_id: string;
+      custom_id?: string;
+    };
+  };
+
+  try {
+    switch (event.event_type) {
+      case 'BILLING.SUBSCRIPTION.ACTIVATED':
+      case 'BILLING.SUBSCRIPTION.RENEWED': {
+        const { id, status } = event.resource;
+        await supabase
+          .from('subscriptions')
+          .update({
+            status: status === 'ACTIVE' ? 'active' : 'trialing',
+            updated_at: new Date().toISOString(),
+          })
+          .eq('paypal_subscription_id', id);
+        break;
+      }
+
+      case 'BILLING.SUBSCRIPTION.CANCELLED':
+      case 'BILLING.SUBSCRIPTION.EXPIRED': {
+        const { id } = event.resource;
+        await supabase
+          .from('subscriptions')
+          .update({ status: 'canceled', updated_at: new Date().toISOString() })
+          .eq('paypal_subscription_id', id);
+        break;
+      }
+
+      case 'BILLING.SUBSCRIPTION.PAYMENT.FAILED': {
+        const { id } = event.resource;
+        await supabase
+          .from('subscriptions')
+          .update({ status: 'past_due', updated_at: new Date().toISOString() })
+          .eq('paypal_subscription_id', id);
+        break;
+      }
+    }
+
+    res.json({ received: true });
+  } catch (err) {
+    console.error('PayPal webhook handler error:', err);
+    res.status(500).send('PayPal webhook handler failed');
   }
 });

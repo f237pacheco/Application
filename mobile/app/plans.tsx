@@ -15,7 +15,6 @@ import { useAuth } from '@/hooks/useAuth';
 import {
   PLANS,
   getMonthlyEquivalent,
-  toPlanKey,
   type PlanId,
   type Billing,
 } from '@/lib/plans';
@@ -26,7 +25,7 @@ type AccountType = 'individual' | 'professional';
 export default function PlansScreen() {
   const { t } = useTranslation();
   const router = useRouter();
-  const { session } = useAuth();
+  useAuth();
   const params = useLocalSearchParams<{ service?: string; prompt?: string }>();
 
   const [billing, setBilling] = useState<Billing>('monthly');
@@ -34,10 +33,9 @@ export default function PlansScreen() {
   const [loadingPlan, setLoadingPlan] = useState<PlanId | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const handleSelectPlan = async (planId: PlanId) => {
+  const handleSelectPlan = (planId: PlanId) => {
     try {
       setLoadingPlan(planId);
-      setError(null);
 
       const plan = PLANS.find((p) => p.id === planId)!;
 
@@ -49,29 +47,11 @@ export default function PlansScreen() {
         return;
       }
 
-      const apiUrl = process.env.EXPO_PUBLIC_API_URL;
-      const res = await fetch(`${apiUrl}/api/payments/create-checkout`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session?.access_token}`,
-        },
-        body: JSON.stringify({
-          planKey: toPlanKey(planId, accountType),
-          billing,
-          successUrl: `velona://checkout/success`,
-          cancelUrl: `velona://plans`,
-        }),
-      });
-
-      if (!res.ok) throw new Error('Checkout failed');
-      const { url } = await res.json();
-
-      // Open Stripe Checkout in browser
-      const { openBrowserAsync } = await import('expo-web-browser');
-      await openBrowserAsync(url);
-    } catch {
-      setError(t('payment.errors.failed'));
+      // → Payment screen (Stripe ou PayPal au choix)
+      router.push({
+        pathname: '/checkout/payment',
+        params: { plan: planId, billing, ...params },
+      } as never);
     } finally {
       setLoadingPlan(null);
     }
