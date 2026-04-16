@@ -1,91 +1,75 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/useAuth';
-import { Logo } from '@/components/ui/Logo';
-import { Button } from '@/components/ui/Button';
+import { useProfile } from '@/hooks/useProfile';
+import { useUsage } from '@/hooks/useUsage';
 import { ServiceMockup } from '@/components/screens/ServiceMockup';
+import { UsageBar } from '@/components/ui/UsageBar';
+import { LimitWarning } from '@/components/ui/LimitWarning';
+import { Button } from '@/components/ui/Button';
 import { SERVICES } from '@/lib/services';
 import { clsx } from 'clsx';
 
-interface Profile {
-  first_name: string;
-  account_type: string;
-  plan_key?: string;
-}
-
-const PLAN_LABELS: Record<string, string> = {
-  starter_individual: 'Starter',
-  starter_professional: 'Starter Pro',
-  pro_individual: 'Pro',
-  pro_professional: 'Pro',
-  enterprise: 'Enterprise',
-};
-
 export default function DashboardPage() {
   const { t } = useTranslation();
-  const { user, session, signOut } = useAuth();
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [signingOut, setSigningOut] = useState(false);
+  const { user } = useAuth();
+  const { profile } = useProfile();
+  const { data: usage, loading: usageLoading, isNearLimit } = useUsage();
 
-  useEffect(() => {
-    if (!session?.access_token) return;
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/profile`, {
-      headers: { Authorization: `Bearer ${session.access_token}` },
-    })
-      .then((r) => r.json())
-      .then((data) => setProfile(data))
-      .catch(() => null);
-  }, [session]);
+  const firstName = profile?.first_name
+    ?? (user?.user_metadata?.full_name as string)?.split(' ')[0]
+    ?? 'vous';
 
-  const firstName =
-    profile?.first_name ??
-    (user?.user_metadata?.full_name as string)?.split(' ')[0] ??
-    'vous';
-
-  const handleSignOut = async () => {
-    setSigningOut(true);
-    await signOut();
-  };
+  const hasPlan = !!profile?.plan_key;
+  const isEnterprise = profile?.plan_key === 'enterprise';
+  const isStarter = profile?.plan_key?.startsWith('starter');
 
   return (
-    <div className="min-h-screen bg-gray-950 flex flex-col">
-      {/* Header */}
-      <header className="sticky top-0 z-40 bg-gray-950/90 backdrop-blur border-b border-gray-900 px-6 py-4 flex items-center justify-between">
-        <Logo size="sm" />
-        <div className="flex items-center gap-3">
-          {profile?.plan_key && (
-            <span className="text-xs font-semibold px-3 py-1 rounded-full bg-primary-500/20 text-primary-300 border border-primary-500/30">
-              {PLAN_LABELS[profile.plan_key] ?? profile.plan_key}
-            </span>
-          )}
-          {!profile?.plan_key && (
-            <Link href="/plans?source=upgrade">
-              <Button variant="outline" size="sm" label={t('dashboard.upgradePlan')} />
-            </Link>
-          )}
-          <button
-            onClick={handleSignOut}
-            disabled={signingOut}
-            className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
-          >
-            {signingOut ? '…' : user?.email?.split('@')[0]}
-          </button>
-        </div>
-      </header>
-
+    <div className="flex flex-col gap-8">
       {/* Hero */}
-      <section className="px-6 pt-10 pb-6 max-w-4xl mx-auto w-full">
+      <div>
         <h1 className="text-3xl font-bold text-white mb-1">
           {t('home.welcome', { name: firstName })}
         </h1>
-        <p className="text-gray-400 text-base">{t('home.services')}</p>
-      </section>
+        <p className="text-gray-400">{t('home.services')}</p>
+      </div>
 
-      {/* Services grid */}
-      <section className="flex-1 px-6 pb-16 max-w-4xl mx-auto w-full">
+      {/* Limit warning */}
+      <LimitWarning
+        nearLimit={isNearLimit()}
+        isEnterprise={isEnterprise}
+      />
+
+      {/* Usage summary — shown only when subscribed */}
+      {hasPlan && !isEnterprise && usage && !usageLoading && (
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="text-sm font-semibold text-white">
+              {t('dashboard.usageThisMonth')}
+            </h2>
+            <span className="text-xs text-gray-500">
+              Réinitialisé le 1er du mois
+            </span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {SERVICES.map((s) => (
+              <UsageBar
+                key={s.id}
+                icon={s.icon}
+                label={t(`${s.i18nKey}.name`)}
+                used={usage.usage[s.id] ?? 0}
+                limit={usage.limit}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Service cards grid */}
+      <div>
+        <h2 className="text-lg font-semibold text-white mb-4">{t('dashboard.activeServices')}</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {SERVICES.map((service) => (
             <Link
@@ -93,36 +77,31 @@ export default function DashboardPage() {
               href={`/services/${service.id}`}
               className={clsx(
                 'group relative overflow-hidden rounded-2xl border border-gray-800',
-                'bg-gradient-to-br',
-                service.bgGradient,
+                `bg-gradient-to-br ${service.bgGradient}`,
                 'hover:border-gray-600 hover:shadow-xl hover:shadow-black/30',
-                'transition-all duration-300 cursor-pointer active:scale-[0.98]'
+                'transition-all duration-300 active:scale-[0.98]'
               )}
             >
-              {/* Header */}
               <div className="p-5 pb-3 flex items-center gap-3">
                 <span className="text-3xl">{service.icon}</span>
                 <div>
                   <h3 className="text-sm font-semibold text-white leading-snug">
                     {t(`${service.i18nKey}.name`)}
                   </h3>
-                  <p className="text-xs text-gray-400 mt-0.5 line-clamp-1">
-                    {t(`${service.i18nKey}.description`)}
-                  </p>
+                  {usage && usage.limit !== null && (
+                    <p className="text-xs mt-0.5" style={{ color: service.accentColor }}>
+                      {usage.usage[service.id] ?? 0}/{usage.limit} utilisations
+                    </p>
+                  )}
                 </div>
               </div>
 
-              {/* Mockup preview */}
-              <div className="mx-4 mb-4 h-32 overflow-hidden rounded-lg">
-                <ServiceMockup
-                  serviceId={service.id}
-                  accentColor={service.accentColor}
-                />
+              <div className="mx-4 mb-4 h-28 overflow-hidden rounded-lg">
+                <ServiceMockup serviceId={service.id} accentColor={service.accentColor} />
               </div>
 
-              {/* Arrow */}
               <div
-                className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-sm"
+                className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity text-sm"
                 style={{ color: service.accentColor }}
               >
                 →
@@ -130,20 +109,20 @@ export default function DashboardPage() {
             </Link>
           ))}
         </div>
+      </div>
 
-        {/* Add service CTA */}
-        {profile?.plan_key?.startsWith('starter') && (
-          <div className="mt-8 p-5 rounded-2xl border border-dashed border-gray-700 bg-gray-900/50 flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-white">{t('dashboard.addService')}</p>
-              <p className="text-xs text-gray-500 mt-0.5">{t('dashboard.upgradePlan')}</p>
-            </div>
-            <Link href="/plans?source=upgrade">
-              <Button variant="primary" size="sm" label="Passer au Pro" />
-            </Link>
+      {/* Upgrade CTA for starter or no plan */}
+      {(isStarter || !hasPlan) && (
+        <div className="p-5 rounded-2xl border border-dashed border-gray-700 bg-gray-900/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+            <p className="text-sm font-semibold text-white">{t('dashboard.addService')}</p>
+            <p className="text-xs text-gray-500 mt-0.5">{t('dashboard.upgradePlan')}</p>
           </div>
-        )}
-      </section>
+          <Link href="/plans?source=dashboard">
+            <Button variant="primary" size="sm">Passer au Pro →</Button>
+          </Link>
+        </div>
+      )}
     </div>
   );
 }

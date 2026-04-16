@@ -98,8 +98,95 @@ servicesRouter.post('/generate', async (req: AuthRequest, res, next) => {
 
     if (error) throw error;
 
-    // In a real implementation, trigger the AI service here
+    // Also log to service_orders (history)
+    await supabase.from('service_orders').insert({
+      user_id: req.userId,
+      service_type: serviceType,
+      prompt,
+      status: 'queued',
+    });
+
     res.json({ success: true, jobId: `job_${Date.now()}`, status: 'queued' });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/services/history — paginated history of orders
+servicesRouter.get('/history', async (req: AuthRequest, res, next) => {
+  try {
+    const page = Math.max(1, parseInt(req.query.page as string) || 1);
+    const limit = 20;
+    const offset = (page - 1) * limit;
+
+    const { data, error, count } = await supabase
+      .from('service_orders')
+      .select('id, service_type, prompt, status, result_url, created_at, completed_at', {
+        count: 'exact',
+      })
+      .eq('user_id', req.userId)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    if (error) throw error;
+
+    res.json({
+      items: data ?? [],
+      total: count ?? 0,
+      page,
+      totalPages: Math.ceil((count ?? 0) / limit),
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/services/usage/summary — usage per service for current month + limits
+servicesRouter.get('/usage/summary', async (req: AuthRequest, res, next) => {
+  try {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+
+    // Get subscription
+    const { data: subscription } = await supabase
+      .from('subscriptions')
+      .select('plan_key, status')
+      .eq('user_id', req.userId)
+      .in('status', ['trialing', 'active'])
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    // Get usage grouped by service
+    const { data: usageRows } = await supabase
+      .from('service_usage')
+      .select('service_type, count')
+      .eq('user_id', req.userId)
+      .gte('created_at', startOfMonth);
+
+    const usage: Record<string, number> = {};
+    usageRows?.forEach((row) => {
+      usage[row.service_type] = (usage[row.service_type] ?? 0) + row.count;
+    });
+
+    // Determine limits from plan
+    let limit: number | null = null;
+    if (subscription) {
+      if (subscription.plan_key === 'enterprise') {
+        limit = null; // unlimited
+      } else if (subscription.plan_key.startsWith('pro')) {
+        limit = 30;
+      } else {
+        limit = 5;
+      }
+    }
+
+    res.json({
+      usage,
+      limit,
+      planKey: subscription?.plan_key ?? null,
+      periodStart: startOfMonth,
+    });
   } catch (err) {
     next(err);
   }
