@@ -29,9 +29,31 @@ export default function PaymentPage() {
   const [method, setMethod] = useState<PaymentMethod>('stripe');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [promoCode, setPromoCode] = useState('');
+  const [promoStatus, setPromoStatus] = useState<'idle' | 'valid' | 'invalid'>('idle');
+  const [promoReferrer, setPromoReferrer] = useState('');
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
   const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
+
+  const handlePromoCheck = async () => {
+    const code = promoCode.trim().toUpperCase();
+    if (!code) return;
+    try {
+      const res = await fetch(`${apiUrl}/api/partner/validate-promo?code=${code}`, {
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+      });
+      const data = await res.json();
+      if (data.valid) {
+        setPromoStatus('valid');
+        setPromoReferrer(data.referrerName ?? '');
+      } else {
+        setPromoStatus('invalid');
+      }
+    } catch {
+      setPromoStatus('invalid');
+    }
+  };
 
   const handlePay = async () => {
     try {
@@ -50,6 +72,7 @@ export default function PaymentPage() {
             billing,
             successUrl: `${appUrl}/checkout/success?plan=${planId}`,
             cancelUrl: `${appUrl}/checkout/cancel`,
+            promoCode: promoStatus === 'valid' ? promoCode.trim().toUpperCase() : undefined,
           }),
         });
 
@@ -129,6 +152,38 @@ export default function PaymentPage() {
               <p className="text-2xl font-extrabold text-white">{price}€</p>
               <p className="text-xs text-gray-500">{t('plans.perMonth')}</p>
             </div>
+          </div>
+
+          {/* Promo code */}
+          <div className="bg-gray-900 rounded-2xl border border-gray-800 p-5 flex flex-col gap-3">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Code promo (optionnel)</p>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={promoCode}
+                onChange={(e) => { setPromoCode(e.target.value.toUpperCase()); setPromoStatus('idle'); }}
+                placeholder="EX : VELONA123"
+                maxLength={20}
+                className="flex-1 px-4 py-2.5 rounded-xl bg-gray-800 border border-gray-700 text-white text-sm
+                  placeholder-gray-600 font-mono tracking-wider focus:outline-none focus:ring-2 focus:ring-primary-500
+                  focus:border-transparent transition-all"
+              />
+              <button
+                type="button"
+                onClick={handlePromoCheck}
+                disabled={!promoCode.trim()}
+                className="px-4 py-2.5 rounded-xl border border-gray-700 text-sm text-gray-400
+                  hover:border-primary-500 hover:text-primary-300 disabled:opacity-40 transition-all"
+              >
+                Valider
+              </button>
+            </div>
+            {promoStatus === 'valid' && (
+              <p className="text-xs text-success-DEFAULT">✓ Code valide — recommandé par {promoReferrer}</p>
+            )}
+            {promoStatus === 'invalid' && (
+              <p className="text-xs text-red-400">Code introuvable ou invalide</p>
+            )}
           </div>
 
           {/* Payment method selection */}

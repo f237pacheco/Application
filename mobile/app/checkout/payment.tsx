@@ -2,6 +2,7 @@ import { useState } from 'react';
 import {
   View,
   Text,
+  TextInput,
   TouchableOpacity,
   ScrollView,
   SafeAreaView,
@@ -36,8 +37,30 @@ export default function PaymentScreen() {
   const [method, setMethod] = useState<PaymentMethod>('stripe');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [promoCode, setPromoCode] = useState('');
+  const [promoStatus, setPromoStatus] = useState<'idle' | 'valid' | 'invalid'>('idle');
+  const [promoReferrer, setPromoReferrer] = useState('');
 
   const apiUrl = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3001';
+
+  const handlePromoCheck = async () => {
+    const code = promoCode.trim().toUpperCase();
+    if (!code) return;
+    try {
+      const res = await fetch(`${apiUrl}/api/partner/validate-promo?code=${code}`, {
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+      });
+      const data = await res.json();
+      if (data.valid) {
+        setPromoStatus('valid');
+        setPromoReferrer(data.referrerName ?? '');
+      } else {
+        setPromoStatus('invalid');
+      }
+    } catch {
+      setPromoStatus('invalid');
+    }
+  };
 
   const handlePay = async () => {
     try {
@@ -56,6 +79,7 @@ export default function PaymentScreen() {
             billing,
             successUrl: `velona://checkout/success?plan=${planId}`,
             cancelUrl: `velona://checkout/cancel`,
+            promoCode: promoStatus === 'valid' ? promoCode.trim().toUpperCase() : undefined,
           }),
         });
 
@@ -131,6 +155,36 @@ export default function PaymentScreen() {
             <Text className="text-white text-2xl font-extrabold">{price}€</Text>
             <Text className="text-gray-500 text-xs">{t('plans.perMonth')}</Text>
           </View>
+        </View>
+
+        {/* Promo code */}
+        <View className="bg-gray-900 border border-gray-800 rounded-2xl p-5 gap-3 mb-5">
+          <Text className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Code promo (optionnel)</Text>
+          <View className="flex-row gap-2">
+            <TextInput
+              value={promoCode}
+              onChangeText={(v) => { setPromoCode(v.toUpperCase()); setPromoStatus('idle'); }}
+              placeholder="EX : VELONA123"
+              placeholderTextColor="#4B5563"
+              autoCapitalize="characters"
+              maxLength={20}
+              className="flex-1 bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm font-mono tracking-wider"
+            />
+            <TouchableOpacity
+              onPress={handlePromoCheck}
+              disabled={!promoCode.trim()}
+              className="border border-gray-700 rounded-xl px-4 py-2.5 items-center justify-center"
+              style={{ opacity: promoCode.trim() ? 1 : 0.4 }}
+            >
+              <Text className="text-gray-400 text-sm">Valider</Text>
+            </TouchableOpacity>
+          </View>
+          {promoStatus === 'valid' && (
+            <Text className="text-xs" style={{ color: '#00B894' }}>✓ Code valide — recommandé par {promoReferrer}</Text>
+          )}
+          {promoStatus === 'invalid' && (
+            <Text className="text-xs text-red-400">Code introuvable ou invalide</Text>
+          )}
         </View>
 
         {/* Payment method */}

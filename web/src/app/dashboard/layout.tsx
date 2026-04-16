@@ -26,10 +26,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [signingOut, setSigningOut] = useState(false);
 
   const tabs = [
-    { href: '/dashboard',         label: t('dashboard.myServices'), icon: '🚀' },
-    { href: '/dashboard/history', label: t('dashboard.history'),    icon: '🕐' },
-    { href: '/dashboard/account', label: t('dashboard.account'),    icon: '👤' },
-    { href: '/dashboard/help',    label: t('dashboard.help'),       icon: '💬' },
+    { href: '/dashboard',          label: t('dashboard.myServices'), icon: '🚀' },
+    { href: '/dashboard/history',  label: t('dashboard.history'),    icon: '🕐' },
+    { href: '/dashboard/partner',  label: t('partner.title'),        icon: '🤝' },
+    { href: '/dashboard/account',  label: t('dashboard.account'),    icon: '👤' },
+    { href: '/dashboard/help',     label: t('dashboard.help'),       icon: '💬' },
   ];
 
   const planInfo = profile?.plan_key ? PLAN_LABELS[profile.plan_key as string] : null;

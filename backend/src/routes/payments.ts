@@ -20,6 +20,7 @@ const checkoutSchema = z.object({
   billing: z.enum(['monthly', 'annual']),
   successUrl: z.string().url(),
   cancelUrl: z.string().url(),
+  promoCode: z.string().max(20).optional(),
 });
 
 /** POST /api/payments/create-checkout — Stripe Checkout Session */
@@ -31,7 +32,7 @@ paymentsRouter.post('/create-checkout', async (req: AuthRequest, res, next) => {
       return;
     }
 
-    const { planKey, billing, successUrl, cancelUrl } = parsed.data;
+    const { planKey, billing, successUrl, cancelUrl, promoCode } = parsed.data;
     const plan = PLANS[planKey];
 
     // Get or create Stripe customer
@@ -54,6 +55,18 @@ paymentsRouter.post('/create-checkout', async (req: AuthRequest, res, next) => {
         .eq('id', req.userId);
     }
 
+    // Validate and look up promo code referrer
+    let referrerUserId: string | null = null;
+    if (promoCode) {
+      const { data: referrer } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('promo_code', promoCode.toUpperCase().trim())
+        .neq('id', req.userId)
+        .single();
+      if (referrer) referrerUserId = referrer.id;
+    }
+
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       payment_method_types: ['card'],
@@ -61,12 +74,26 @@ paymentsRouter.post('/create-checkout', async (req: AuthRequest, res, next) => {
       line_items: [{ price: plan[billing], quantity: 1 }],
       subscription_data: {
         trial_period_days: 3,
-        metadata: { plan_key: planKey, user_id: req.userId! },
+        metadata: {
+          plan_key: planKey,
+          user_id: req.userId!,
+          promo_code: promoCode ?? '',
+          referrer_user_id: referrerUserId ?? '',
+        },
       },
       success_url: successUrl,
       cancel_url: cancelUrl,
       allow_promotion_codes: true,
     });
+
+    // Record promo code use immediately (webhook will also do it, this is a fast path)
+    if (referrerUserId && promoCode) {
+      await supabase.from('promo_code_uses').insert({
+        referrer_user_id: referrerUserId,
+        subscriber_user_id: req.userId,
+        promo_code: promoCode.toUpperCase().trim(),
+      }).then(() => null).catch(() => null); // non-blocking, duplicate is fine
+    }
 
     res.json({ url: session.url, sessionId: session.id });
   } catch (err) {

@@ -4,13 +4,13 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
-  TextInput,
   SafeAreaView,
   StatusBar,
   Alert,
   Linking,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/Button';
@@ -37,15 +37,13 @@ const PLAN_LABELS: Record<string, string> = {
 
 export default function AccountScreen() {
   const { t } = useTranslation();
+  const router = useRouter();
   const { session, signOut } = useAuth();
 
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [currentLang, setCurrentLang] = useState<Locale>('fr');
 
-  const [partnerUrl, setPartnerUrl] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [billingLoading, setBillingLoading] = useState(false);
 
   useEffect(() => {
@@ -87,27 +85,6 @@ export default function AccountScreen() {
       Alert.alert(t('common.error'));
     } finally {
       setBillingLoading(false);
-    }
-  };
-
-  const handlePartnerSubmit = async () => {
-    if (!partnerUrl.trim()) return;
-    try {
-      setSubmitting(true);
-      const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/partner/submit`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session?.access_token}`,
-        },
-        body: JSON.stringify({ url: partnerUrl.trim() }),
-      });
-      setSubmitStatus(res.ok ? 'success' : 'error');
-      if (res.ok) setPartnerUrl('');
-    } catch {
-      setSubmitStatus('error');
-    } finally {
-      setSubmitting(false);
     }
   };
 
@@ -240,63 +217,20 @@ export default function AccountScreen() {
           </View>
 
           {/* Partner programme */}
-          <View className="bg-gray-900 border border-gray-800 rounded-2xl p-5 gap-4">
-            <View>
-              <Text className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">
-                {t('partner.title')}
-              </Text>
-              <Text className="text-gray-500 text-xs">{t('partner.description')}</Text>
-            </View>
-
-            {profile?.promo_code && (
-              <View
-                className="rounded-xl p-4 flex-row items-center justify-between gap-3"
-                style={{ backgroundColor: '#6C5CE720', borderWidth: 1, borderColor: '#6C5CE740' }}
-              >
-                <View>
-                  <Text className="text-gray-400 text-xs mb-0.5">{t('partner.yourCode')}</Text>
-                  <Text className="text-xl font-bold tracking-widest" style={{ color: '#B4A9F5', fontFamily: 'monospace' }}>
-                    {profile.promo_code}
-                  </Text>
-                </View>
-                <TouchableOpacity
-                  onPress={async () => {
-                    const Clipboard = await import('expo-clipboard');
-                    await Clipboard.setStringAsync(profile.promo_code!);
-                  }}
-                  className="border border-gray-700 px-3 py-1.5 rounded-lg"
-                >
-                  <Text className="text-gray-400 text-xs">Copier</Text>
-                </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => router.push('/partner' as never)}
+            activeOpacity={0.75}
+            className="bg-gray-900 border border-gray-800 rounded-2xl p-5 flex-row items-center justify-between"
+          >
+            <View className="flex-row items-center gap-3">
+              <Text className="text-2xl">🤝</Text>
+              <View>
+                <Text className="text-white text-sm font-semibold">{t('partner.title')}</Text>
+                <Text className="text-gray-500 text-xs mt-0.5">{t('partner.description')}</Text>
               </View>
-            )}
-
-            <View className="gap-2">
-              <Text className="text-sm font-medium text-gray-200">{t('partner.submitLink')}</Text>
-              <TextInput
-                value={partnerUrl}
-                onChangeText={(v) => { setPartnerUrl(v); setSubmitStatus('idle'); }}
-                placeholder={t('partner.linkPlaceholder')}
-                placeholderTextColor="#4B5563"
-                keyboardType="url"
-                autoCapitalize="none"
-                className="bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white text-sm"
-              />
-              <Button
-                onPress={handlePartnerSubmit}
-                label={t('partner.submit')}
-                size="sm"
-                loading={submitting}
-                disabled={!partnerUrl.trim()}
-              />
-              {submitStatus === 'success' && (
-                <Text className="text-xs" style={{ color: '#00B894' }}>✓ Lien soumis ! Validation sous 24-48h.</Text>
-              )}
-              {submitStatus === 'error' && (
-                <Text className="text-xs text-red-400">Erreur, vérifiez l'URL ou réessayez.</Text>
-              )}
             </View>
-          </View>
+            <Text className="text-gray-600 text-lg">›</Text>
+          </TouchableOpacity>
 
           {/* Sign out */}
           <View
