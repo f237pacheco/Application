@@ -15,6 +15,7 @@ export interface Profile {
   billing_address?: string;
   promo_code?: string;
   stripe_customer_id?: string;
+  plan_key?: string;
 }
 
 export function useProfile() {

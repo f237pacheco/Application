@@ -26,11 +26,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [signingOut, setSigningOut] = useState(false);
 
   const tabs = [
-    { href: '/dashboard',          label: t('dashboard.myServices'), icon: '🚀' },
-    { href: '/dashboard/history',  label: t('dashboard.history'),    icon: '🕐' },
-    { href: '/dashboard/partner',  label: t('partner.title'),        icon: '🤝' },
-    { href: '/dashboard/account',  label: t('dashboard.account'),    icon: '👤' },
-    { href: '/dashboard/help',     label: t('dashboard.help'),       icon: '💬' },
+    { href: '/dashboard',          label: t('dashboard.myServices') },
+    { href: '/dashboard/history',  label: t('dashboard.history') },
+    { href: '/dashboard/partner',  label: t('partner.title') },
+    { href: '/dashboard/account',  label: t('dashboard.account') },
+    { href: '/dashboard/help',     label: t('dashboard.help') },
   ];
 
   const planInfo = profile?.plan_key ? PLAN_LABELS[profile.plan_key as string] : null;
@@ -44,7 +44,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="min-h-screen bg-gray-950 flex flex-col">
-      {/* Top header */}
       <header className="sticky top-0 z-40 bg-gray-950/95 backdrop-blur border-b border-gray-900">
         <div className="max-w-5xl mx-auto px-6 py-3 flex items-center justify-between gap-4">
           <Logo size="sm" />
@@ -63,7 +62,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </Link>
             )}
 
-            {/* User avatar */}
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-full bg-primary-500/30 border border-primary-500/50 flex items-center justify-center text-sm font-bold text-primary-300">
                 {firstName.charAt(0).toUpperCase()}
@@ -73,13 +71,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 disabled={signingOut}
                 className="text-xs text-gray-500 hover:text-gray-300 transition-colors hidden sm:block"
               >
-                {signingOut ? '…' : `Déconnexion`}
+                {signingOut ? '…' : 'Déconnexion'}
               </button>
             </div>
           </div>
         </div>
 
-        {/* Tab navigation */}
         <nav className="max-w-5xl mx-auto px-6 flex gap-1 border-t border-gray-900/50">
           {tabs.map((tab) => {
             const isActive = tab.href === '/dashboard'
@@ -90,13 +87,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 key={tab.href}
                 href={tab.href}
                 className={clsx(
-                  'flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors',
+                  'px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap',
                   isActive
                     ? 'border-primary-500 text-white'
                     : 'border-transparent text-gray-500 hover:text-gray-300 hover:border-gray-700'
                 )}
               >
-                <span className="hidden sm:inline">{tab.icon}</span>
                 {tab.label}
               </Link>
             );
@@ -104,7 +100,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </nav>
       </header>
 
-      {/* Page content */}
       <main className="flex-1 max-w-5xl mx-auto w-full px-6 py-8">
         {children}
       </main>
