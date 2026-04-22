@@ -1,32 +1,45 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import { IntroScreen } from '@/components/ui/IntroScreen';
 
 export default function HomePage() {
   const router = useRouter();
   const { user, loading } = useAuth();
+  // Start as true (skip intro) until we've confirmed it's the first visit
+  const [introPlayed, setIntroPlayed] = useState(true);
 
   useEffect(() => {
-    if (!loading) {
-      if (user) {
-        router.replace('/dashboard');
+    const seen = sessionStorage.getItem('velona_intro_seen');
+    if (!seen) setIntroPlayed(false); // first visit this session → show intro
+  }, []);
+
+  const handleIntroDone = () => {
+    sessionStorage.setItem('velona_intro_seen', '1');
+    setIntroPlayed(true);
+  };
+
+  // Navigate only after intro is done and auth is resolved
+  useEffect(() => {
+    if (!introPlayed || loading) return;
+    if (user) {
+      router.replace('/dashboard');
+    } else {
+      const lang = localStorage.getItem('velona_language');
+      if (!lang) {
+        router.replace('/language');
       } else {
-        const lang = localStorage.getItem('velona_language');
-        if (!lang) {
-          router.replace('/language');
-        } else {
-          const onboarded = localStorage.getItem('velona_onboarded');
-          if (!onboarded) {
-            router.replace('/onboarding');
-          } else {
-            router.replace('/auth');
-          }
-        }
+        const onboarded = localStorage.getItem('velona_onboarded');
+        router.replace(onboarded ? '/auth' : '/onboarding');
       }
     }
-  }, [user, loading, router]);
+  }, [introPlayed, user, loading, router]);
+
+  if (!introPlayed) {
+    return <IntroScreen onDone={handleIntroDone} />;
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-950">
