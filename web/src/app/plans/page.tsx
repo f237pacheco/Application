@@ -15,7 +15,7 @@ export default function PlansPage() {
   const { t } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { session } = useAuth();
+  useAuth();
 
   const serviceId = searchParams.get('service');
   const prompt = searchParams.get('prompt');
@@ -63,33 +63,34 @@ export default function PlansPage() {
           <p className="text-gray-400 mt-2">{t('plans.subtitle')}</p>
         </div>
 
-        {/* Billing toggle — badge rendered below in fixed-height slot to prevent layout shift */}
+        {/* Billing toggle */}
         <div className="flex flex-col items-center gap-2">
           <div className="flex items-center gap-3">
             <span className={clsx('text-sm font-medium transition-colors', billing === 'monthly' ? 'text-white' : 'text-gray-500')}>
               {t('plans.monthly')}
             </span>
+
+            {/* Toggle pill — overflow-hidden clips the knob, left-0 pins its origin */}
             <button
               onClick={() => setBilling((b) => b === 'monthly' ? 'annual' : 'monthly')}
               aria-label="Basculer mensuel / annuel"
               className={clsx(
-                'relative flex-shrink-0 w-12 h-6 rounded-full transition-colors duration-200',
+                'relative flex-shrink-0 w-12 h-6 rounded-full overflow-hidden transition-colors duration-200',
                 billing === 'annual' ? 'bg-primary-500' : 'bg-gray-700'
               )}
             >
               <span
-                className={clsx(
-                  'absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200',
-                  billing === 'annual' ? 'translate-x-7' : 'translate-x-1'
-                )}
+                className="absolute top-1 left-0 w-4 h-4 bg-white rounded-full shadow-sm transition-transform duration-200"
+                style={{ transform: billing === 'annual' ? 'translateX(28px)' : 'translateX(4px)' }}
               />
             </button>
+
             <span className={clsx('text-sm font-medium transition-colors', billing === 'annual' ? 'text-white' : 'text-gray-500')}>
               {t('plans.annual')}
             </span>
           </div>
-          {/* Fixed-height slot so toggle never moves when badge appears/disappears */}
-          <div className="h-6 flex items-center">
+          {/* Fixed-height slot — prevents row from shifting when badge appears */}
+          <div style={{ height: 24, display: 'flex', alignItems: 'center' }}>
             {billing === 'annual' && (
               <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-success-DEFAULT/20 text-success-DEFAULT border border-success-DEFAULT/30">
                 {t('plans.annualDiscount')}

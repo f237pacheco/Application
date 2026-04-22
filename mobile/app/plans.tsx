@@ -78,12 +78,12 @@ export default function PlansScreen() {
             <TouchableOpacity
               onPress={() => setBilling((b) => b === 'monthly' ? 'annual' : 'monthly')}
               activeOpacity={0.8}
-              style={{ width: 48, height: 26, position: 'relative' }}
+              style={{ width: 48, height: 26, borderRadius: 13, overflow: 'hidden', position: 'relative' }}
             >
               <View
                 style={{
-                  width: 48,
-                  height: 26,
+                  position: 'absolute',
+                  top: 0, left: 0, right: 0, bottom: 0,
                   borderRadius: 13,
                   backgroundColor: billing === 'annual' ? '#6C5CE7' : '#374151',
                 }}
@@ -97,10 +97,6 @@ export default function PlansScreen() {
                   height: 16,
                   borderRadius: 8,
                   backgroundColor: 'white',
-                  shadowColor: '#000',
-                  shadowOpacity: 0.2,
-                  shadowRadius: 2,
-                  elevation: 2,
                 }}
               />
             </TouchableOpacity>
