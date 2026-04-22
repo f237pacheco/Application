@@ -32,6 +32,7 @@ export default function PaymentPage() {
   const [promoCode, setPromoCode] = useState('');
   const [promoStatus, setPromoStatus] = useState<'idle' | 'valid' | 'invalid'>('idle');
   const [promoReferrer, setPromoReferrer] = useState('');
+  const [isMasterCode, setIsMasterCode] = useState(false);
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
   const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
@@ -46,12 +47,36 @@ export default function PaymentPage() {
       const data = await res.json();
       if (data.valid) {
         setPromoStatus('valid');
+        setIsMasterCode(data.isMasterCode === true);
         setPromoReferrer(data.referrerName ?? '');
       } else {
         setPromoStatus('invalid');
+        setIsMasterCode(false);
       }
     } catch {
       setPromoStatus('invalid');
+      setIsMasterCode(false);
+    }
+  };
+
+  const handleActivateFree = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await fetch(`${apiUrl}/api/payments/activate-free-enterprise`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify({ promoCode: promoCode.trim().toUpperCase() }),
+      });
+      if (!res.ok) throw new Error();
+      router.replace('/checkout/success?plan=enterprise');
+    } catch {
+      setError('Activation impossible. Vérifiez le code et réessayez.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -155,13 +180,22 @@ export default function PaymentPage() {
           </div>
 
           {/* Promo code */}
-          <div className="bg-gray-900 rounded-2xl border border-gray-800 p-5 flex flex-col gap-3">
+          <div className={clsx(
+            'rounded-2xl border p-5 flex flex-col gap-3 transition-colors',
+            isMasterCode
+              ? 'bg-success-DEFAULT/5 border-success-DEFAULT/30'
+              : 'bg-gray-900 border-gray-800'
+          )}>
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Code promo (optionnel)</p>
             <div className="flex gap-2">
               <input
                 type="text"
                 value={promoCode}
-                onChange={(e) => { setPromoCode(e.target.value.toUpperCase()); setPromoStatus('idle'); }}
+                onChange={(e) => {
+                  setPromoCode(e.target.value.toUpperCase());
+                  setPromoStatus('idle');
+                  setIsMasterCode(false);
+                }}
                 placeholder="EX : VELONA123"
                 maxLength={20}
                 className="flex-1 px-4 py-2.5 rounded-xl bg-gray-800 border border-gray-700 text-white text-sm
@@ -178,7 +212,15 @@ export default function PaymentPage() {
                 Valider
               </button>
             </div>
-            {promoStatus === 'valid' && (
+            {promoStatus === 'valid' && isMasterCode && (
+              <div className="flex items-center gap-2">
+                <span className="text-success-DEFAULT text-sm">✓</span>
+                <p className="text-sm font-semibold text-success-DEFAULT">
+                  Accès Enterprise activé — aucune carte bancaire requise
+                </p>
+              </div>
+            )}
+            {promoStatus === 'valid' && !isMasterCode && (
               <p className="text-xs text-success-DEFAULT">✓ Code valide — recommandé par {promoReferrer}</p>
             )}
             {promoStatus === 'invalid' && (
@@ -186,110 +228,122 @@ export default function PaymentPage() {
             )}
           </div>
 
-          {/* Payment method selection */}
-          <div className="bg-gray-900 rounded-2xl border border-gray-800 p-5 flex flex-col gap-4">
-            {/* Error */}
-            {error && (
-              <div className="bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3 text-sm text-red-400 text-center">
-                {error}
-              </div>
-            )}
-
-            {/* Stripe option */}
-            <button
-              onClick={() => setMethod('stripe')}
-              className={clsx(
-                'flex items-center gap-4 p-4 rounded-xl border transition-all duration-200',
-                method === 'stripe'
-                  ? 'border-primary-500 bg-primary-500/10'
-                  : 'border-gray-700 bg-gray-800 hover:border-gray-600'
-              )}
-            >
-              {/* Radio */}
-              <div className={clsx(
-                'w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0',
-                method === 'stripe' ? 'border-primary-500' : 'border-gray-600'
-              )}>
-                {method === 'stripe' && (
-                  <div className="w-2.5 h-2.5 rounded-full bg-primary-500" />
-                )}
-              </div>
-
-              <div className="flex-1 text-left">
-                <p className="text-sm font-semibold text-white">{t('payment.payWithCard')}</p>
-                <div className="flex gap-2 mt-1.5">
-                  {/* Card brand icons */}
-                  {['VISA', 'MC', 'AMEX'].map((b) => (
-                    <span
-                      key={b}
-                      className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-gray-700 text-gray-300"
-                    >
-                      {b}
+          {/* Free activation CTA — shown when master promo code is validated */}
+          {isMasterCode ? (
+            <div className="bg-gray-900 rounded-2xl border border-success-DEFAULT/30 p-5 flex flex-col gap-4">
+              <div className="flex flex-col gap-1.5 text-center">
+                <p className="text-white font-bold text-lg">Plan Enterprise</p>
+                <div className="flex flex-wrap justify-center gap-2">
+                  {['Accès complet', 'Illimité', 'Sans engagement', 'Sans carte bancaire'].map((tag) => (
+                    <span key={tag} className="text-xs bg-success-DEFAULT/10 text-success-DEFAULT border border-success-DEFAULT/20 px-2.5 py-0.5 rounded-full font-medium">
+                      {tag}
                     </span>
                   ))}
                 </div>
               </div>
 
-              {/* Stripe logo */}
-              <div className="text-sm font-bold text-gray-400 shrink-0">stripe</div>
-            </button>
-
-            {/* Divider */}
-            <div className="flex items-center gap-3">
-              <div className="flex-1 h-px bg-gray-800" />
-              <span className="text-xs text-gray-600 font-medium">OU</span>
-              <div className="flex-1 h-px bg-gray-800" />
-            </div>
-
-            {/* PayPal option */}
-            <button
-              onClick={() => setMethod('paypal')}
-              className={clsx(
-                'flex items-center gap-4 p-4 rounded-xl border transition-all duration-200',
-                method === 'paypal'
-                  ? 'border-[#003087]/50 bg-[#003087]/10'
-                  : 'border-gray-700 bg-gray-800 hover:border-gray-600'
+              {error && (
+                <div className="bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3 text-sm text-red-400 text-center">
+                  {error}
+                </div>
               )}
-            >
-              {/* Radio */}
-              <div className={clsx(
-                'w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0',
-                method === 'paypal' ? 'border-[#009cde]' : 'border-gray-600'
-              )}>
-                {method === 'paypal' && (
-                  <div className="w-2.5 h-2.5 rounded-full bg-[#009cde]" />
+
+              <Button
+                onClick={handleActivateFree}
+                loading={loading}
+                fullWidth
+                size="lg"
+              >
+                Activer mon accès Enterprise gratuitement
+              </Button>
+            </div>
+          ) : (
+            /* Normal payment method selection */
+            <div className="bg-gray-900 rounded-2xl border border-gray-800 p-5 flex flex-col gap-4">
+              {error && (
+                <div className="bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3 text-sm text-red-400 text-center">
+                  {error}
+                </div>
+              )}
+
+              {/* Stripe option */}
+              <button
+                onClick={() => setMethod('stripe')}
+                className={clsx(
+                  'flex items-center gap-4 p-4 rounded-xl border transition-all duration-200',
+                  method === 'stripe'
+                    ? 'border-primary-500 bg-primary-500/10'
+                    : 'border-gray-700 bg-gray-800 hover:border-gray-600'
                 )}
+              >
+                <div className={clsx(
+                  'w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0',
+                  method === 'stripe' ? 'border-primary-500' : 'border-gray-600'
+                )}>
+                  {method === 'stripe' && <div className="w-2.5 h-2.5 rounded-full bg-primary-500" />}
+                </div>
+                <div className="flex-1 text-left">
+                  <p className="text-sm font-semibold text-white">{t('payment.payWithCard')}</p>
+                  <div className="flex gap-2 mt-1.5">
+                    {['VISA', 'MC', 'AMEX'].map((b) => (
+                      <span key={b} className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-gray-700 text-gray-300">{b}</span>
+                    ))}
+                  </div>
+                </div>
+                <div className="text-sm font-bold text-gray-400 shrink-0">stripe</div>
+              </button>
+
+              <div className="flex items-center gap-3">
+                <div className="flex-1 h-px bg-gray-800" />
+                <span className="text-xs text-gray-600 font-medium">OU</span>
+                <div className="flex-1 h-px bg-gray-800" />
               </div>
 
-              <div className="flex-1 text-left">
-                <p className="text-sm font-semibold text-white">{t('payment.payWithPaypal')}</p>
-                <p className="text-xs text-gray-500 mt-0.5">Payer via votre compte PayPal</p>
-              </div>
+              {/* PayPal option */}
+              <button
+                onClick={() => setMethod('paypal')}
+                className={clsx(
+                  'flex items-center gap-4 p-4 rounded-xl border transition-all duration-200',
+                  method === 'paypal'
+                    ? 'border-[#003087]/50 bg-[#003087]/10'
+                    : 'border-gray-700 bg-gray-800 hover:border-gray-600'
+                )}
+              >
+                <div className={clsx(
+                  'w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0',
+                  method === 'paypal' ? 'border-[#009cde]' : 'border-gray-600'
+                )}>
+                  {method === 'paypal' && <div className="w-2.5 h-2.5 rounded-full bg-[#009cde]" />}
+                </div>
+                <div className="flex-1 text-left">
+                  <p className="text-sm font-semibold text-white">{t('payment.payWithPaypal')}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">Payer via votre compte PayPal</p>
+                </div>
+                <div className="shrink-0 font-extrabold text-sm">
+                  <span style={{ color: '#003087' }}>Pay</span>
+                  <span style={{ color: '#009cde' }}>Pal</span>
+                </div>
+              </button>
 
-              {/* PayPal logo */}
-              <div className="shrink-0 font-extrabold text-sm">
-                <span style={{ color: '#003087' }}>Pay</span>
-                <span style={{ color: '#009cde' }}>Pal</span>
-              </div>
-            </button>
+              <Button
+                onClick={handlePay}
+                loading={loading}
+                fullWidth
+                size="lg"
+                className={method === 'paypal' ? 'bg-[#FFB800] hover:bg-[#F5B000] text-gray-900' : ''}
+              >
+                {method === 'stripe' ? t('payment.payWithCard') : t('payment.payWithPaypal')}
+              </Button>
+            </div>
+          )}
 
-            {/* Pay CTA */}
-            <Button
-              onClick={handlePay}
-              loading={loading}
-              fullWidth
-              size="lg"
-              className={method === 'paypal' ? 'bg-[#FFB800] hover:bg-[#F5B000] text-gray-900' : ''}
-            >
-              {method === 'stripe' ? t('payment.payWithCard') : t('payment.payWithPaypal')}
-            </Button>
-          </div>
-
-          {/* Security badge */}
-          <p className="text-center text-xs text-gray-600 flex items-center justify-center gap-1.5">
-            <span>🔒</span>
-            {t('payment.secure')}
-          </p>
+          {/* Security badge — hidden when master code active */}
+          {!isMasterCode && (
+            <p className="text-center text-xs text-gray-600 flex items-center justify-center gap-1.5">
+              <span>🔒</span>
+              {t('payment.secure')}
+            </p>
+          )}
         </div>
       </div>
     </div>

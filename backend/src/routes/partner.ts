@@ -121,6 +121,12 @@ partnerRouter.get('/validate-promo', async (req: AuthRequest, res, next) => {
       return;
     }
 
+    // Master bypass code — grants free Enterprise, no payment required
+    if (code === 'VELONA237') {
+      res.json({ valid: true, isMasterCode: true, referrerName: 'Velona' });
+      return;
+    }
+
     const { data } = await supabase
       .from('profiles')
       .select('id, first_name')
@@ -138,7 +144,7 @@ partnerRouter.get('/validate-promo', async (req: AuthRequest, res, next) => {
       return;
     }
 
-    res.json({ valid: true, referrerName: data.first_name });
+    res.json({ valid: true, isMasterCode: false, referrerName: data.first_name });
   } catch (err) {
     next(err);
   }

@@ -218,6 +218,42 @@ paymentsRouter.get('/paypal-success', async (req: AuthRequest, res, next) => {
   }
 });
 
+/** POST /api/payments/activate-free-enterprise — bypass for promo code VELONA237 */
+paymentsRouter.post('/activate-free-enterprise', async (req: AuthRequest, res, next) => {
+  try {
+    const { promoCode } = req.body as { promoCode?: string };
+
+    if (promoCode?.toUpperCase().trim() !== 'VELONA237') {
+      res.status(400).json({ error: 'Invalid promo code' });
+      return;
+    }
+
+    if (!req.userId) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
+    // Write subscription directly — no Stripe, no card
+    await supabase.from('subscriptions').upsert({
+      user_id: req.userId,
+      plan_key: 'enterprise',
+      status: 'active',
+      current_period_end: '2099-12-31 23:59:59+00',
+      stripe_subscription_id: 'promo_velona237',
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'user_id' });
+
+    // Denormalize onto profile so dashboard reads it immediately
+    await supabase.from('profiles')
+      .update({ plan_key: 'enterprise', updated_at: new Date().toISOString() })
+      .eq('id', req.userId);
+
+    res.json({ success: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
 /** GET /api/payments/subscription — current user's active subscription */
 paymentsRouter.get('/subscription', async (req: AuthRequest, res, next) => {
   try {
