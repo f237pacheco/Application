@@ -4,26 +4,29 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { IntroScreen } from '@/components/ui/IntroScreen';
+import { AuroraScreen } from '@/components/ui/AuroraScreen';
+
+type Phase = 'intro' | 'aurora' | 'routing';
 
 export default function HomePage() {
   const router = useRouter();
   const { user, loading } = useAuth();
-  // Start as true (skip intro) until we've confirmed it's the first visit
-  const [introPlayed, setIntroPlayed] = useState(true);
+  // Default to 'routing' until sessionStorage is checked on mount
+  const [phase, setPhase] = useState<Phase>('routing');
 
   useEffect(() => {
     const seen = sessionStorage.getItem('velona_intro_seen');
-    if (!seen) setIntroPlayed(false); // first visit this session → show intro
+    setPhase(seen ? 'routing' : 'intro');
   }, []);
 
   const handleIntroDone = () => {
     sessionStorage.setItem('velona_intro_seen', '1');
-    setIntroPlayed(true);
+    setPhase('aurora');
   };
 
-  // Navigate only after intro is done and auth is resolved
+  // Navigate once the aurora screen is dismissed or skipped
   useEffect(() => {
-    if (!introPlayed || loading) return;
+    if (phase !== 'routing' || loading) return;
     if (user) {
       router.replace('/dashboard');
     } else {
@@ -35,11 +38,10 @@ export default function HomePage() {
         router.replace(onboarded ? '/auth' : '/onboarding');
       }
     }
-  }, [introPlayed, user, loading, router]);
+  }, [phase, user, loading, router]);
 
-  if (!introPlayed) {
-    return <IntroScreen onDone={handleIntroDone} />;
-  }
+  if (phase === 'intro') return <IntroScreen onDone={handleIntroDone} />;
+  if (phase === 'aurora') return <AuroraScreen />;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-950">
