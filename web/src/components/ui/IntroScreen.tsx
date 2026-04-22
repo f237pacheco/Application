@@ -25,13 +25,10 @@ export function IntroScreen({ onDone }: IntroScreenProps) {
   }, [onDone])
 
   return (
-    <div
-      className="fixed inset-0 z-[9999]"
-      style={{
-        // Black overlay fades in during phase 1
-        background: "#000",
-      }}
-    >
+    <div className="fixed inset-0 z-[9999]" style={{ background: "#000" }}>
+      {/* Google Fonts — Playfair Display */}
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&display=swap');`}</style>
+
       {/* Shader — fades out */}
       <div
         className="absolute inset-0 transition-opacity"
@@ -55,10 +52,10 @@ export function IntroScreen({ onDone }: IntroScreenProps) {
       >
         <span
           style={{
-            fontFamily: "'Inter', 'SF Pro Display', system-ui, sans-serif",
+            fontFamily: "'Playfair Display', Georgia, 'Times New Roman', serif",
             fontSize: "clamp(3rem, 10vw, 6rem)",
-            fontWeight: 800,
-            letterSpacing: "0.08em",
+            fontWeight: 700,
+            letterSpacing: "0.06em",
             color: "#ffffff",
             textShadow: "0 0 60px rgba(255,255,255,0.25)",
             userSelect: "none",
