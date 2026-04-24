@@ -4,14 +4,12 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { IntroScreen } from '@/components/ui/IntroScreen';
-import { AuroraScreen } from '@/components/ui/AuroraScreen';
 
-type Phase = 'intro' | 'aurora' | 'routing';
+type Phase = 'intro' | 'routing';
 
 export default function HomePage() {
   const router = useRouter();
   const { user, loading } = useAuth();
-  // null = not yet checked (avoid SSR flash)
   const [phase, setPhase] = useState<Phase | null>(null);
 
   useEffect(() => {
@@ -21,10 +19,8 @@ export default function HomePage() {
 
   const handleIntroDone = () => {
     sessionStorage.setItem('velona_intro_seen', '1');
-    setPhase('aurora');
+    setPhase('routing');
   };
-
-  const handleAuroraDone = () => setPhase('routing');
 
   useEffect(() => {
     if (phase !== 'routing' || loading) return;
@@ -41,10 +37,8 @@ export default function HomePage() {
     }
   }, [phase, user, loading, router]);
 
-  // Render nothing until sessionStorage has been read (prevents SSR flash)
   if (phase === null) return null;
   if (phase === 'intro') return <IntroScreen onDone={handleIntroDone} />;
-  if (phase === 'aurora') return <AuroraScreen onDone={handleAuroraDone} />;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-950">
