@@ -2,11 +2,22 @@
 import { useRouter } from "next/navigation";
 import { AuroraBackground } from "./aurora-background";
 
-export function AuroraScreen() {
+interface AuroraScreenProps {
+  onDone: () => void;
+}
+
+export function AuroraScreen({ onDone }: AuroraScreenProps) {
   const router = useRouter();
 
+  const handleClick = () => {
+    onDone();
+    router.push("/dashboard");
+  };
+
+  // Wrap in a dark-class ancestor so all dark: Tailwind variants activate
   return (
-    <AuroraBackground className="dark">
+    <div className="dark">
+    <AuroraBackground>
       <div className="relative z-10 flex flex-col items-center justify-center gap-6 px-6 text-center">
         <h1
           style={{
@@ -35,7 +46,7 @@ export function AuroraScreen() {
         </p>
 
         <button
-          onClick={() => router.push("/dashboard")}
+          onClick={handleClick}
           style={{
             marginTop: "0.5rem",
             padding: "0.75rem 2.25rem",
@@ -66,5 +77,6 @@ export function AuroraScreen() {
       {/* Playfair Display from Google Fonts */}
       <style>{`@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@300;700&display=swap');`}</style>
     </AuroraBackground>
+    </div>
   );
 }

@@ -1,5 +1,5 @@
 "use client"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { ShaderAnimation } from "./shader-animation"
 
 interface IntroScreenProps {
@@ -9,20 +9,21 @@ interface IntroScreenProps {
 export function IntroScreen({ onDone }: IntroScreenProps) {
   // 0 = fully visible, 1 = fading to black, 2 = black (done)
   const [phase, setPhase] = useState<0 | 1 | 2>(0)
+  // Stable ref so the effect never re-fires when the parent re-renders
+  const onDoneRef = useRef(onDone)
+  useEffect(() => { onDoneRef.current = onDone }, [onDone])
 
   useEffect(() => {
-    // Start fade-out after 3.2s so it completes at ~4s total
     const fadeTimer = setTimeout(() => setPhase(1), 3200)
-    // Call onDone once the black screen is fully in place
     const doneTimer = setTimeout(() => {
       setPhase(2)
-      onDone()
+      onDoneRef.current()
     }, 4200)
     return () => {
       clearTimeout(fadeTimer)
       clearTimeout(doneTimer)
     }
-  }, [onDone])
+  }, []) // runs exactly once
 
   return (
     <div className="fixed inset-0 z-[9999]" style={{ background: "#000" }}>

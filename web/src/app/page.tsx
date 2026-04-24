@@ -11,8 +11,8 @@ type Phase = 'intro' | 'aurora' | 'routing';
 export default function HomePage() {
   const router = useRouter();
   const { user, loading } = useAuth();
-  // Default to 'routing' until sessionStorage is checked on mount
-  const [phase, setPhase] = useState<Phase>('routing');
+  // null = not yet checked (avoid SSR flash)
+  const [phase, setPhase] = useState<Phase | null>(null);
 
   useEffect(() => {
     const seen = sessionStorage.getItem('velona_intro_seen');
@@ -24,7 +24,8 @@ export default function HomePage() {
     setPhase('aurora');
   };
 
-  // Navigate once the aurora screen is dismissed or skipped
+  const handleAuroraDone = () => setPhase('routing');
+
   useEffect(() => {
     if (phase !== 'routing' || loading) return;
     if (user) {
@@ -40,8 +41,10 @@ export default function HomePage() {
     }
   }, [phase, user, loading, router]);
 
+  // Render nothing until sessionStorage has been read (prevents SSR flash)
+  if (phase === null) return null;
   if (phase === 'intro') return <IntroScreen onDone={handleIntroDone} />;
-  if (phase === 'aurora') return <AuroraScreen />;
+  if (phase === 'aurora') return <AuroraScreen onDone={handleAuroraDone} />;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-950">
