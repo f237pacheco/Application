@@ -48,14 +48,37 @@ authRouter.post('/profile', requireAuth, async (req: AuthRequest, res, next) => 
 // GET /api/auth/profile — get current user profile
 authRouter.get('/profile', requireAuth, async (req: AuthRequest, res, next) => {
   try {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', req.userId)
-      .single();
+    const [profileRes, subRes] = await Promise.all([
+      supabase.from('profiles').select('*').eq('id', req.userId).maybeSingle(),
+      supabase
+        .from('subscriptions')
+        .select('plan_key')
+        .eq('user_id', req.userId)
+        .in('status', ['active', 'trialing'])
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+    ]);
 
-    if (error) throw error;
-    res.json(data);
+    if (profileRes.error) throw profileRes.error;
+    if (!profileRes.data) {
+      res.status(404).json({ error: 'Profile not found' });
+      return;
+    }
+
+    const profile = profileRes.data;
+    // Subscription is the authoritative source for plan_key
+    const activePlanKey = subRes.data?.plan_key ?? profile.plan_key ?? null;
+
+    // Keep profiles.plan_key in sync with the active subscription
+    if (activePlanKey && activePlanKey !== profile.plan_key) {
+      await supabase
+        .from('profiles')
+        .update({ plan_key: activePlanKey, updated_at: new Date().toISOString() })
+        .eq('id', req.userId);
+    }
+
+    res.json({ ...profile, plan_key: activePlanKey });
   } catch (err) {
     next(err);
   }
