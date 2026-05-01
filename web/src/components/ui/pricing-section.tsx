@@ -1,0 +1,289 @@
+'use client'
+
+import { useState } from 'react'
+import { motion } from 'framer-motion'
+import NumberFlow from '@number-flow/react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { cn } from '@/lib/utils'
+import { useProfile } from '@/hooks/useProfile'
+import { VerticalCutReveal } from './vertical-cut-reveal'
+
+const PLANS = [
+  {
+    id: 'starter',
+    name: 'Starter',
+    monthlyPrice: 35,
+    annualPrice: 28,
+    description: 'Pour démarrer et tester Velona',
+    badge: null,
+    highlighted: false,
+    planKeys: ['starter_individual', 'starter_professional'],
+    features: [
+      '5 générations par mois',
+      '2 services IA disponibles',
+      'Tableau de bord basique',
+      'Rapport mensuel',
+      'Support par email',
+    ],
+  },
+  {
+    id: 'pro',
+    name: 'Pro',
+    monthlyPrice: 89.99,
+    annualPrice: 70,
+    description: 'L\'essentiel pour les professionnels',
+    badge: 'Meilleur rapport qualité/prix',
+    highlighted: true,
+    planKeys: ['pro_individual', 'pro_professional'],
+    features: [
+      '30 générations par mois',
+      'Tous les services IA',
+      'Statistiques avancées',
+      'Contenu personnalisé IA',
+      'Support prioritaire',
+      'Rapport détaillé',
+    ],
+  },
+  {
+    id: 'enterprise',
+    name: 'Enterprise',
+    monthlyPrice: 299.99,
+    annualPrice: 239,
+    description: 'Puissance illimitée pour votre équipe',
+    badge: null,
+    highlighted: false,
+    planKeys: ['enterprise'],
+    features: [
+      'Générations illimitées',
+      'Tous les services IA',
+      'Tableau de bord manager',
+      'Accès API',
+      'Intégrations sur mesure',
+      'Rapports personnalisés',
+      'Support dédié 24/7',
+    ],
+  },
+]
+
+const containerVariants = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.12 } },
+}
+
+const cardVariants = {
+  hidden: { opacity: 0, y: 32 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: 'easeOut' as const } },
+}
+
+export function PricingSection() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const { profile } = useProfile()
+  const [billing, setBilling] = useState<'monthly' | 'annual'>('monthly')
+
+  const serviceId = searchParams.get('service')
+  const prompt = searchParams.get('prompt')
+
+  const activePlanKey = profile?.plan_key ?? null
+
+  const handleSelect = (planId: string) => {
+    const params = new URLSearchParams({
+      plan: planId,
+      billing,
+      ...(serviceId ? { service: serviceId } : {}),
+      ...(prompt ? { prompt } : {}),
+    })
+    router.push(`/checkout/payment?${params}`)
+  }
+
+  const annualSaving = (plan: typeof PLANS[0]) =>
+    Math.round(100 - (plan.annualPrice / plan.monthlyPrice) * 100)
+
+  return (
+    <div className="min-h-screen bg-gray-950 flex flex-col items-center px-4 py-16 sm:py-24">
+      {/* Heading */}
+      <div className="text-center mb-4">
+        <h1 className="text-4xl sm:text-5xl font-extrabold text-white overflow-hidden">
+          <VerticalCutReveal
+            staggerDuration={0.08}
+            staggerFrom="first"
+            transition={{ type: 'spring', stiffness: 180, damping: 20 }}
+          >
+            Choisissez votre plan
+          </VerticalCutReveal>
+        </h1>
+        <motion.p
+          className="mt-4 text-gray-400 text-lg"
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5, duration: 0.5 }}
+        >
+          Essai gratuit 3 jours — sans carte bancaire requise
+        </motion.p>
+      </div>
+
+      {/* Billing toggle */}
+      <motion.div
+        className="flex flex-col items-center gap-3 mb-14"
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.6, duration: 0.4 }}
+      >
+        <div className="flex items-center gap-4 bg-gray-900 border border-gray-800 rounded-full px-2 py-1.5">
+          <button
+            onClick={() => setBilling('monthly')}
+            className={cn(
+              'px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-200',
+              billing === 'monthly'
+                ? 'bg-[#6C5CE7] text-white shadow-md shadow-[#6C5CE7]/30'
+                : 'text-gray-400 hover:text-white'
+            )}
+          >
+            Mensuel
+          </button>
+          <button
+            onClick={() => setBilling('annual')}
+            className={cn(
+              'px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-200',
+              billing === 'annual'
+                ? 'bg-[#6C5CE7] text-white shadow-md shadow-[#6C5CE7]/30'
+                : 'text-gray-400 hover:text-white'
+            )}
+          >
+            Annuel
+          </button>
+        </div>
+        <div style={{ height: 22 }}>
+          {billing === 'annual' && (
+            <motion.span
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="text-xs font-semibold px-3 py-1 rounded-full bg-[#6C5CE7]/20 text-[#a899ff] border border-[#6C5CE7]/30"
+            >
+              Économisez jusqu'à 22%
+            </motion.span>
+          )}
+        </div>
+      </motion.div>
+
+      {/* Cards */}
+      <motion.div
+        className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-5xl"
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+      >
+        {PLANS.map((plan) => {
+          const price = billing === 'monthly' ? plan.monthlyPrice : plan.annualPrice
+          const isActive = activePlanKey !== null && plan.planKeys.includes(activePlanKey)
+          const saving = annualSaving(plan)
+
+          return (
+            <motion.div
+              key={plan.id}
+              variants={cardVariants}
+              className={cn(
+                'relative flex flex-col rounded-2xl border p-7 transition-all duration-300',
+                plan.highlighted
+                  ? 'border-[#6C5CE7] bg-[#6C5CE7]/5 shadow-xl shadow-[#6C5CE7]/10'
+                  : 'border-gray-800 bg-gray-900/60 hover:border-gray-700'
+              )}
+            >
+              {/* Top glow for highlighted */}
+              {plan.highlighted && (
+                <div
+                  className="pointer-events-none absolute -top-px left-1/2 -translate-x-1/2 h-px w-3/4"
+                  style={{ background: 'linear-gradient(90deg, transparent, #6C5CE7, transparent)' }}
+                />
+              )}
+
+              {/* Badge */}
+              {plan.badge && (
+                <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
+                  <span className="bg-[#6C5CE7] text-white text-xs font-bold px-4 py-1.5 rounded-full whitespace-nowrap shadow-lg shadow-[#6C5CE7]/30">
+                    {plan.badge}
+                  </span>
+                </div>
+              )}
+
+              {/* Plan name */}
+              <div className="mb-5">
+                <h2 className="text-xl font-bold text-white">{plan.name}</h2>
+                <p className="text-sm text-gray-400 mt-1">{plan.description}</p>
+              </div>
+
+              {/* Price */}
+              <div className="mb-6">
+                <div className="flex items-end gap-1.5">
+                  <span className="text-5xl font-extrabold text-white tabular-nums">
+                    <NumberFlow
+                      value={price}
+                      format={{ style: 'decimal', minimumFractionDigits: price % 1 !== 0 ? 2 : 0, maximumFractionDigits: 2 }}
+                      transformTiming={{ duration: 500, easing: 'ease-out' }}
+                    />
+                  </span>
+                  <span className="text-gray-500 text-sm mb-1.5">€/mois</span>
+                </div>
+                <div style={{ height: 20 }}>
+                  {billing === 'annual' && (
+                    <p className="text-xs text-[#a899ff]">
+                      soit {(price * 12).toFixed(0)}€/an · {saving}% d'économie
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Features */}
+              <ul className="flex flex-col gap-3 flex-1 mb-8">
+                {plan.features.map((feature, i) => (
+                  <li key={i} className="flex items-start gap-2.5 text-sm text-gray-300">
+                    <span
+                      className="mt-0.5 shrink-0 flex items-center justify-center w-4 h-4 rounded-full"
+                      style={{ background: plan.highlighted ? '#6C5CE7' : '#374151' }}
+                    >
+                      <svg width="8" height="6" viewBox="0 0 8 6" fill="none">
+                        <path d="M1 3l2 2 4-4" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </span>
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+
+              {/* CTA */}
+              {isActive ? (
+                <div className="flex items-center justify-center gap-2 w-full rounded-xl py-3 text-sm font-semibold border border-green-500/30 bg-green-500/10 text-green-400">
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                    <path d="M2 7l3.5 3.5L12 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  Plan actif
+                </div>
+              ) : (
+                <button
+                  onClick={() => handleSelect(plan.id)}
+                  className={cn(
+                    'w-full rounded-xl py-3 text-sm font-semibold transition-all duration-200',
+                    plan.highlighted
+                      ? 'bg-[#6C5CE7] text-white hover:bg-[#5a48d4] shadow-lg shadow-[#6C5CE7]/30 hover:shadow-[#6C5CE7]/50'
+                      : 'border border-gray-700 text-white hover:border-[#6C5CE7] hover:bg-[#6C5CE7]/10'
+                  )}
+                >
+                  Essayer 3 jours gratuits
+                </button>
+              )}
+            </motion.div>
+          )
+        })}
+      </motion.div>
+
+      <motion.p
+        className="mt-12 text-center text-xs text-gray-600"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 1.2 }}
+      >
+        Aucune carte bancaire requise pour l'essai · Annulation à tout moment · Paiement 100% sécurisé
+      </motion.p>
+    </div>
+  )
+}
