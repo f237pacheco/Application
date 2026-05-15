@@ -21,11 +21,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const supabase = createClient();
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
+    // Failsafe: resolve loading after 5s even if Supabase is unreachable
+    const failsafe = setTimeout(() => setLoading(false), 5000);
+
+    supabase.auth
+      .getSession()
+      .then(({ data: { session } }) => {
+        clearTimeout(failsafe);
+        setSession(session);
+        setUser(session?.user ?? null);
+        setLoading(false);
+      })
+      .catch(() => {
+        clearTimeout(failsafe);
+        setLoading(false);
+      });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, session) => {
@@ -35,7 +45,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     );
 
-    return () => subscription.unsubscribe();
+    return () => {
+      clearTimeout(failsafe);
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signInWithGoogle = useCallback(async () => {
