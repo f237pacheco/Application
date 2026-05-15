@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
+import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
@@ -38,8 +39,26 @@ const HOW_IT_WORKS = [
   { step: '01', title: 'Partagez Velona', desc: 'Publiez un avis, un article ou une vidéo sur vos réseaux avec votre code promo.' },
   { step: '02', title: 'Soumettez le lien', desc: 'Collez l\'URL de votre publication dans le formulaire ci-dessous.' },
   { step: '03', title: 'Validation (24-48h)', desc: 'Notre équipe vérifie la qualité du contenu et valide votre soumission.' },
-  { step: '04', title: 'Récompense activée', desc: '-15% appliqués sur votre prochain mois ou upgrade de plan — automatiquement.' },
+  { step: '04', title: 'Récompense activée', desc: 'Appliqués sur votre prochain mois ou upgrade de plan — automatiquement.' },
 ];
+
+/* ── Animated Counter ───────────────────────────────────────────────────────── */
+function AnimatedCounter({ target }: { target: number }) {
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    if (target === 0) return;
+    let current = 0;
+    const interval = setInterval(() => {
+      current += 1;
+      setCount(current);
+      if (current >= target) clearInterval(interval);
+    }, 50);
+    return () => clearInterval(interval);
+  }, [target]);
+
+  return <span>{count}</span>;
+}
 
 /* ── Social proof background cards ─────────────────────────────────────────── */
 function SocialProofBackground() {
@@ -531,6 +550,19 @@ export default function PartnerPage() {
           </div>
         )}
 
+        {/* Social counter */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.6 }}
+          className="flex items-center gap-2"
+        >
+          <span className="text-2xl font-extrabold text-white">
+            <AnimatedCounter target={247} />
+          </span>
+          <span className="text-gray-400 text-sm ml-2">partenaires actifs ce mois</span>
+        </motion.div>
+
         {/* Promo code card */}
         {profile?.promo_code && (
           <section className="bg-gray-900/80 backdrop-blur border border-primary-500/30 rounded-2xl p-6 flex items-center justify-between gap-4">
@@ -558,18 +590,63 @@ export default function PartnerPage() {
           </section>
         )}
 
-        {/* How it works */}
+        {/* How it works — vertical timeline */}
         <section className="bg-gray-900/80 backdrop-blur border border-gray-800 rounded-2xl p-6 flex flex-col gap-4">
           <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">Comment ça marche</h2>
-          <div className="grid grid-cols-2 gap-4">
-            {HOW_IT_WORKS.map(({ step, title, desc }) => (
-              <div key={step} className="flex gap-3">
-                <span className="text-xs font-bold text-primary-500 mt-0.5 shrink-0">{step}</span>
-                <div>
-                  <p className="text-sm font-semibold text-white">{title}</p>
+          <div className="relative flex flex-col gap-0">
+            {/* Vertical violet line */}
+            <div className="absolute left-[19px] top-5 bottom-5 w-px overflow-hidden">
+              <motion.div
+                className="w-full bg-gradient-to-b from-violet-500 to-indigo-600"
+                initial={{ scaleY: 0 }}
+                animate={{ scaleY: 1 }}
+                transition={{ duration: 0.8, ease: 'easeOut' }}
+                style={{ height: '100%', transformOrigin: 'top' }}
+              />
+            </div>
+
+            {HOW_IT_WORKS.map(({ step, title, desc }, index) => (
+              <motion.div
+                key={step}
+                initial={{ opacity: 0, x: -12 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: index * 0.12, duration: 0.4, ease: 'easeOut' }}
+                className="flex gap-4 relative pb-6 last:pb-0"
+              >
+                {/* Circle icon */}
+                <div
+                  className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 z-10"
+                  style={{
+                    background: 'linear-gradient(135deg, #6C5CE7, #4834d4)',
+                    boxShadow: '0 0 14px rgba(108,92,231,0.5)',
+                  }}
+                >
+                  <span className="text-white text-xs font-bold">{step}</span>
+                </div>
+
+                {/* Content */}
+                <div className="pt-1.5 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="text-sm font-semibold text-white">{title}</p>
+                    {/* Reward badge for step 04 */}
+                    {step === '04' && (
+                      <motion.span
+                        animate={{ scale: [1, 1.05, 1] }}
+                        transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
+                        className="text-xs font-extrabold px-2 py-0.5 rounded-full"
+                        style={{
+                          background: '#00D68F',
+                          color: '#000',
+                          boxShadow: '0 0 10px rgba(0,214,143,0.45)',
+                        }}
+                      >
+                        -15%
+                      </motion.span>
+                    )}
+                  </div>
                   <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">{desc}</p>
                 </div>
-              </div>
+              </motion.div>
             ))}
           </div>
         </section>
@@ -587,9 +664,13 @@ export default function PartnerPage() {
                 className="flex-1 px-4 py-2.5 rounded-xl bg-gray-800 border border-gray-700 text-white text-sm
                   placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
               />
-              <Button type="submit" loading={submitting} size="sm" disabled={!partnerUrl.trim()}>
-                {t('partner.submit')}
-              </Button>
+              {/* Shimmer-wrapped submit button */}
+              <div className="relative overflow-hidden rounded-xl">
+                <Button type="submit" loading={submitting} size="sm" disabled={!partnerUrl.trim()}>
+                  {t('partner.submit')}
+                </Button>
+                <span className="shimmer absolute inset-0 rounded-xl pointer-events-none" />
+              </div>
             </div>
             {submitStatus === 'success' && (
               <p className="text-xs text-success-DEFAULT">✓ Lien soumis avec succès. Validation sous 24-48h.</p>
