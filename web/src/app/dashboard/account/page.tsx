@@ -120,6 +120,7 @@ export default function AccountPage() {
         <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">Profil</h2>
 
         <div className="flex items-center gap-4">
+          {/* Gradient avatar */}
           <div
             className="w-16 h-16 rounded-2xl flex items-center justify-center text-2xl font-bold text-white"
             style={{
