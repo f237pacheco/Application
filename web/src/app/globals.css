@@ -53,4 +53,29 @@
   .pulse-glow {
     animation: pulse-glow 3s ease-in-out infinite;
   }
+
+  @keyframes scroll-left {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
+
+  @keyframes scroll-right {
+    0% { transform: translateX(-50%); }
+    100% { transform: translateX(0); }
+  }
+
+  .marquee-left {
+    animation: scroll-left 40s linear infinite;
+    will-change: transform;
+  }
+
+  .marquee-right {
+    animation: scroll-right 40s linear infinite;
+    will-change: transform;
+  }
+
+  .marquee-pause:hover .marquee-left,
+  .marquee-pause:hover .marquee-right {
+    animation-play-state: paused;
+  }
 }

@@ -2,16 +2,15 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import { useUsage } from '@/hooks/useUsage';
 import { ServiceMockup } from '@/components/screens/ServiceMockup';
 import { UsageBar } from '@/components/ui/UsageBar';
 import { LimitWarning } from '@/components/ui/LimitWarning';
-import { Button } from '@/components/ui/Button';
+import { VerticalCutReveal } from '@/components/ui/vertical-cut-reveal';
 import { SERVICES } from '@/lib/services';
 import { clsx } from 'clsx';
 
@@ -441,6 +440,226 @@ function FloatingBackground() {
   );
 }
 
+/* ── Marquee cards data ────────────────────────────────────────────────────── */
+const ROW1_CARDS = [
+  {
+    type: 'tweet',
+    avatar: 'bg-sky-500/40',
+    name: 'Julien Tech',
+    handle: '@julien_tech · 2h',
+    text: 'Mon site professionnel créé en 2 minutes ✨ Impossible de croire que c'est de l'IA',
+    likes: '1.2k',
+    rt: '380',
+  },
+  {
+    type: 'stat',
+    label: 'Revenus ce mois',
+    value: '12 480€',
+    change: '+24%',
+    color: '#00b894',
+    barWidth: '72%',
+  },
+  {
+    type: 'site',
+    url: 'cabinet-martin.velona.io',
+    accent: '#6C5CE7',
+  },
+  {
+    type: 'kpi',
+    label: "RDV confirmés aujourd'hui",
+    value: '18',
+    sub: 'automatiquement',
+    color: '#6C5CE7',
+  },
+  {
+    type: 'tweet',
+    avatar: 'bg-pink-500/40',
+    name: 'Jade Coiffure',
+    handle: '@coiffure_jade · 5h',
+    text: 'Velona génère mes posts Instagram chaque semaine, je gagne 3h 🙌',
+    likes: '847',
+    rt: '156',
+  },
+  {
+    type: 'video',
+    title: 'Montage vidéo IA — créé en 45s',
+    duration: '0:45',
+    views: '3.2k vues',
+  },
+  {
+    type: 'tweet',
+    avatar: 'bg-emerald-500/40',
+    name: 'Kiné Montpellier',
+    handle: '@kine_mtp · 1j',
+    text: 'Agent vocal gère 100% de mes appels. Incroyable, je ne rate plus aucun RDV.',
+    likes: '632',
+    rt: '91',
+  },
+  {
+    type: 'kpi',
+    label: 'Nouveaux abonnés Instagram',
+    value: '+340',
+    sub: 'ce mois · ↑ +28%',
+    color: '#e1306c',
+  },
+] as const;
+
+const ROW2_CARDS = [
+  {
+    type: 'site',
+    url: 'resto-bella.velona.io',
+    accent: '#f97316',
+  },
+  {
+    type: 'tweet',
+    avatar: 'bg-indigo-500/40',
+    name: 'Entrepreneur FR',
+    handle: '@entrepreneur_fr · 3h',
+    text: 'Email campaign : 64% d'ouverture. Record absolu pour notre agence 📈',
+    likes: '2.1k',
+    rt: '478',
+  },
+  {
+    type: 'stat',
+    label: 'Croissance CA',
+    value: '+38%',
+    change: 'ce trimestre',
+    color: '#6C5CE7',
+    barWidth: '38%',
+  },
+  {
+    type: 'tweet',
+    avatar: 'bg-amber-500/40',
+    name: 'Artisan Manu',
+    handle: '@artisanat_manu · 6h',
+    text: 'Site e-commerce en ligne en 2min. Premier achat 3h après 🎉',
+    likes: '923',
+    rt: '267',
+  },
+  {
+    type: 'kpi',
+    label: 'Trafic organique',
+    value: '+28%',
+    sub: 'vs mois précédent',
+    color: '#0984e3',
+  },
+  {
+    type: 'site',
+    url: 'avocats-dubois.velona.io',
+    accent: '#0984e3',
+  },
+  {
+    type: 'tweet',
+    avatar: 'bg-violet-500/40',
+    name: 'Coach Émilie',
+    handle: '@coach_emilie · 2j',
+    text: 'Velona automatise mes réseaux, mon agenda, mes emails. Passée à 4j/semaine 💜',
+    likes: '1.8k',
+    rt: '412',
+  },
+  {
+    type: 'kpi',
+    label: 'Satisfaction client',
+    value: '4.9/5',
+    sub: '248 avis vérifiés',
+    color: '#f59e0b',
+  },
+] as const;
+
+type CardData = (typeof ROW1_CARDS)[number] | (typeof ROW2_CARDS)[number];
+
+function MarqueeCard({ card }: { card: CardData }) {
+  if (card.type === 'tweet') {
+    return (
+      <div className="flex-shrink-0 w-64 bg-gray-900/80 backdrop-blur border border-gray-700/50 rounded-2xl p-4 shadow-xl">
+        <div className="flex items-center gap-2 mb-2.5">
+          <div className={clsx('w-7 h-7 rounded-full', card.avatar)} />
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-semibold text-white truncate">{card.name}</p>
+            <p className="text-[10px] text-gray-500">{card.handle}</p>
+          </div>
+          <span className="text-gray-600 text-xs font-bold shrink-0">✕</span>
+        </div>
+        <p className="text-xs text-gray-300 leading-relaxed">{card.text}</p>
+        <div className="flex gap-4 mt-2.5 text-[10px] text-gray-500">
+          <span>♥ {card.likes}</span>
+          <span>↗ {card.rt}</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (card.type === 'stat') {
+    return (
+      <div className="flex-shrink-0 w-44 bg-gray-900/80 backdrop-blur border border-gray-700/50 rounded-2xl p-4 shadow-xl">
+        <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">{card.label}</p>
+        <p className="text-2xl font-extrabold text-white">{card.value}</p>
+        <div className="flex items-center gap-1.5 mt-1">
+          <span className="text-[10px] font-bold" style={{ color: card.color }}>↑ {card.change}</span>
+        </div>
+        <div className="mt-2 h-1 bg-gray-800 rounded-full">
+          <div className="h-full rounded-full" style={{ width: card.barWidth, backgroundColor: card.color }} />
+        </div>
+      </div>
+    );
+  }
+
+  if (card.type === 'site') {
+    return (
+      <div className="flex-shrink-0 w-52 bg-gray-900/80 backdrop-blur border border-gray-700/50 rounded-2xl overflow-hidden shadow-xl">
+        <div className="bg-gray-700/50 px-3 py-1.5 flex items-center gap-1.5">
+          <div className="w-1.5 h-1.5 rounded-full bg-red-400" />
+          <div className="w-1.5 h-1.5 rounded-full bg-yellow-400" />
+          <div className="w-1.5 h-1.5 rounded-full bg-green-400" />
+          <div className="flex-1 bg-gray-600/50 rounded px-2 py-0.5 ml-1">
+            <p className="text-[8px] text-gray-400 truncate">{card.url}</p>
+          </div>
+        </div>
+        <div className="p-3 space-y-2">
+          <div className="h-10 rounded-lg" style={{ background: `linear-gradient(135deg, ${card.accent}22, ${card.accent}08)` }} />
+          <div className="grid grid-cols-3 gap-1">
+            {[...Array(3)].map((_, i) => <div key={i} className="h-6 bg-gray-700/50 rounded" />)}
+          </div>
+          <div className="space-y-1">
+            {[85, 65, 45].map((w, i) => <div key={i} className="h-1 bg-gray-700/50 rounded" style={{ width: `${w}%` }} />)}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (card.type === 'video') {
+    return (
+      <div className="flex-shrink-0 w-44 bg-gray-900/80 backdrop-blur border border-gray-700/50 rounded-2xl overflow-hidden shadow-xl">
+        <div className="h-24 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center relative">
+          <div className="w-10 h-10 rounded-full bg-white/20 border border-white/30 flex items-center justify-center">
+            <div className="w-0 h-0 border-t-[6px] border-t-transparent border-l-[12px] border-l-white border-b-[6px] border-b-transparent ml-1" />
+          </div>
+          <div className="absolute bottom-1.5 right-1.5 bg-black/80 rounded px-1.5 py-0.5">
+            <span className="text-white text-[8px]">{card.duration}</span>
+          </div>
+        </div>
+        <div className="p-3">
+          <p className="text-[9px] text-white font-semibold leading-tight">{card.title}</p>
+          <p className="text-[8px] text-gray-500 mt-0.5">Velona Video · {card.views}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (card.type === 'kpi') {
+    return (
+      <div className="flex-shrink-0 w-44 bg-gray-900/80 backdrop-blur border border-gray-700/50 rounded-2xl p-4 shadow-xl">
+        <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">{card.label}</p>
+        <p className="text-2xl font-extrabold text-white">{card.value}</p>
+        <p className="text-xs mt-0.5" style={{ color: card.color }}>{card.sub}</p>
+      </div>
+    );
+  }
+
+  return null;
+}
+
 /* ────────────────────────────────────────────────────────────────────────── */
 
 export default function DashboardPage() {
@@ -448,7 +667,6 @@ export default function DashboardPage() {
   const { user } = useAuth();
   const { profile } = useProfile();
   const { data: usage, loading: usageLoading, isNearLimit } = useUsage();
-  const router = useRouter();
 
   const firstName = profile?.first_name
     ?? (user?.user_metadata?.full_name as string)?.split(' ')[0]
@@ -456,13 +674,11 @@ export default function DashboardPage() {
 
   const hasPlan = !!profile?.plan_key;
   const isEnterprise = profile?.plan_key === 'enterprise';
-  const isStarter = profile?.plan_key?.startsWith('starter');
-  const isPro = profile?.plan_key?.startsWith('pro');
 
   // Trial countdown — 3 days from now (hours:minutes)
   const [trialCountdown, setTrialCountdown] = useState({ hours: 71, minutes: 59 });
   useEffect(() => {
-    const trialEndsAt = Date.now() + 3 * 24 * 60 * 60 * 1000; // 3 days from mount
+    const trialEndsAt = Date.now() + 3 * 24 * 60 * 60 * 1000;
     const tick = () => {
       const diff = Math.max(0, trialEndsAt - Date.now());
       const totalMinutes = Math.floor(diff / 60000);
@@ -476,39 +692,54 @@ export default function DashboardPage() {
     return () => clearInterval(id);
   }, []);
 
-  // Usage numbers for urgency banner
-  const usageTotal = usage
-    ? Object.values(usage.usage).reduce((sum, v) => sum + v, 0)
-    : 0;
-  const usageLimit = usage?.limit ?? 5;
-
-  // Plan badge helper
-  const getPlanBadge = () => {
-    if (isEnterprise) return { label: '✓ Actif', className: 'bg-green-500/20 text-green-400 border border-green-500/30' };
-    if (isPro)        return { label: '✓ Actif', className: 'bg-green-500/20 text-green-400 border border-green-500/30' };
-    if (isStarter)    return { label: '⚡ Limité', className: 'bg-orange-500/20 text-orange-400 border border-orange-500/30' };
-    return              { label: '🔒 Bloqué', className: 'bg-red-500/20 text-red-400 border border-red-500/30' };
-  };
-  const planBadge = getPlanBadge();
+  const row1Doubled = [...ROW1_CARDS, ...ROW1_CARDS];
+  const row2Doubled = [...ROW2_CARDS, ...ROW2_CARDS];
 
   return (
     <div className="flex flex-col gap-8">
-      {/* Urgency banner */}
-      <motion.div
-        initial={{ y: -60, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.2, duration: 0.5, ease: 'easeOut' }}
-        onClick={() => router.push('/plans')}
-        className="cursor-pointer rounded-2xl px-5 py-3 flex items-center justify-between gap-3 shadow-lg"
-        style={{ background: 'linear-gradient(135deg, #f97316, #ef4444)' }}
-      >
-        <p className="text-white text-sm font-semibold">
-          ⚡ Vous utilisez {usageTotal}/{usageLimit} générations ce mois — Passez au Pro pour des générations illimitées
+
+      {/* Immersive marquee hero */}
+      <section className="flex flex-col gap-4">
+        <motion.h2
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: 'easeOut' }}
+          className="text-xl font-bold"
+          style={{ background: 'linear-gradient(90deg, #a78bfa, #6C5CE7, #818cf8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}
+        >
+          <VerticalCutReveal
+            staggerDuration={0.08}
+            staggerFrom="first"
+            transition={{ type: 'spring', stiffness: 200, damping: 22 }}
+          >
+            Découvrez ce que Velona génère déjà
+          </VerticalCutReveal>
+        </motion.h2>
+
+        {/* Row 1 — scroll left */}
+        <div className="marquee-pause overflow-hidden">
+          <div className="flex gap-3 marquee-left">
+            {row1Doubled.map((card, i) => (
+              <MarqueeCard key={i} card={card} />
+            ))}
+          </div>
+        </div>
+
+        {/* Row 2 — scroll right */}
+        <div className="marquee-pause overflow-hidden">
+          <div className="flex gap-3 marquee-right">
+            {row2Doubled.map((card, i) => (
+              <MarqueeCard key={i} card={card} />
+            ))}
+          </div>
+        </div>
+
+        <p className="text-xs text-gray-600 text-center">
+          <Link href="/dashboard/help" className="hover:text-gray-400 transition-colors underline underline-offset-2">
+            Conditions générales d'utilisation
+          </Link>
         </p>
-        <span className="text-white/80 text-xs font-medium shrink-0 underline underline-offset-2">
-          Voir les plans →
-        </span>
-      </motion.div>
+      </section>
 
       {/* Hero */}
       <div>
@@ -516,7 +747,6 @@ export default function DashboardPage() {
           {t('home.welcome', { name: firstName })}
         </h1>
         <p className="text-gray-400">{t('home.services')}</p>
-        {/* Trial countdown */}
         <p className="text-red-400 text-sm font-medium mt-2">
           ⏰ 3 jours d'essai restants —{' '}
           {String(trialCountdown.hours).padStart(2, '0')}h{String(trialCountdown.minutes).padStart(2, '0')}m
@@ -575,16 +805,6 @@ export default function DashboardPage() {
                     style={{ backgroundColor: service.accentColor }}
                   />
 
-                  {/* Plan badge — top right */}
-                  <span
-                    className={clsx(
-                      'absolute top-3 right-3 text-[10px] font-semibold px-2 py-0.5 rounded-full z-10',
-                      planBadge.className
-                    )}
-                  >
-                    {planBadge.label}
-                  </span>
-
                   <div className="p-5 pb-3 flex items-center gap-3">
                     <span className="text-3xl">{service.icon}</span>
                     <div>
@@ -628,31 +848,6 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
-
-      {/* Upgrade CTA */}
-      {(isStarter || !hasPlan) && (
-        <div
-          className="p-6 rounded-2xl border-2 bg-gray-900/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5"
-          style={{ borderImage: 'linear-gradient(135deg, #f59e0b, #f97316) 1' }}
-        >
-          <div className="flex items-center gap-4">
-            <div className="text-4xl">⚡</div>
-            <div>
-              <p className="text-base font-bold text-white">Passez au Pro — générations illimitées</p>
-              <p className="text-sm text-gray-400 mt-0.5">{t('dashboard.upgradePlan')}</p>
-            </div>
-          </div>
-          <Link href="/plans?source=dashboard">
-            <motion.button
-              animate={{ scale: [1, 1.04, 1] }}
-              transition={{ repeat: Infinity, duration: 2, ease: 'easeInOut' }}
-              className="px-6 py-3 rounded-xl text-sm font-bold text-white shadow-lg shadow-amber-500/25 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 transition-colors whitespace-nowrap"
-            >
-              Passer au Pro →
-            </motion.button>
-          </Link>
-        </div>
-      )}
     </div>
   );
 }

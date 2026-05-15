@@ -164,13 +164,7 @@ export default function PaymentPage() {
 
           {/* Trust banner */}
           <div className="rounded-2xl px-5 py-5 flex items-center gap-4" style={{ background: 'linear-gradient(135deg, rgba(0,214,143,0.12), rgba(0,184,148,0.08))', border: '1px solid rgba(0,214,143,0.3)' }}>
-            <div className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(0,214,143,0.15)' }}>
-              {/* animated checkmark SVG */}
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                <motion.path d="M5 13l4 4L19 7" stroke="#00D68F" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-                  initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 0.6, delay: 0.2 }} />
-              </svg>
-            </div>
+            <span className="text-2xl flex-shrink-0">🎁</span>
             <div>
               <p className="text-base font-bold" style={{ color: '#00D68F' }}>Vous ne serez pas débité pendant 3 jours</p>
               <p className="text-sm text-gray-400 mt-0.5">Annulez à tout moment pendant l'essai gratuit, sans frais.</p>

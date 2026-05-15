@@ -107,22 +107,6 @@ export default function HelpPage() {
         />
       </div>
 
-      {/* FAQ */}
-      <section className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
-        <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">
-          Questions fréquentes
-        </h2>
-        <div>
-          {filtered.length > 0 ? (
-            filtered.map((item, i) => (
-              <FaqItem key={i} q={item.q} a={item.a} />
-            ))
-          ) : (
-            <p className="text-sm text-gray-600 py-4">Aucune question ne correspond à votre recherche.</p>
-          )}
-        </div>
-      </section>
-
       {/* Contact */}
       <section className="bg-gray-900 border border-gray-800 rounded-2xl p-6 flex flex-col gap-4">
         <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">
@@ -190,13 +174,29 @@ export default function HelpPage() {
         ))}
       </section>
 
+      {/* FAQ */}
+      <section className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
+        <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">
+          Questions fréquentes
+        </h2>
+        <div>
+          {filtered.length > 0 ? (
+            filtered.map((item, i) => (
+              <FaqItem key={i} q={item.q} a={item.a} />
+            ))
+          ) : (
+            <p className="text-sm text-gray-600 py-4">Aucune question ne correspond à votre recherche.</p>
+          )}
+        </div>
+      </section>
+
       {/* Urgency widget */}
       <section className="rounded-2xl p-6 flex flex-col gap-4 border border-violet-500/30 bg-gradient-to-br from-violet-900/50 to-indigo-900/30">
         <div className="flex items-center gap-2">
           <span className="text-2xl">💬</span>
           <h2 className="text-lg font-bold text-white">Besoin d'aide urgente ?</h2>
         </div>
-        <p className="text-sm text-gray-300">Notre équipe répond en moins de 2h</p>
+        <p className="text-sm text-gray-300">Notre équipe répond en moins de 48h</p>
         <a
           href="mailto:support@velona.io"
           className="inline-flex items-center justify-center px-5 py-3 rounded-xl font-bold text-white text-sm animate-pulse transition-all"

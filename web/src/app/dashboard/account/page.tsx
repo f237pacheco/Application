@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/useAuth';
@@ -37,13 +37,40 @@ function AnimatedCounter({ target }: { target: number }) {
 
 export default function AccountPage() {
   const { t } = useTranslation();
-  const { session, signOut } = useAuth();
+  const { session, signOut, user } = useAuth();
   const { profile, loading } = useProfile();
 
   const [partnerUrl, setPartnerUrl] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [billingLoading, setBillingLoading] = useState(false);
+  const [avatarColor, setAvatarColor] = useState('#6C5CE7');
+  const [avatarPhoto, setAvatarPhoto] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const AVATAR_COLORS = ['#6C5CE7', '#4834d4', '#e91e8c', '#f97316', '#00b894', '#0984e3'];
+
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => setAvatarPhoto(ev.target?.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const getInitial = () => {
+    const name = (user?.user_metadata?.full_name as string) || profile?.first_name || user?.email || '?';
+    return name.charAt(0).toUpperCase();
+  };
+
+  const getPlanBadge = () => {
+    const key = profile?.plan_key as string | undefined;
+    if (!key) return { label: 'Compte gratuit', className: 'bg-gray-700 text-gray-400' };
+    if (key === 'enterprise') return { label: 'Enterprise', className: 'bg-violet-500/20 text-violet-300 border border-violet-500/30' };
+    if (key.startsWith('pro')) return { label: 'Pro', className: 'bg-blue-500/20 text-blue-300 border border-blue-500/30' };
+    if (key.startsWith('starter')) return { label: 'Starter', className: 'bg-orange-500/20 text-orange-300 border border-orange-500/30' };
+    return { label: 'Compte gratuit', className: 'bg-gray-700 text-gray-400' };
+  };
 
   const handleLanguageChange = async (locale: Locale) => {
     await i18n.changeLanguage(locale);
@@ -119,23 +146,53 @@ export default function AccountPage() {
       <section className="bg-gray-900 border border-gray-800 rounded-2xl p-6 flex flex-col gap-4">
         <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">Profil</h2>
 
-        <div className="flex items-center gap-4">
-          {/* Gradient avatar */}
-          <div
-            className="w-16 h-16 rounded-2xl flex items-center justify-center text-2xl font-bold text-white"
-            style={{
-              background: 'linear-gradient(135deg, #6C5CE7, #4834d4)',
-              boxShadow: '0 0 20px rgba(108,92,231,0.4)',
-            }}
-          >
-            {profile?.first_name?.charAt(0).toUpperCase() ?? '?'}
+        <div className="flex items-start gap-4">
+          {/* Avatar */}
+          <div className="flex flex-col items-center gap-2">
+            <div
+              className="w-16 h-16 rounded-2xl flex items-center justify-center text-2xl font-bold text-white overflow-hidden"
+              style={{ background: avatarColor, boxShadow: '0 0 20px rgba(108,92,231,0.4)' }}
+            >
+              {avatarPhoto ? (
+                <img src={avatarPhoto} alt="avatar" className="w-full h-full object-cover" />
+              ) : profile?.first_name || user?.user_metadata?.full_name || user?.email ? (
+                <span>{getInitial()}</span>
+              ) : (
+                <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                  <circle cx="16" cy="12" r="6" fill="rgba(255,255,255,0.7)" />
+                  <path d="M4 28c0-6.627 5.373-12 12-12s12 5.373 12 12" stroke="rgba(255,255,255,0.7)" strokeWidth="2" strokeLinecap="round" />
+                </svg>
+              )}
+            </div>
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="text-[10px] text-gray-500 hover:text-white border border-gray-700 hover:border-gray-500 px-2 py-0.5 rounded-lg transition-all whitespace-nowrap"
+            >
+              Choisir une photo
+            </button>
+            <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
+            <div className="flex gap-1.5 mt-0.5">
+              {AVATAR_COLORS.map((c) => (
+                <button
+                  key={c}
+                  onClick={() => setAvatarColor(c)}
+                  className="w-4 h-4 rounded-full border-2 transition-all"
+                  style={{ backgroundColor: c, borderColor: avatarColor === c ? 'white' : 'transparent' }}
+                />
+              ))}
+            </div>
           </div>
-          <div>
-            <p className="text-lg font-bold text-white">{profile?.first_name}</p>
-            <p className="text-sm text-gray-400">{profile?.email}</p>
+          <div className="flex flex-col gap-1 mt-1">
+            <p className="text-lg font-bold text-white">
+              {(user?.user_metadata?.full_name as string) || profile?.first_name}
+            </p>
+            <p className="text-sm text-gray-400">{profile?.email || user?.email}</p>
             {profile?.company_name && (
               <p className="text-xs text-gray-500 mt-0.5">🏢 {profile.company_name}</p>
             )}
+            {(() => { const b = getPlanBadge(); return (
+              <span className={clsx('text-xs px-2 py-0.5 rounded-full font-medium w-fit mt-1', b.className)}>{b.label}</span>
+            ); })()}
           </div>
         </div>
 
