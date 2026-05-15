@@ -1,7 +1,10 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import { useUsage } from '@/hooks/useUsage';
@@ -445,6 +448,7 @@ export default function DashboardPage() {
   const { user } = useAuth();
   const { profile } = useProfile();
   const { data: usage, loading: usageLoading, isNearLimit } = useUsage();
+  const router = useRouter();
 
   const firstName = profile?.first_name
     ?? (user?.user_metadata?.full_name as string)?.split(' ')[0]
@@ -453,15 +457,70 @@ export default function DashboardPage() {
   const hasPlan = !!profile?.plan_key;
   const isEnterprise = profile?.plan_key === 'enterprise';
   const isStarter = profile?.plan_key?.startsWith('starter');
+  const isPro = profile?.plan_key?.startsWith('pro');
+
+  // Trial countdown — 3 days from now (hours:minutes)
+  const [trialCountdown, setTrialCountdown] = useState({ hours: 71, minutes: 59 });
+  useEffect(() => {
+    const trialEndsAt = Date.now() + 3 * 24 * 60 * 60 * 1000; // 3 days from mount
+    const tick = () => {
+      const diff = Math.max(0, trialEndsAt - Date.now());
+      const totalMinutes = Math.floor(diff / 60000);
+      setTrialCountdown({
+        hours: Math.floor(totalMinutes / 60),
+        minutes: totalMinutes % 60,
+      });
+    };
+    tick();
+    const id = setInterval(tick, 60000);
+    return () => clearInterval(id);
+  }, []);
+
+  // Usage numbers for urgency banner
+  const usageTotal = usage
+    ? Object.values(usage.usage).reduce((sum, v) => sum + v, 0)
+    : 0;
+  const usageLimit = usage?.limit ?? 5;
+
+  // Plan badge helper
+  const getPlanBadge = () => {
+    if (isEnterprise) return { label: '✓ Actif', className: 'bg-green-500/20 text-green-400 border border-green-500/30' };
+    if (isPro)        return { label: '✓ Actif', className: 'bg-green-500/20 text-green-400 border border-green-500/30' };
+    if (isStarter)    return { label: '⚡ Limité', className: 'bg-orange-500/20 text-orange-400 border border-orange-500/30' };
+    return              { label: '🔒 Bloqué', className: 'bg-red-500/20 text-red-400 border border-red-500/30' };
+  };
+  const planBadge = getPlanBadge();
 
   return (
     <div className="flex flex-col gap-8">
+      {/* Urgency banner */}
+      <motion.div
+        initial={{ y: -60, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.2, duration: 0.5, ease: 'easeOut' }}
+        onClick={() => router.push('/plans')}
+        className="cursor-pointer rounded-2xl px-5 py-3 flex items-center justify-between gap-3 shadow-lg"
+        style={{ background: 'linear-gradient(135deg, #f97316, #ef4444)' }}
+      >
+        <p className="text-white text-sm font-semibold">
+          ⚡ Vous utilisez {usageTotal}/{usageLimit} générations ce mois — Passez au Pro pour des générations illimitées
+        </p>
+        <span className="text-white/80 text-xs font-medium shrink-0 underline underline-offset-2">
+          Voir les plans →
+        </span>
+      </motion.div>
+
       {/* Hero */}
       <div>
         <h1 className="text-3xl font-bold text-white mb-1">
           {t('home.welcome', { name: firstName })}
         </h1>
         <p className="text-gray-400">{t('home.services')}</p>
+        {/* Trial countdown */}
+        <p className="text-red-400 text-sm font-medium mt-2">
+          ⏰ 3 jours d'essai restants —{' '}
+          {String(trialCountdown.hours).padStart(2, '0')}h{String(trialCountdown.minutes).padStart(2, '0')}m
+        </p>
       </div>
 
       <LimitWarning nearLimit={isNearLimit()} isEnterprise={isEnterprise} />
@@ -494,62 +553,103 @@ export default function DashboardPage() {
         <div className="relative z-10">
           <h2 className="text-lg font-semibold text-white mb-4">{t('dashboard.activeServices')}</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {SERVICES.map((service) => (
-              <Link
-                key={service.id}
-                href={`/services/${service.id}`}
-                className={clsx(
-                  'group relative overflow-hidden rounded-2xl border',
-                  'border-gray-700 bg-gray-900/80 backdrop-blur-sm',
-                  'hover:border-primary-500/50 hover:shadow-xl hover:shadow-primary-500/10',
-                  'transition-all duration-300 active:scale-[0.98]'
-                )}
-              >
-                {/* Accent top bar */}
-                <div
-                  className="h-0.5 w-full opacity-60"
-                  style={{ backgroundColor: service.accentColor }}
-                />
+            {SERVICES.map((service) => {
+              const serviceUsed = usage?.usage[service.id] ?? 0;
+              const serviceLimit = usage?.limit ?? 0;
+              const pct = serviceLimit > 0 ? Math.min(100, (serviceUsed / serviceLimit) * 100) : 0;
 
-                <div className="p-5 pb-3 flex items-center gap-3">
-                  <span className="text-3xl">{service.icon}</span>
-                  <div>
-                    <h3 className="text-sm font-semibold text-white leading-snug">
-                      {t(`${service.i18nKey}.name`)}
-                    </h3>
-                    {usage && usage.limit !== null && (
-                      <p className="text-xs mt-0.5" style={{ color: service.accentColor }}>
-                        {usage.usage[service.id] ?? 0}/{usage.limit} utilisations
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="mx-4 mb-4 h-28 overflow-hidden rounded-lg border border-gray-700/50">
-                  <ServiceMockup serviceId={service.id} accentColor={service.accentColor} />
-                </div>
-
-                <div
-                  className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity text-sm font-bold"
-                  style={{ color: service.accentColor }}
+              return (
+                <Link
+                  key={service.id}
+                  href={`/services/${service.id}`}
+                  className={clsx(
+                    'group relative overflow-hidden rounded-2xl border',
+                    'border-gray-700 bg-gray-900/80 backdrop-blur-sm',
+                    'hover:border-primary-500/50 hover:shadow-xl hover:shadow-primary-500/10',
+                    'transition-all duration-300 active:scale-[0.98]'
+                  )}
                 >
-                  →
-                </div>
-              </Link>
-            ))}
+                  {/* Accent top bar */}
+                  <div
+                    className="h-0.5 w-full opacity-60"
+                    style={{ backgroundColor: service.accentColor }}
+                  />
+
+                  {/* Plan badge — top right */}
+                  <span
+                    className={clsx(
+                      'absolute top-3 right-3 text-[10px] font-semibold px-2 py-0.5 rounded-full z-10',
+                      planBadge.className
+                    )}
+                  >
+                    {planBadge.label}
+                  </span>
+
+                  <div className="p-5 pb-3 flex items-center gap-3">
+                    <span className="text-3xl">{service.icon}</span>
+                    <div>
+                      <h3 className="text-sm font-semibold text-white leading-snug">
+                        {t(`${service.i18nKey}.name`)}
+                      </h3>
+                      {usage && usage.limit !== null && (
+                        <p className="text-xs mt-0.5" style={{ color: service.accentColor }}>
+                          {serviceUsed}/{usage.limit} utilisations
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="mx-4 mb-3 h-28 overflow-hidden rounded-lg border border-gray-700/50">
+                    <ServiceMockup serviceId={service.id} accentColor={service.accentColor} />
+                  </div>
+
+                  {/* Animated usage progress bar */}
+                  <div className="mx-4 mb-4">
+                    <div className="h-1.5 bg-gray-800 rounded-full overflow-hidden">
+                      <motion.div
+                        className="h-full rounded-full"
+                        style={{ backgroundColor: service.accentColor }}
+                        initial={{ width: 0 }}
+                        animate={{ width: `${pct}%` }}
+                        transition={{ duration: 0.8, ease: 'easeOut', delay: 0.3 }}
+                      />
+                    </div>
+                  </div>
+
+                  <div
+                    className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity text-sm font-bold"
+                    style={{ color: service.accentColor }}
+                  >
+                    →
+                  </div>
+                </Link>
+              );
+            })}
           </div>
         </div>
       </div>
 
       {/* Upgrade CTA */}
       {(isStarter || !hasPlan) && (
-        <div className="p-5 rounded-2xl border border-dashed border-gray-700 bg-gray-900/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div>
-            <p className="text-sm font-semibold text-white">{t('dashboard.addService')}</p>
-            <p className="text-xs text-gray-500 mt-0.5">{t('dashboard.upgradePlan')}</p>
+        <div
+          className="p-6 rounded-2xl border-2 bg-gray-900/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5"
+          style={{ borderImage: 'linear-gradient(135deg, #f59e0b, #f97316) 1' }}
+        >
+          <div className="flex items-center gap-4">
+            <div className="text-4xl">⚡</div>
+            <div>
+              <p className="text-base font-bold text-white">Passez au Pro — générations illimitées</p>
+              <p className="text-sm text-gray-400 mt-0.5">{t('dashboard.upgradePlan')}</p>
+            </div>
           </div>
           <Link href="/plans?source=dashboard">
-            <Button variant="primary" size="sm">Passer au Pro →</Button>
+            <motion.button
+              animate={{ scale: [1, 1.04, 1] }}
+              transition={{ repeat: Infinity, duration: 2, ease: 'easeInOut' }}
+              className="px-6 py-3 rounded-xl text-sm font-bold text-white shadow-lg shadow-amber-500/25 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 transition-colors whitespace-nowrap"
+            >
+              Passer au Pro →
+            </motion.button>
           </Link>
         </div>
       )}

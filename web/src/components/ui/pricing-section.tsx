@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import NumberFlow from '@number-flow/react'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -18,6 +18,8 @@ const PLANS = [
     badge: null,
     highlighted: false,
     planKeys: ['starter_individual', 'starter_professional'],
+    stars: '4.7',
+    userCount: '1 240 utilisateurs',
     features: [
       '5 générations par mois',
       '2 services IA disponibles',
@@ -35,6 +37,8 @@ const PLANS = [
     badge: 'Meilleur rapport qualité/prix',
     highlighted: true,
     planKeys: ['pro_individual', 'pro_professional'],
+    stars: '4.9',
+    userCount: '3 820 utilisateurs',
     features: [
       '30 générations par mois',
       'Tous les services IA',
@@ -53,6 +57,8 @@ const PLANS = [
     badge: null,
     highlighted: false,
     planKeys: ['enterprise'],
+    stars: '5.0',
+    userCount: '420 équipes',
     features: [
       'Générations illimitées',
       'Tous les services IA',
@@ -75,11 +81,27 @@ const cardVariants = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: 'easeOut' as const } },
 }
 
+function formatOfferCountdown(seconds: number): string {
+  if (seconds <= 0) return '00:00:00';
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = seconds % 60;
+  return [h, m, s].map((v) => String(v).padStart(2, '0')).join(':');
+}
+
 export function PricingSection() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { profile } = useProfile()
   const [billing, setBilling] = useState<'monthly' | 'annual'>('monthly')
+  const [offerSeconds, setOfferSeconds] = useState(23 * 3600 + 47 * 60 + 12)
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setOfferSeconds((prev) => (prev > 0 ? prev - 1 : 0))
+    }, 1000)
+    return () => clearInterval(id)
+  }, [])
 
   const serviceId = searchParams.get('service')
   const prompt = searchParams.get('prompt')
@@ -120,6 +142,17 @@ export function PricingSection() {
         >
           Essai gratuit 3 jours — sans carte bancaire requise
         </motion.p>
+        <motion.div
+          className="mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-red-950/40 border border-red-500/20"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.65, duration: 0.4 }}
+        >
+          <span className="text-sm font-medium" style={{ color: '#f87171' }}>
+            ⏰ Offre d'essai disponible encore{' '}
+            <span className="font-mono font-bold">{formatOfferCountdown(offerSeconds)}</span>
+          </span>
+        </motion.div>
       </div>
 
       {/* Billing toggle */}
@@ -178,17 +211,8 @@ export function PricingSection() {
           const isActive = activePlanKey !== null && plan.planKeys.includes(activePlanKey)
           const saving = annualSaving(plan)
 
-          return (
-            <motion.div
-              key={plan.id}
-              variants={cardVariants}
-              className={cn(
-                'relative flex flex-col rounded-2xl border p-7 transition-all duration-300',
-                plan.highlighted
-                  ? 'border-[#6C5CE7] bg-[#6C5CE7]/5 shadow-xl shadow-[#6C5CE7]/10'
-                  : 'border-gray-800 bg-gray-900/60 hover:border-gray-700'
-              )}
-            >
+          const cardContent = (
+            <>
               {/* Top glow for highlighted */}
               {plan.highlighted && (
                 <div
@@ -206,10 +230,16 @@ export function PricingSection() {
                 </div>
               )}
 
-              {/* Plan name */}
+              {/* Plan name + star ratings */}
               <div className="mb-5">
                 <h2 className="text-xl font-bold text-white">{plan.name}</h2>
                 <p className="text-sm text-gray-400 mt-1">{plan.description}</p>
+                <div className="flex items-center gap-1.5 mt-2">
+                  <span className="text-xs">⭐⭐⭐⭐⭐</span>
+                  <span className="text-xs text-gray-400 font-medium">
+                    {plan.stars} · {plan.userCount}
+                  </span>
+                </div>
               </div>
 
               {/* Price */}
@@ -271,6 +301,32 @@ export function PricingSection() {
                   Essayer 3 jours gratuits
                 </button>
               )}
+            </>
+          )
+
+          if (plan.highlighted) {
+            return (
+              <motion.div
+                key={plan.id}
+                variants={cardVariants}
+                className="relative flex flex-col rounded-2xl border p-7 transition-all duration-300 border-[#6C5CE7] bg-[#6C5CE7]/5 shadow-xl shadow-[#6C5CE7]/10"
+              >
+                {cardContent}
+              </motion.div>
+            )
+          }
+
+          return (
+            <motion.div
+              key={plan.id}
+              variants={cardVariants}
+              className="relative flex flex-col rounded-2xl border p-7 transition-colors duration-300 border-gray-800 bg-gray-900/60"
+              whileHover={{
+                boxShadow: '0 0 30px rgba(108,92,231,0.3)',
+                borderColor: 'rgba(108,92,231,0.6)',
+              }}
+            >
+              {cardContent}
             </motion.div>
           )
         })}

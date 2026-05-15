@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
@@ -16,6 +17,23 @@ const PLAN_LABELS: Record<string, string> = {
   pro_professional: 'Pro — Professionnel',
   enterprise: 'Enterprise',
 };
+
+function AnimatedCounter({ target }: { target: number }) {
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    if (target === 0) return;
+    let current = 0;
+    const interval = setInterval(() => {
+      current += 1;
+      setCount(current);
+      if (current >= target) clearInterval(interval);
+    }, 50);
+    return () => clearInterval(interval);
+  }, [target]);
+
+  return <span>{count}</span>;
+}
 
 export default function AccountPage() {
   const { t } = useTranslation();
@@ -89,6 +107,10 @@ export default function AccountPage() {
 
   const currentLang = (i18n.language?.slice(0, 2) ?? 'fr') as Locale;
 
+  const daysActive = profile?.created_at
+    ? Math.floor((Date.now() - new Date(profile.created_at).getTime()) / (1000 * 60 * 60 * 24))
+    : 0;
+
   return (
     <div className="flex flex-col gap-6 max-w-2xl">
       <h1 className="text-2xl font-bold text-white">{t('dashboard.account')}</h1>
@@ -98,7 +120,13 @@ export default function AccountPage() {
         <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">Profil</h2>
 
         <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-primary-500/20 border border-primary-500/30 flex items-center justify-center text-2xl font-bold text-primary-300">
+          <div
+            className="w-16 h-16 rounded-2xl flex items-center justify-center text-2xl font-bold text-white"
+            style={{
+              background: 'linear-gradient(135deg, #6C5CE7, #4834d4)',
+              boxShadow: '0 0 20px rgba(108,92,231,0.4)',
+            }}
+          >
             {profile?.first_name?.charAt(0).toUpperCase() ?? '?'}
           </div>
           <div>
@@ -125,7 +153,14 @@ export default function AccountPage() {
       </section>
 
       {/* Subscription card */}
-      <section className="bg-gray-900 border border-gray-800 rounded-2xl p-6 flex flex-col gap-4">
+      <section
+        className={clsx(
+          'bg-gray-900 rounded-2xl p-6 flex flex-col gap-4',
+          profile?.plan_key
+            ? 'border border-gray-800'
+            : 'border border-orange-500/50 animate-pulse'
+        )}
+      >
         <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">Abonnement</h2>
 
         {profile?.plan_key ? (
@@ -149,36 +184,79 @@ export default function AccountPage() {
             </Button>
           </>
         ) : (
-          <div className="flex items-center justify-between">
-            <p className="text-gray-400 text-sm">Aucun abonnement actif</p>
-            <a href="/plans" className="text-primary-400 text-sm font-semibold hover:text-primary-300 transition-colors">
-              Choisir un plan →
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-2">
+              <span className="text-lg">⚠️</span>
+              <p className="text-white font-semibold">Aucun abonnement actif</p>
+            </div>
+            <p className="text-sm text-red-400">Vos services sont limités</p>
+            <a
+              href="/plans"
+              className="inline-flex items-center justify-center px-5 py-3 rounded-xl font-bold text-white text-sm transition-all"
+              style={{
+                background: 'linear-gradient(135deg, #6C5CE7, #4834d4)',
+                boxShadow: '0 0 16px rgba(108,92,231,0.35)',
+              }}
+            >
+              Activer maintenant →
             </a>
           </div>
         )}
+      </section>
+
+      {/* Stats section */}
+      <section className="bg-gray-900 border border-gray-800 rounded-2xl p-6 flex flex-col gap-4">
+        <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">Statistiques</h2>
+        <div className="grid grid-cols-3 gap-4">
+          {[
+            { label: 'Générations utilisées', value: 0 },
+            { label: 'Jours actif', value: daysActive },
+            { label: 'Services utilisés', value: 0 },
+          ].map(({ label, value }) => (
+            <div key={label} className="flex flex-col gap-1">
+              <p
+                className="text-3xl font-extrabold"
+                style={{ color: '#6C5CE7' }}
+              >
+                <AnimatedCounter target={value} />
+              </p>
+              <p className="text-xs text-gray-500 leading-tight">{label}</p>
+            </div>
+          ))}
+        </div>
       </section>
 
       {/* Language */}
       <section className="bg-gray-900 border border-gray-800 rounded-2xl p-6 flex flex-col gap-4">
         <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">Langue</h2>
         <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
-          {locales.map((locale) => (
-            <button
-              key={locale}
-              onClick={() => handleLanguageChange(locale)}
-              className={clsx(
-                'flex flex-col items-center gap-1 p-2.5 rounded-xl border transition-all',
-                currentLang === locale
-                  ? 'border-primary-500 bg-primary-500/10'
-                  : 'border-gray-700 hover:border-gray-600 bg-gray-800'
-              )}
-            >
-              <span className="text-2xl">{localeFlags[locale]}</span>
-              <span className={clsx('text-xs', currentLang === locale ? 'text-primary-300' : 'text-gray-500')}>
-                {localeNames[locale]}
-              </span>
-            </button>
-          ))}
+          {locales.map((locale) => {
+            const isSelected = currentLang === locale;
+            return (
+              <motion.button
+                key={locale}
+                onClick={() => handleLanguageChange(locale)}
+                whileHover={{ scale: 1.05 }}
+                transition={{ duration: 0.15 }}
+                className={clsx(
+                  'flex flex-col items-center gap-1 p-2.5 rounded-xl border transition-all',
+                  isSelected
+                    ? 'border-primary-500 bg-primary-500/10'
+                    : 'border-gray-700 hover:border-gray-600 bg-gray-800'
+                )}
+                style={
+                  isSelected
+                    ? { boxShadow: 'inset 0 0 0 2px #6C5CE7, 0 0 12px rgba(108,92,231,0.3)' }
+                    : undefined
+                }
+              >
+                <span className="text-2xl">{localeFlags[locale]}</span>
+                <span className={clsx('text-xs', isSelected ? 'text-primary-300' : 'text-gray-500')}>
+                  {localeNames[locale]}
+                </span>
+              </motion.button>
+            );
+          })}
         </div>
       </section>
 

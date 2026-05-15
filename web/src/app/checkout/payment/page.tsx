@@ -3,13 +3,20 @@
 import { useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
+import { motion } from 'framer-motion';
 import { BackButton } from '@/components/ui/BackButton';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/hooks/useAuth';
-import { PLANS, getPrice, toPlanKey, type PlanId, type Billing } from '@/lib/plans';
+import { PLANS, toPlanKey, type PlanId, type Billing } from '@/lib/plans';
 import { clsx } from 'clsx';
 
 type PaymentMethod = 'stripe' | 'paypal';
+
+const PLAN_PRICES = {
+  starter: { monthly: 35, annualMonthly: 28, annualTotal: 336 },
+  pro: { monthly: 89.99, annualMonthly: 70, annualTotal: 840 },
+  enterprise: { monthly: 299.99, annualMonthly: 239, annualTotal: 2868 },
+} as const;
 
 export default function PaymentPage() {
   const { t } = useTranslation();
@@ -23,8 +30,11 @@ export default function PaymentPage() {
   const accountType = 'individual'; // from profile in real app
 
   const plan = PLANS.find((p) => p.id === planId);
-  const price = plan ? getPrice(plan, accountType, billing) : 0;
   const planKey = toPlanKey(planId, accountType);
+
+  const pricing = PLAN_PRICES[planId as keyof typeof PLAN_PRICES] ?? PLAN_PRICES.starter;
+  const price = billing === 'annual' ? pricing.annualMonthly : pricing.monthly;
+  const annualTotal = pricing.annualTotal;
 
   const [method, setMethod] = useState<PaymentMethod>('stripe');
   const [loading, setLoading] = useState(false);
@@ -152,16 +162,18 @@ export default function PaymentPage() {
             {t('payment.title')}
           </h1>
 
-          {/* Free trial notice */}
-          <div className="bg-success-DEFAULT/10 border border-success-DEFAULT/30 rounded-2xl px-5 py-4 flex items-center gap-3">
-            <span className="text-2xl">🎁</span>
+          {/* Trust banner */}
+          <div className="rounded-2xl px-5 py-5 flex items-center gap-4" style={{ background: 'linear-gradient(135deg, rgba(0,214,143,0.12), rgba(0,184,148,0.08))', border: '1px solid rgba(0,214,143,0.3)' }}>
+            <div className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(0,214,143,0.15)' }}>
+              {/* animated checkmark SVG */}
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <motion.path d="M5 13l4 4L19 7" stroke="#00D68F" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                  initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 0.6, delay: 0.2 }} />
+              </svg>
+            </div>
             <div>
-              <p className="text-sm font-bold text-success-DEFAULT">
-                {t('payment.freeTrialNotice')}
-              </p>
-              <p className="text-xs text-gray-400 mt-0.5">
-                Annulez à tout moment pendant l'essai, sans frais.
-              </p>
+              <p className="text-base font-bold" style={{ color: '#00D68F' }}>Vous ne serez pas débité pendant 3 jours</p>
+              <p className="text-sm text-gray-400 mt-0.5">Annulez à tout moment pendant l'essai gratuit, sans frais.</p>
             </div>
           </div>
 
@@ -174,8 +186,10 @@ export default function PaymentPage() {
               </p>
             </div>
             <div className="text-right">
-              <p className="text-2xl font-extrabold text-white">{price}€</p>
-              <p className="text-xs text-gray-500">{t('plans.perMonth')}</p>
+              <p className="text-2xl font-extrabold text-white">{price}€<span className="text-sm font-normal text-gray-400">/mois</span></p>
+              {billing === 'annual' && (
+                <p className="text-xs text-gray-500 mt-0.5">facturé {annualTotal}€/an</p>
+              )}
             </div>
           </div>
 
@@ -325,24 +339,32 @@ export default function PaymentPage() {
                 </div>
               </button>
 
-              <Button
-                onClick={handlePay}
-                loading={loading}
-                fullWidth
-                size="lg"
-                className={method === 'paypal' ? 'bg-[#FFB800] hover:bg-[#F5B000] text-gray-900' : ''}
-              >
-                {method === 'stripe' ? t('payment.payWithCard') : t('payment.payWithPaypal')}
-              </Button>
+              <div className="relative overflow-hidden rounded-xl">
+                <Button
+                  onClick={handlePay}
+                  loading={loading}
+                  fullWidth
+                  size="lg"
+                  className={method === 'paypal' ? 'bg-[#FFB800] hover:bg-[#F5B000] text-gray-900' : ''}
+                >
+                  {method === 'stripe' ? "Commencer l'essai gratuit ➜" : t('payment.payWithPaypal')}
+                </Button>
+                <div className="shimmer absolute inset-0 pointer-events-none rounded-xl" />
+              </div>
             </div>
           )}
 
-          {/* Security badge — hidden when master code active */}
+          {/* Security badges — hidden when master code active */}
           {!isMasterCode && (
-            <p className="text-center text-xs text-gray-600 flex items-center justify-center gap-1.5">
-              <span>🔒</span>
-              {t('payment.secure')}
-            </p>
+            <div className="flex flex-wrap items-center justify-center gap-3 text-xs text-gray-500">
+              <span className="flex items-center gap-1">🔒 SSL sécurisé</span>
+              <span className="text-gray-700">·</span>
+              <span className="flex items-center gap-1">✓ Annulation facile</span>
+              <span className="text-gray-700">·</span>
+              <span className="flex items-center gap-1">⭐ 4.9/5 satisfaction</span>
+              <span className="text-gray-700">·</span>
+              <span className="flex items-center gap-1">↩ Remboursement 30j</span>
+            </div>
           )}
         </div>
       </div>

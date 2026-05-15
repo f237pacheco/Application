@@ -7,7 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import { Logo } from '@/components/ui/Logo';
 import { clsx } from 'clsx';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 const PLAN_LABELS: Record<string, { label: string; color: string }> = {
   starter_individual:   { label: 'Starter',    color: 'bg-gray-700 text-gray-300' },
@@ -17,6 +17,16 @@ const PLAN_LABELS: Record<string, { label: string; color: string }> = {
   enterprise:           { label: 'Enterprise',  color: 'bg-success-DEFAULT/20 text-success-DEFAULT border border-success-DEFAULT/30' },
 };
 
+function formatCountdown(ms: number): string {
+  if (ms <= 0) return '0j 0h 0m 0s';
+  const totalSeconds = Math.floor(ms / 1000);
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  return `${days}j ${hours}h ${minutes}m ${seconds}s`;
+}
+
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { t } = useTranslation();
   const pathname = usePathname();
@@ -24,6 +34,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { user, signOut } = useAuth();
   const { profile } = useProfile();
   const [signingOut, setSigningOut] = useState(false);
+  const [countdown, setCountdown] = useState('');
+  const expiryRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    expiryRef.current = Date.now() + 3 * 24 * 60 * 60 * 1000;
+    const tick = () => {
+      if (expiryRef.current !== null) {
+        setCountdown(formatCountdown(expiryRef.current - Date.now()));
+      }
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, []);
 
   const tabs = [
     { href: '/dashboard',          label: t('dashboard.myServices') },
@@ -43,8 +67,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   };
 
   return (
-    <div className="min-h-screen bg-gray-950 flex flex-col">
-      <header className="sticky top-0 z-40 bg-gray-950/95 backdrop-blur border-b border-gray-900">
+    <div className="min-h-screen flex flex-col">
+      <header
+        className="sticky top-0 z-40 backdrop-blur-xl border-b"
+        style={{ background: 'rgba(3,7,18,0.85)', borderColor: 'rgba(255,255,255,0.06)' }}
+      >
         <div className="max-w-5xl mx-auto px-6 py-3 flex items-center justify-between gap-4">
           <Logo size="sm" />
 
@@ -56,14 +83,24 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             ) : (
               <Link
                 href="/plans?source=header"
-                className="text-xs font-semibold px-3 py-1 rounded-full border border-gray-700 text-gray-400 hover:border-primary-500 hover:text-primary-300 transition-colors"
+                className="pulse-glow text-xs font-semibold px-3 py-1.5 rounded-full bg-gradient-to-r from-violet-600 to-indigo-600 text-white hover:opacity-90 transition-opacity"
               >
                 Choisir un plan
               </Link>
             )}
 
+            {countdown && (
+              <div className="flex items-center gap-1.5 text-xs font-mono text-red-400">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10" />
+                  <polyline points="12 6 12 12 16 14" />
+                </svg>
+                <span>{countdown}</span>
+              </div>
+            )}
+
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-primary-500/30 border border-primary-500/50 flex items-center justify-center text-sm font-bold text-primary-300">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-600 to-indigo-600 flex items-center justify-center text-sm font-bold text-white shadow-lg shadow-violet-500/20">
                 {firstName.charAt(0).toUpperCase()}
               </div>
               <button
@@ -77,7 +114,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         </div>
 
-        <nav className="max-w-5xl mx-auto px-6 flex gap-1 border-t border-gray-900/50">
+        <nav className="max-w-5xl mx-auto px-6 flex gap-1 border-t" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
           {tabs.map((tab) => {
             const isActive = tab.href === '/dashboard'
               ? pathname === '/dashboard'

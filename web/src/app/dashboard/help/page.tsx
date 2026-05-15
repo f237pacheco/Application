@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
-import { clsx } from 'clsx';
 
 const FAQ_ITEMS = [
   {
@@ -42,29 +42,70 @@ const FAQ_ITEMS = [
 function FaqItem({ q, a }: { q: string; a: string }) {
   const [open, setOpen] = useState(false);
   return (
-    <button
-      onClick={() => setOpen((v) => !v)}
-      className="w-full text-left border-b border-gray-800 last:border-0"
+    <div
+      className="border-b border-gray-800 last:border-0 rounded-xl transition-colors"
+      style={open ? { background: 'rgba(108,92,231,0.05)' } : undefined}
     >
-      <div className="flex items-center justify-between py-4 gap-4">
-        <span className="text-sm font-medium text-white">{q}</span>
-        <span className={clsx('text-gray-500 text-lg transition-transform flex-shrink-0', open && 'rotate-45')}>
-          +
-        </span>
-      </div>
-      {open && (
-        <p className="text-sm text-gray-400 pb-4 leading-relaxed">{a}</p>
-      )}
-    </button>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="w-full text-left px-2"
+      >
+        <div className="flex items-center justify-between py-4 gap-4">
+          <span className="text-sm font-medium text-white">{q}</span>
+          <motion.span
+            animate={{ rotate: open ? 45 : 0 }}
+            transition={{ duration: 0.2 }}
+            className="text-gray-500 text-lg flex-shrink-0 inline-block"
+          >
+            +
+          </motion.span>
+        </div>
+      </button>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25, ease: 'easeInOut' }}
+            className="overflow-hidden px-2"
+          >
+            <p className="text-sm text-gray-400 pb-4 leading-relaxed">{a}</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
 
 export default function HelpPage() {
   const { t } = useTranslation();
+  const [search, setSearch] = useState('');
+
+  const filtered = FAQ_ITEMS.filter(
+    ({ q, a }) =>
+      q.toLowerCase().includes(search.toLowerCase()) ||
+      a.toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
     <div className="flex flex-col gap-6 max-w-2xl">
       <h1 className="text-2xl font-bold text-white">{t('dashboard.help')}</h1>
+
+      {/* Search */}
+      <div className="relative">
+        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-base pointer-events-none select-none">
+          🔍
+        </span>
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Rechercher une question..."
+          className="w-full pl-11 pr-4 py-3 rounded-xl bg-gray-900 border border-gray-800 text-white text-sm placeholder-gray-600
+            focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+        />
+      </div>
 
       {/* FAQ */}
       <section className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
@@ -72,9 +113,13 @@ export default function HelpPage() {
           Questions fréquentes
         </h2>
         <div>
-          {FAQ_ITEMS.map((item, i) => (
-            <FaqItem key={i} q={item.q} a={item.a} />
-          ))}
+          {filtered.length > 0 ? (
+            filtered.map((item, i) => (
+              <FaqItem key={i} q={item.q} a={item.a} />
+            ))
+          ) : (
+            <p className="text-sm text-gray-600 py-4">Aucune question ne correspond à votre recherche.</p>
+          )}
         </div>
       </section>
 
@@ -123,17 +168,42 @@ export default function HelpPage() {
           { icon: '🔒', label: 'Politique de confidentialité', sub: 'Comment nous protégeons vos données' },
           { icon: '📋', label: 'Conditions d\'utilisation', sub: 'CGU et mentions légales' },
         ].map(({ icon, label, sub }) => (
-          <div
+          <motion.div
             key={label}
-            className="flex items-center gap-3 p-3 rounded-xl bg-gray-800"
+            whileHover={{ x: 4, backgroundColor: 'rgba(108,92,231,0.08)' }}
+            transition={{ duration: 0.15 }}
+            className="flex items-center gap-3 p-3 rounded-xl bg-gray-800 cursor-pointer group"
           >
             <span className="text-xl">{icon}</span>
-            <div>
+            <div className="flex-1">
               <p className="text-sm font-medium text-white">{label}</p>
               <p className="text-xs text-gray-500">{sub}</p>
             </div>
-          </div>
+            <motion.span
+              initial={{ opacity: 0 }}
+              whileHover={{ opacity: 1 }}
+              className="text-primary-400 text-sm font-bold"
+            >
+              →
+            </motion.span>
+          </motion.div>
         ))}
+      </section>
+
+      {/* Urgency widget */}
+      <section className="rounded-2xl p-6 flex flex-col gap-4 border border-violet-500/30 bg-gradient-to-br from-violet-900/50 to-indigo-900/30">
+        <div className="flex items-center gap-2">
+          <span className="text-2xl">💬</span>
+          <h2 className="text-lg font-bold text-white">Besoin d'aide urgente ?</h2>
+        </div>
+        <p className="text-sm text-gray-300">Notre équipe répond en moins de 2h</p>
+        <a
+          href="mailto:support@velona.io"
+          className="inline-flex items-center justify-center px-5 py-3 rounded-xl font-bold text-white text-sm animate-pulse transition-all"
+          style={{ background: 'linear-gradient(135deg, #6C5CE7, #4834d4)' }}
+        >
+          Contacter le support
+        </a>
       </section>
 
       {/* Version */}

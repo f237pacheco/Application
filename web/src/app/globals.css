@@ -13,7 +13,11 @@
   }
 
   body {
-    @apply bg-white text-gray-900 dark:bg-gray-950 dark:text-white;
+    @apply bg-gray-950 text-white;
+    background-image:
+      radial-gradient(ellipse at top left, rgba(108,92,231,0.15) 0%, transparent 60%),
+      radial-gradient(ellipse at bottom right, rgba(99,102,241,0.1) 0%, transparent 60%);
+    background-attachment: fixed;
   }
 }
 
@@ -28,5 +32,25 @@
 
   .card {
     @apply bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-6;
+  }
+
+  .shimmer {
+    background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.08) 50%, transparent 100%);
+    background-size: 200% 100%;
+    animation: shimmer 2s infinite;
+  }
+
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+
+  @keyframes pulse-glow {
+    0%, 100% { box-shadow: 0 0 8px rgba(108,92,231,0.4), 0 0 20px rgba(108,92,231,0.2); }
+    50% { box-shadow: 0 0 16px rgba(108,92,231,0.8), 0 0 40px rgba(108,92,231,0.4); }
+  }
+
+  .pulse-glow {
+    animation: pulse-glow 3s ease-in-out infinite;
   }
 }
