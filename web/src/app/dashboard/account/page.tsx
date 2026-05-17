@@ -1,13 +1,15 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { motion } from 'framer-motion';
+import Link from 'next/link';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import { Button } from '@/components/ui/Button';
 import { locales, localeNames, localeFlags, isRtl, type Locale } from '@/lib/i18n/config';
 import i18n from '@/lib/i18n/client';
+import { createClient } from '@/lib/supabase/client';
 import { clsx } from 'clsx';
 
 const PLAN_LABELS: Record<string, string> = {
@@ -18,9 +20,38 @@ const PLAN_LABELS: Record<string, string> = {
   enterprise: 'Enterprise',
 };
 
+const NOTIF_OPTIONS = [
+  { key: 'creation_done' as const,        label: 'Création terminée',          desc: 'Notifié quand une génération est prête' },
+  { key: 'subscription_ending' as const,  label: 'Abonnement bientôt fini',    desc: 'Rappel avant expiration' },
+  { key: 'product_news' as const,         label: 'Actualités produit',          desc: 'Nouvelles fonctionnalités et mises à jour' },
+  { key: 'exclusive_offers' as const,     label: 'Offres exclusives',           desc: 'Promotions réservées aux membres' },
+  { key: 'push_mobile' as const,          label: 'Push mobile',                 desc: 'Alertes directement sur votre téléphone' },
+];
+
+type NotifPrefs = Record<typeof NOTIF_OPTIONS[number]['key'], boolean>;
+
+/* ── Toggle switch ──────────────────────────────────────────────────────────── */
+function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <button
+      role="switch"
+      aria-checked={checked}
+      onClick={() => onChange(!checked)}
+      className="relative w-11 h-6 rounded-full transition-colors duration-200 shrink-0"
+      style={{ background: checked ? '#6C5CE7' : '#374151' }}
+    >
+      <motion.div
+        className="absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow-sm"
+        animate={{ x: checked ? 20 : 0 }}
+        transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+      />
+    </button>
+  );
+}
+
+/* ── Animated counter ───────────────────────────────────────────────────────── */
 function AnimatedCounter({ target }: { target: number }) {
   const [count, setCount] = useState(0);
-
   useEffect(() => {
     if (target === 0) return;
     let current = 0;
@@ -31,7 +62,6 @@ function AnimatedCounter({ target }: { target: number }) {
     }, 50);
     return () => clearInterval(interval);
   }, [target]);
-
   return <span>{count}</span>;
 }
 
@@ -40,13 +70,23 @@ export default function AccountPage() {
   const { session, signOut, user } = useAuth();
   const { profile, loading } = useProfile();
 
-  const [partnerUrl, setPartnerUrl] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [billingLoading, setBillingLoading] = useState(false);
   const [avatarColor, setAvatarColor] = useState('#6C5CE7');
   const [avatarPhoto, setAvatarPhoto] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Notifications state
+  const [notifPrefs, setNotifPrefs] = useState<NotifPrefs>({
+    creation_done: true,
+    subscription_ending: true,
+    product_news: false,
+    exclusive_offers: false,
+    push_mobile: false,
+  });
+  const [notifSaved, setNotifSaved] = useState(false);
+
+  // Preferences (theme)
+  const [isDark, setIsDark] = useState(true);
 
   const AVATAR_COLORS = ['#6C5CE7', '#4834d4', '#e91e8c', '#f97316', '#00b894', '#0984e3'];
 
@@ -100,27 +140,53 @@ export default function AccountPage() {
     }
   };
 
-  const handlePartnerSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!partnerUrl.trim()) return;
+  const handleNotifChange = async (key: typeof NOTIF_OPTIONS[number]['key'], value: boolean) => {
+    const updated = { ...notifPrefs, [key]: value };
+    setNotifPrefs(updated);
     try {
-      setSubmitting(true);
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/partner/submit`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session?.access_token}`,
-        },
-        body: JSON.stringify({ url: partnerUrl.trim() }),
-      });
-      setSubmitStatus(res.ok ? 'success' : 'error');
-      if (res.ok) setPartnerUrl('');
-    } catch {
-      setSubmitStatus('error');
-    } finally {
-      setSubmitting(false);
+      const supabase = createClient();
+      await supabase.from('user_preferences').upsert(
+        { user_id: user?.id, notifications: updated },
+        { onConflict: 'user_id' }
+      );
+      setNotifSaved(true);
+      setTimeout(() => setNotifSaved(false), 2000);
+    } catch { /* silent */ }
+  };
+
+  const handleThemeToggle = (lightMode: boolean) => {
+    setIsDark(!lightMode);
+    if (lightMode) {
+      document.documentElement.classList.add('light-mode');
+      localStorage.setItem('velona_theme', 'light');
+    } else {
+      document.documentElement.classList.remove('light-mode');
+      localStorage.setItem('velona_theme', 'dark');
     }
   };
+
+  // Init preferences from storage / Supabase
+  useEffect(() => {
+    const theme = localStorage.getItem('velona_theme');
+    if (theme === 'light') {
+      setIsDark(false);
+      document.documentElement.classList.add('light-mode');
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    const loadPrefs = async () => {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from('user_preferences')
+        .select('notifications')
+        .eq('user_id', user.id)
+        .single();
+      if (data?.notifications) setNotifPrefs(data.notifications as NotifPrefs);
+    };
+    loadPrefs();
+  }, [user?.id]);
 
   if (loading) {
     return (
@@ -147,7 +213,6 @@ export default function AccountPage() {
         <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">Profil</h2>
 
         <div className="flex items-start gap-4">
-          {/* Avatar */}
           <div className="flex flex-col items-center gap-2">
             <div className="relative">
               <div
@@ -242,13 +307,8 @@ export default function AccountPage() {
               </div>
               <span className="w-2.5 h-2.5 rounded-full bg-success-DEFAULT" />
             </div>
-            <Button
-              onClick={handleBillingPortal}
-              loading={billingLoading}
-              variant="outline"
-              size="sm"
-            >
-              Gérer l'abonnement →
+            <Button onClick={handleBillingPortal} loading={billingLoading} variant="outline" size="sm">
+              Gérer l&apos;abonnement →
             </Button>
           </>
         ) : (
@@ -282,15 +342,89 @@ export default function AccountPage() {
             { label: 'Services utilisés', value: 0 },
           ].map(({ label, value }) => (
             <div key={label} className="flex flex-col gap-1">
-              <p
-                className="text-3xl font-extrabold"
-                style={{ color: '#6C5CE7' }}
-              >
+              <p className="text-3xl font-extrabold" style={{ color: '#6C5CE7' }}>
                 <AnimatedCounter target={value} />
               </p>
               <p className="text-xs text-gray-500 leading-tight">{label}</p>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* NOTIFICATIONS */}
+      <section className="bg-gray-900 border border-gray-800 rounded-2xl p-6 flex flex-col gap-5">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">Notifications</h2>
+          <AnimatePresence>
+            {notifSaved && (
+              <motion.span
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                className="text-xs text-success-DEFAULT font-medium"
+              >
+                ✓ Sauvegardé
+              </motion.span>
+            )}
+          </AnimatePresence>
+        </div>
+        <div className="flex flex-col gap-4">
+          {NOTIF_OPTIONS.map((opt) => (
+            <div key={opt.key} className="flex items-center justify-between gap-4">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-white font-medium">{opt.label}</p>
+                <p className="text-xs text-gray-500 mt-0.5">{opt.desc}</p>
+              </div>
+              <Toggle checked={notifPrefs[opt.key]} onChange={(v) => handleNotifChange(opt.key, v)} />
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* FACTURATION */}
+      <section className="bg-gray-900 border border-gray-800 rounded-2xl p-6 flex flex-col gap-1">
+        <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">Facturation</h2>
+
+        <div className="flex items-center justify-between py-3 border-b border-gray-800">
+          <div>
+            <p className="text-sm text-white font-medium">Plan actuel</p>
+            <p className="text-xs text-gray-500 mt-0.5">
+              {PLAN_LABELS[profile?.plan_key as string] ?? 'Aucun plan actif'}
+            </p>
+          </div>
+          <span className={clsx('w-2 h-2 rounded-full', profile?.plan_key ? 'bg-success-DEFAULT' : 'bg-red-500')} />
+        </div>
+
+        <div className="flex items-center justify-between py-3 border-b border-gray-800">
+          <div>
+            <p className="text-sm text-white font-medium">Renouvellement</p>
+            <p className="text-xs text-gray-500 mt-0.5">Géré automatiquement via Stripe</p>
+          </div>
+          <span className="text-xs text-gray-500">—</span>
+        </div>
+
+        <div className="flex items-center justify-between py-3 mb-3">
+          <div>
+            <p className="text-sm text-white font-medium">Moyen de paiement</p>
+            <p className="text-xs text-gray-500 mt-0.5">Consultez le portail Stripe</p>
+          </div>
+          <span className="text-xs text-gray-500 font-mono">••••</span>
+        </div>
+
+        <Button onClick={handleBillingPortal} loading={billingLoading} variant="outline" size="sm">
+          Gérer l&apos;abonnement →
+        </Button>
+      </section>
+
+      {/* PRÉFÉRENCES */}
+      <section className="bg-gray-900 border border-gray-800 rounded-2xl p-6 flex flex-col gap-4">
+        <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">Préférences</h2>
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex-1">
+            <p className="text-sm text-white font-medium">Mode clair</p>
+            <p className="text-xs text-gray-500 mt-0.5">Basculer entre le mode sombre et clair</p>
+          </div>
+          <Toggle checked={!isDark} onChange={(v) => handleThemeToggle(v)} />
         </div>
       </section>
 
@@ -328,64 +462,38 @@ export default function AccountPage() {
         </div>
       </section>
 
-      {/* Partner programme */}
-      <section className="bg-gray-900 border border-gray-800 rounded-2xl p-6 flex flex-col gap-4">
-        <div>
-          <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-1">
-            {t('partner.title')}
-          </h2>
-          <p className="text-xs text-gray-500">{t('partner.description')}</p>
+      {/* PROGRAMME PARTENAIRE condensé */}
+      <section
+        className="rounded-2xl p-5 flex items-center gap-4"
+        style={{ background: 'rgba(108,92,231,0.06)', backdropFilter: 'blur(8px)', border: '1px solid rgba(108,92,231,0.2)' }}
+      >
+        <div
+          className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+          style={{ background: 'rgba(108,92,231,0.15)' }}
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+            <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" stroke="#a78bfa" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            <circle cx="9" cy="7" r="4" stroke="#a78bfa" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke="#a78bfa" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
         </div>
-
-        {/* Promo code */}
-        {profile?.promo_code && (
-          <div className="bg-primary-500/10 border border-primary-500/20 rounded-xl p-4 flex items-center justify-between gap-3">
-            <div>
-              <p className="text-xs text-gray-400 mb-0.5">{t('partner.yourCode')}</p>
-              <p className="text-lg font-bold tracking-widest text-primary-300 font-mono">
-                {profile.promo_code}
-              </p>
-            </div>
-            <button
-              onClick={() => navigator.clipboard?.writeText(profile.promo_code!)}
-              className="text-xs text-gray-500 hover:text-white border border-gray-700 hover:border-gray-500 px-3 py-1.5 rounded-lg transition-all"
-            >
-              Copier
-            </button>
-          </div>
-        )}
-
-        {/* Submit form */}
-        <form onSubmit={handlePartnerSubmit} className="flex flex-col gap-3">
-          <label className="text-sm font-medium text-gray-200">{t('partner.submitLink')}</label>
-          <div className="flex gap-2">
-            <input
-              type="url"
-              value={partnerUrl}
-              onChange={(e) => { setPartnerUrl(e.target.value); setSubmitStatus('idle'); }}
-              placeholder={t('partner.linkPlaceholder')}
-              className="flex-1 px-4 py-2.5 rounded-xl bg-gray-800 border border-gray-700 text-white text-sm placeholder-gray-600
-                focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
-            />
-            <Button type="submit" loading={submitting} size="sm" disabled={!partnerUrl.trim()}>
-              {t('partner.submit')}
-            </Button>
-          </div>
-
-          {submitStatus === 'success' && (
-            <p className="text-xs text-success-DEFAULT">✓ Lien soumis ! Validation sous 24-48h.</p>
-          )}
-          {submitStatus === 'error' && (
-            <p className="text-xs text-red-400">Erreur, vérifiez l'URL ou réessayez.</p>
-          )}
-        </form>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-white">Programme Partenaire</p>
+          <p className="text-xs text-gray-400 mt-0.5">Partagez Velona et gagnez des récompenses</p>
+        </div>
+        <Link
+          href="/dashboard/partner"
+          className="text-xs font-semibold px-4 py-2 rounded-xl text-violet-300 border border-violet-500/30 hover:bg-violet-500/10 transition-colors whitespace-nowrap shrink-0"
+        >
+          Découvrir →
+        </Link>
       </section>
 
       {/* Danger zone */}
       <section className="border border-red-500/20 rounded-2xl p-5 flex items-center justify-between gap-4">
         <div>
           <p className="text-sm font-semibold text-white">Déconnexion</p>
-          <p className="text-xs text-gray-500 mt-0.5">Vous serez redirigé vers l'écran de connexion</p>
+          <p className="text-xs text-gray-500 mt-0.5">Vous serez redirigé vers l&apos;écran de connexion</p>
         </div>
         <Button onClick={() => signOut()} variant="outline" size="sm" className="border-red-500/40 text-red-400 hover:bg-red-500/10">
           Se déconnecter

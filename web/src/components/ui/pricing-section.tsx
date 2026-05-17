@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
+import { useState, useEffect, useRef } from 'react'
+import { motion, useMotionValue, useTransform } from 'framer-motion'
 import NumberFlow from '@number-flow/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { cn } from '@/lib/utils'
@@ -71,6 +71,12 @@ const PLANS = [
   },
 ]
 
+const PLAN_KEYWORDS: Record<string, string[]> = {
+  starter: ['IA', 'Site web', 'Rapide'],
+  pro: ['Illimité', 'Analytics', 'Prioritaire'],
+  enterprise: ['API', 'Équipe', 'Sur mesure'],
+}
+
 const containerVariants = {
   hidden: {},
   visible: { transition: { staggerChildren: 0.12 } },
@@ -95,6 +101,24 @@ export function PricingSection() {
   const { profile } = useProfile()
   const [billing, setBilling] = useState<'monthly' | 'annual'>('monthly')
   const [offerSeconds, setOfferSeconds] = useState(23 * 3600 + 47 * 60 + 12)
+  const [hoveredPlan, setHoveredPlan] = useState<string | null>(null)
+
+  const containerRef = useRef<HTMLDivElement>(null)
+  const mouseX = useMotionValue(0)
+  const mouseY = useMotionValue(0)
+
+  const orb1X = useTransform(mouseX, [-0.5, 0.5], ['-30px', '30px'])
+  const orb1Y = useTransform(mouseY, [-0.5, 0.5], ['-30px', '30px'])
+  const orb2X = useTransform(mouseX, [-0.5, 0.5], ['30px', '-30px'])
+  const orb2Y = useTransform(mouseY, [-0.5, 0.5], ['30px', '-30px'])
+  const orb3X = useTransform(mouseX, [-0.5, 0.5], ['-15px', '15px'])
+  const orb3Y = useTransform(mouseY, [-0.5, 0.5], ['15px', '-15px'])
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect()
+    mouseX.set((e.clientX - rect.left - rect.width / 2) / rect.width)
+    mouseY.set((e.clientY - rect.top - rect.height / 2) / rect.height)
+  }
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -122,12 +146,25 @@ export function PricingSection() {
     Math.round(100 - (plan.annualPrice / plan.monthlyPrice) * 100)
 
   return (
-    <div className="relative overflow-hidden min-h-screen bg-gray-950 flex flex-col items-center px-4 py-16 sm:py-24">
-      {/* Decorative background */}
+    <div
+      ref={containerRef}
+      className="relative overflow-hidden min-h-screen bg-gray-950 flex flex-col items-center px-4 py-16 sm:py-24"
+      onMouseMove={handleMouseMove}
+    >
+      {/* Decorative background — parallax orbs */}
       <div className="absolute inset-0 pointer-events-none select-none" aria-hidden>
-        <div className="absolute -top-32 -left-32 w-96 h-96 rounded-full blur-[100px]" style={{ background: 'rgba(108,92,231,0.2)' }} />
-        <div className="absolute -bottom-32 -right-32 w-96 h-96 rounded-full blur-[100px]" style={{ background: 'rgba(99,102,241,0.16)' }} />
-        <div className="absolute top-1/2 -left-20 w-64 h-64 rounded-full blur-[80px]" style={{ background: 'rgba(139,92,246,0.1)' }} />
+        <motion.div
+          className="absolute -top-32 -left-32 w-96 h-96 rounded-full blur-[100px]"
+          style={{ background: 'rgba(108,92,231,0.2)', x: orb1X, y: orb1Y }}
+        />
+        <motion.div
+          className="absolute -bottom-32 -right-32 w-96 h-96 rounded-full blur-[100px]"
+          style={{ background: 'rgba(99,102,241,0.16)', x: orb2X, y: orb2Y }}
+        />
+        <motion.div
+          className="absolute top-1/2 -left-20 w-64 h-64 rounded-full blur-[80px]"
+          style={{ background: 'rgba(139,92,246,0.1)', x: orb3X, y: orb3Y }}
+        />
         <div className="absolute inset-0" style={{ backgroundImage: 'linear-gradient(rgba(108,92,231,0.045) 1px, transparent 1px), linear-gradient(90deg, rgba(108,92,231,0.045) 1px, transparent 1px)', backgroundSize: '48px 48px' }} />
         {([
           { x: '8%',  y: '10%', delay: 0,   s: 3 },
@@ -173,7 +210,7 @@ export function PricingSection() {
           transition={{ delay: 0.65, duration: 0.4 }}
         >
           <span className="text-sm font-medium" style={{ color: '#f87171' }}>
-            Offre d'essai disponible encore{' '}
+            Offre d&apos;essai disponible encore{' '}
             <span className="font-mono font-bold">{formatOfferCountdown(offerSeconds)}</span>
           </span>
         </motion.div>
@@ -217,7 +254,7 @@ export function PricingSection() {
               animate={{ opacity: 1, scale: 1 }}
               className="text-xs font-semibold px-3 py-1 rounded-full bg-[#6C5CE7]/20 text-[#a899ff] border border-[#6C5CE7]/30"
             >
-              Économisez jusqu'à 22%
+              Économisez jusqu&apos;à 22%
             </motion.span>
           )}
         </div>
@@ -237,6 +274,8 @@ export function PricingSection() {
           const price = billing === 'monthly' ? plan.monthlyPrice : plan.annualPrice
           const isActive = activePlanKey !== null && plan.planKeys.includes(activePlanKey)
           const saving = annualSaving(plan)
+          const keywords = PLAN_KEYWORDS[plan.id] ?? []
+          const isHovered = hoveredPlan === plan.id
 
           const cardContent = (
             <>
@@ -256,6 +295,21 @@ export function PricingSection() {
                   </span>
                 </div>
               )}
+
+              {/* Floating keywords on hover */}
+              <div className="absolute top-3 right-3 flex flex-col gap-1 items-end overflow-hidden">
+                {keywords.map((kw, ki) => (
+                  <motion.span
+                    key={kw}
+                    initial={{ opacity: 0, x: 12 }}
+                    animate={isHovered ? { opacity: 1, x: 0 } : { opacity: 0, x: 12 }}
+                    transition={{ delay: ki * 0.06, duration: 0.25, ease: 'easeOut' }}
+                    className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-violet-500/15 text-violet-300 border border-violet-500/20 whitespace-nowrap"
+                  >
+                    {kw}
+                  </motion.span>
+                ))}
+              </div>
 
               {/* Plan name + star ratings */}
               <div className="mb-5">
@@ -284,7 +338,7 @@ export function PricingSection() {
                 <div style={{ height: 20 }}>
                   {billing === 'annual' && (
                     <p className="text-xs text-[#a899ff]">
-                      soit {(price * 12).toFixed(0)}€/an · {saving}% d'économie
+                      soit {(price * 12).toFixed(0)}€/an · {saving}% d&apos;économie
                     </p>
                   )}
                 </div>
@@ -336,6 +390,8 @@ export function PricingSection() {
               <motion.div
                 key={plan.id}
                 variants={cardVariants}
+                onMouseEnter={() => setHoveredPlan(plan.id)}
+                onMouseLeave={() => setHoveredPlan(null)}
                 className="relative flex flex-col rounded-2xl border p-7 transition-all duration-300 border-[#6C5CE7] bg-[#6C5CE7]/5 shadow-xl shadow-[#6C5CE7]/10"
               >
                 {cardContent}
@@ -347,6 +403,8 @@ export function PricingSection() {
             <motion.div
               key={plan.id}
               variants={cardVariants}
+              onMouseEnter={() => setHoveredPlan(plan.id)}
+              onMouseLeave={() => setHoveredPlan(null)}
               className="relative flex flex-col rounded-2xl border p-7 transition-colors duration-300 border-gray-800 bg-gray-900/60"
               whileHover={{
                 boxShadow: '0 0 30px rgba(108,92,231,0.3)',
@@ -365,7 +423,7 @@ export function PricingSection() {
         animate={{ opacity: 1 }}
         transition={{ delay: 1.2 }}
       >
-        Aucune carte bancaire requise pour l'essai · Annulation à tout moment · Paiement 100% sécurisé
+        Aucune carte bancaire requise pour l&apos;essai · Annulation à tout moment · Paiement 100% sécurisé
       </motion.p>
     </div>
   )
