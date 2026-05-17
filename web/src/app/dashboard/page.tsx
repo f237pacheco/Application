@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
@@ -667,6 +667,7 @@ export default function DashboardPage() {
   const { user } = useAuth();
   const { profile } = useProfile();
   const { data: usage, loading: usageLoading, isNearLimit } = useUsage();
+  const [showAll, setShowAll] = useState(false);
 
   const firstName = profile?.first_name
     ?? (user?.user_metadata?.full_name as string)?.split(' ')[0]
@@ -675,31 +676,200 @@ export default function DashboardPage() {
   const hasPlan = !!profile?.plan_key;
   const isEnterprise = profile?.plan_key === 'enterprise';
 
-  // Trial countdown — 3 days from now (hours:minutes)
-  const [trialCountdown, setTrialCountdown] = useState({ hours: 71, minutes: 59 });
-  useEffect(() => {
-    const trialEndsAt = Date.now() + 3 * 24 * 60 * 60 * 1000;
-    const tick = () => {
-      const diff = Math.max(0, trialEndsAt - Date.now());
-      const totalMinutes = Math.floor(diff / 60000);
-      setTrialCountdown({
-        hours: Math.floor(totalMinutes / 60),
-        minutes: totalMinutes % 60,
-      });
-    };
-    tick();
-    const id = setInterval(tick, 60000);
-    return () => clearInterval(id);
-  }, []);
-
   const row1Doubled = [...ROW1_CARDS, ...ROW1_CARDS];
   const row2Doubled = [...ROW2_CARDS, ...ROW2_CARDS];
 
-  return (
-    <div className="flex flex-col gap-8">
+  const renderCard = (service: (typeof SERVICES)[number]) => {
+    const serviceUsed = usage?.usage[service.id] ?? 0;
+    const serviceLimit = usage?.limit ?? 0;
+    const pct = serviceLimit > 0 ? Math.min(100, (serviceUsed / serviceLimit) * 100) : 0;
+    return (
+      <Link
+        href={`/services/${service.id}`}
+        className={clsx(
+          'group relative overflow-hidden rounded-2xl border block',
+          'border-gray-700 bg-gray-900/80 backdrop-blur-sm',
+          'hover:border-primary-500/50 hover:shadow-xl hover:shadow-primary-500/10',
+          'transition-all duration-300 active:scale-[0.98]'
+        )}
+      >
+        <div className="h-0.5 w-full opacity-60" style={{ backgroundColor: service.accentColor }} />
+        <div className="p-5 pb-3">
+          <h3 className="text-sm font-semibold text-white leading-snug">
+            {t(`${service.i18nKey}.name`)}
+          </h3>
+          {usage && usage.limit !== null && (
+            <p className="text-xs mt-0.5" style={{ color: service.accentColor }}>
+              {serviceUsed}/{usage.limit} utilisations
+            </p>
+          )}
+        </div>
+        <div className="mx-4 mb-3 h-28 overflow-hidden rounded-lg border border-gray-700/50">
+          <ServiceMockup serviceId={service.id} accentColor={service.accentColor} />
+        </div>
+        <div className="mx-4 mb-4">
+          <div className="h-1.5 bg-gray-800 rounded-full overflow-hidden">
+            <motion.div
+              className="h-full rounded-full"
+              style={{ backgroundColor: service.accentColor }}
+              initial={{ width: 0 }}
+              animate={{ width: `${pct}%` }}
+              transition={{ duration: 0.8, ease: 'easeOut', delay: 0.3 }}
+            />
+          </div>
+        </div>
+        <div
+          className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity text-sm font-bold"
+          style={{ color: service.accentColor }}
+        >
+          →
+        </div>
+      </Link>
+    );
+  };
 
-      {/* Immersive marquee hero */}
-      <section className="flex flex-col gap-4">
+  return (
+    <div className="relative flex flex-col gap-8">
+
+      {/* Decorative orbs + grid + floating points */}
+      <div className="absolute inset-0 pointer-events-none select-none overflow-hidden" aria-hidden>
+        <div className="absolute -top-24 -left-24 w-80 h-80 rounded-full blur-[80px]" style={{ background: 'rgba(108,92,231,0.18)' }} />
+        <div className="absolute top-[35%] -right-20 w-72 h-72 rounded-full blur-[80px]" style={{ background: 'rgba(99,102,241,0.13)' }} />
+        <div className="absolute -bottom-16 left-[25%] w-64 h-64 rounded-full blur-[80px]" style={{ background: 'rgba(139,92,246,0.11)' }} />
+        <div className="absolute inset-0" style={{
+          backgroundImage: 'linear-gradient(rgba(108,92,231,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(108,92,231,0.05) 1px, transparent 1px)',
+          backgroundSize: '48px 48px',
+        }} />
+        <div className="absolute inset-0" style={{
+          backgroundImage: 'repeating-linear-gradient(-45deg, rgba(108,92,231,0.025) 0px, rgba(108,92,231,0.025) 1px, transparent 0px, transparent 32px)',
+        }} />
+        {([
+          { x: '8%',  y: '6%',  delay: 0,   s: 3 },
+          { x: '84%', y: '12%', delay: 1.5, s: 2.5 },
+          { x: '52%', y: '38%', delay: 0.8, s: 3.5 },
+          { x: '92%', y: '62%', delay: 2.2, s: 2 },
+          { x: '16%', y: '75%', delay: 0.4, s: 3 },
+          { x: '70%', y: '88%', delay: 1.1, s: 2.5 },
+        ] as const).map((d, i) => (
+          <motion.div
+            key={i}
+            className="absolute rounded-full"
+            style={{ left: d.x, top: d.y, width: d.s, height: d.s, background: 'rgba(108,92,231,0.65)' }}
+            animate={{ y: [0, -20, 0], opacity: [0.3, 0.85, 0.3] }}
+            transition={{ duration: 4 + i * 0.6, delay: d.delay, repeat: Infinity, ease: 'easeInOut' }}
+          />
+        ))}
+      </div>
+
+      {/* Hero */}
+      <div className="relative z-10">
+        <h1 className="text-3xl font-bold text-white mb-3">
+          {t('home.welcome', { name: firstName })}
+        </h1>
+        <Link href="/checkout/plans">
+          <motion.div
+            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-violet-500/40 bg-violet-500/10 text-violet-300 text-sm font-semibold cursor-pointer hover:bg-violet-500/15 transition-colors"
+            animate={{ boxShadow: [
+              '0 0 6px rgba(108,92,231,0.3)',
+              '0 0 18px rgba(108,92,231,0.65)',
+              '0 0 6px rgba(108,92,231,0.3)',
+            ] }}
+            transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+          >
+            <span>✦</span>
+            <span>3 jours d&apos;essai gratuits</span>
+          </motion.div>
+        </Link>
+      </div>
+
+      <LimitWarning nearLimit={isNearLimit()} isEnterprise={isEnterprise} />
+
+      {/* Usage summary */}
+      {hasPlan && !isEnterprise && usage && !usageLoading && (
+        <div className="relative z-10 bg-gray-900 border border-gray-800 rounded-2xl p-6">
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="text-sm font-semibold text-white">{t('dashboard.usageThisMonth')}</h2>
+            <span className="text-xs text-gray-500">Réinitialisé le 1er du mois</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {SERVICES.map((s) => (
+              <UsageBar key={s.id} icon={s.icon} label={t(`${s.i18nKey}.name`)} used={usage.usage[s.id] ?? 0} limit={usage.limit} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Service cards with floating background */}
+      <div className="relative z-10">
+        <FloatingBackground />
+        <div className="relative z-10">
+          <div className="flex items-center gap-2 mb-4">
+            <h2 className="text-lg font-semibold text-white">Les plus utilisés</h2>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+              <path d="M17.66 11.2C17.43 10.9 17.15 10.64 16.89 10.38C16.22 9.78 15.46 9.35 14.82 8.72C13.33 7.26 13 4.85 13.95 3C13 3.23 12.17 3.75 11.46 4.32C8.87 6.4 7.85 10.07 9.07 13.22C9.11 13.32 9.15 13.42 9.15 13.55C9.15 13.77 9 13.97 8.8 14.05C8.57 14.15 8.33 14.09 8.14 13.93C8.08 13.88 8.04 13.83 8 13.76C6.87 12.33 6.69 10.28 7.45 8.64C5.78 10 4.87 12.3 5 14.47C5.06 14.97 5.12 15.47 5.29 15.97C5.43 16.57 5.7 17.17 6 17.7C7.08 19.43 8.95 20.67 10.96 20.92C13.1 21.19 15.39 20.8 17.03 19.32C18.86 17.66 19.5 15 18.56 12.72L18.43 12.46C18.22 12 17.66 11.2 17.66 11.2Z" fill="#f97316" />
+            </svg>
+          </div>
+
+          {/* First 3 services — always visible */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {SERVICES.slice(0, 3).map((service) => renderCard(service))}
+          </div>
+
+          {/* Voir plus / Voir moins toggle */}
+          <div className="flex items-center justify-center gap-2 mt-6">
+            <button
+              onClick={() => setShowAll((v) => !v)}
+              className="flex items-center gap-2 text-gray-500 hover:text-gray-300 transition-colors"
+            >
+              <motion.svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                animate={{ rotate: showAll ? 180 : 0 }}
+                transition={{ duration: 0.35, ease: 'easeInOut' }}
+              >
+                <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </motion.svg>
+              <motion.span
+                className="text-sm font-medium"
+                animate={{ opacity: [0.7, 1, 0.7] }}
+                transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
+              >
+                {showAll ? 'Voir moins' : 'Voir plus'}
+              </motion.span>
+            </button>
+          </div>
+
+          {/* Hidden 3 — stagger reveal from bottom */}
+          <AnimatePresence>
+            {showAll && (
+              <motion.div
+                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mt-5"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+              >
+                {SERVICES.slice(3).map((service, i) => (
+                  <motion.div
+                    key={service.id}
+                    initial={{ opacity: 0, y: 32 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 20 }}
+                    transition={{ delay: i * 0.1, duration: 0.4, ease: 'easeOut' }}
+                  >
+                    {renderCard(service)}
+                  </motion.div>
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </div>
+
+      {/* Marquee — at the bottom */}
+      <section className="relative z-10 flex flex-col gap-4">
         <motion.h2
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
@@ -716,138 +886,24 @@ export default function DashboardPage() {
           </VerticalCutReveal>
         </motion.h2>
 
-        {/* Row 1 — scroll left */}
         <div className="marquee-pause overflow-hidden">
           <div className="flex gap-3 marquee-left">
-            {row1Doubled.map((card, i) => (
-              <MarqueeCard key={i} card={card} />
-            ))}
+            {row1Doubled.map((card, i) => <MarqueeCard key={i} card={card} />)}
           </div>
         </div>
 
-        {/* Row 2 — scroll right */}
         <div className="marquee-pause overflow-hidden">
           <div className="flex gap-3 marquee-right">
-            {row2Doubled.map((card, i) => (
-              <MarqueeCard key={i} card={card} />
-            ))}
+            {row2Doubled.map((card, i) => <MarqueeCard key={i} card={card} />)}
           </div>
         </div>
 
         <p className="text-xs text-gray-600 text-center">
           <Link href="/dashboard/help" className="hover:text-gray-400 transition-colors underline underline-offset-2">
-            Conditions générales d'utilisation
+            Conditions générales d&apos;utilisation
           </Link>
         </p>
       </section>
-
-      {/* Hero */}
-      <div>
-        <h1 className="text-3xl font-bold text-white mb-1">
-          {t('home.welcome', { name: firstName })}
-        </h1>
-        <p className="text-gray-400">{t('home.services')}</p>
-        <p className="text-red-400 text-sm font-medium mt-2">
-          ⏰ 3 jours d'essai restants —{' '}
-          {String(trialCountdown.hours).padStart(2, '0')}h{String(trialCountdown.minutes).padStart(2, '0')}m
-        </p>
-      </div>
-
-      <LimitWarning nearLimit={isNearLimit()} isEnterprise={isEnterprise} />
-
-      {/* Usage summary */}
-      {hasPlan && !isEnterprise && usage && !usageLoading && (
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
-          <div className="flex items-center justify-between mb-5">
-            <h2 className="text-sm font-semibold text-white">{t('dashboard.usageThisMonth')}</h2>
-            <span className="text-xs text-gray-500">Réinitialisé le 1er du mois</span>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {SERVICES.map((s) => (
-              <UsageBar
-                key={s.id}
-                icon={s.icon}
-                label={t(`${s.i18nKey}.name`)}
-                used={usage.usage[s.id] ?? 0}
-                limit={usage.limit}
-              />
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Service cards — with floating background */}
-      <div className="relative">
-        <FloatingBackground />
-
-        <div className="relative z-10">
-          <h2 className="text-lg font-semibold text-white mb-4">{t('dashboard.activeServices')}</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {SERVICES.map((service) => {
-              const serviceUsed = usage?.usage[service.id] ?? 0;
-              const serviceLimit = usage?.limit ?? 0;
-              const pct = serviceLimit > 0 ? Math.min(100, (serviceUsed / serviceLimit) * 100) : 0;
-
-              return (
-                <Link
-                  key={service.id}
-                  href={`/services/${service.id}`}
-                  className={clsx(
-                    'group relative overflow-hidden rounded-2xl border',
-                    'border-gray-700 bg-gray-900/80 backdrop-blur-sm',
-                    'hover:border-primary-500/50 hover:shadow-xl hover:shadow-primary-500/10',
-                    'transition-all duration-300 active:scale-[0.98]'
-                  )}
-                >
-                  {/* Accent top bar */}
-                  <div
-                    className="h-0.5 w-full opacity-60"
-                    style={{ backgroundColor: service.accentColor }}
-                  />
-
-                  <div className="p-5 pb-3 flex items-center gap-3">
-                    <span className="text-3xl">{service.icon}</span>
-                    <div>
-                      <h3 className="text-sm font-semibold text-white leading-snug">
-                        {t(`${service.i18nKey}.name`)}
-                      </h3>
-                      {usage && usage.limit !== null && (
-                        <p className="text-xs mt-0.5" style={{ color: service.accentColor }}>
-                          {serviceUsed}/{usage.limit} utilisations
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="mx-4 mb-3 h-28 overflow-hidden rounded-lg border border-gray-700/50">
-                    <ServiceMockup serviceId={service.id} accentColor={service.accentColor} />
-                  </div>
-
-                  {/* Animated usage progress bar */}
-                  <div className="mx-4 mb-4">
-                    <div className="h-1.5 bg-gray-800 rounded-full overflow-hidden">
-                      <motion.div
-                        className="h-full rounded-full"
-                        style={{ backgroundColor: service.accentColor }}
-                        initial={{ width: 0 }}
-                        animate={{ width: `${pct}%` }}
-                        transition={{ duration: 0.8, ease: 'easeOut', delay: 0.3 }}
-                      />
-                    </div>
-                  </div>
-
-                  <div
-                    className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity text-sm font-bold"
-                    style={{ color: service.accentColor }}
-                  >
-                    →
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
-        </div>
-      </div>
     </div>
   );
 }

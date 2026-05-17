@@ -122,7 +122,31 @@ export function PricingSection() {
     Math.round(100 - (plan.annualPrice / plan.monthlyPrice) * 100)
 
   return (
-    <div className="min-h-screen bg-gray-950 flex flex-col items-center px-4 py-16 sm:py-24">
+    <div className="relative overflow-hidden min-h-screen bg-gray-950 flex flex-col items-center px-4 py-16 sm:py-24">
+      {/* Decorative background */}
+      <div className="absolute inset-0 pointer-events-none select-none" aria-hidden>
+        <div className="absolute -top-32 -left-32 w-96 h-96 rounded-full blur-[100px]" style={{ background: 'rgba(108,92,231,0.2)' }} />
+        <div className="absolute -bottom-32 -right-32 w-96 h-96 rounded-full blur-[100px]" style={{ background: 'rgba(99,102,241,0.16)' }} />
+        <div className="absolute top-1/2 -left-20 w-64 h-64 rounded-full blur-[80px]" style={{ background: 'rgba(139,92,246,0.1)' }} />
+        <div className="absolute inset-0" style={{ backgroundImage: 'linear-gradient(rgba(108,92,231,0.045) 1px, transparent 1px), linear-gradient(90deg, rgba(108,92,231,0.045) 1px, transparent 1px)', backgroundSize: '48px 48px' }} />
+        {([
+          { x: '8%',  y: '10%', delay: 0,   s: 3 },
+          { x: '88%', y: '8%',  delay: 1.4, s: 2.5 },
+          { x: '20%', y: '55%', delay: 0.7, s: 3.5 },
+          { x: '75%', y: '40%', delay: 2.0, s: 2 },
+          { x: '50%', y: '80%', delay: 0.3, s: 3 },
+          { x: '92%', y: '75%', delay: 1.7, s: 2.5 },
+        ] as const).map((d, i) => (
+          <motion.div
+            key={i}
+            className="absolute rounded-full"
+            style={{ left: d.x, top: d.y, width: d.s, height: d.s, background: 'rgba(108,92,231,0.65)' }}
+            animate={{ y: [0, -22, 0], opacity: [0.3, 0.85, 0.3] }}
+            transition={{ duration: 4.5 + i * 0.6, delay: d.delay, repeat: Infinity, ease: 'easeInOut' }}
+          />
+        ))}
+      </div>
+
       {/* Heading */}
       <div className="text-center mb-4">
         <h1 className="text-4xl sm:text-5xl font-extrabold text-white overflow-hidden">
@@ -149,7 +173,7 @@ export function PricingSection() {
           transition={{ delay: 0.65, duration: 0.4 }}
         >
           <span className="text-sm font-medium" style={{ color: '#f87171' }}>
-            ⏰ Offre d'essai disponible encore{' '}
+            Offre d'essai disponible encore{' '}
             <span className="font-mono font-bold">{formatOfferCountdown(offerSeconds)}</span>
           </span>
         </motion.div>
@@ -198,6 +222,9 @@ export function PricingSection() {
           )}
         </div>
       </motion.div>
+
+      {/* Gradient separator */}
+      <div className="w-full max-w-5xl mb-2" style={{ height: '1px', background: 'linear-gradient(90deg, transparent, rgba(108,92,231,0.45) 30%, rgba(99,102,241,0.55) 50%, rgba(108,92,231,0.45) 70%, transparent)' }} />
 
       {/* Cards */}
       <motion.div

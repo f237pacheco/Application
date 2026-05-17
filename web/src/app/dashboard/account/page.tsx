@@ -149,19 +149,29 @@ export default function AccountPage() {
         <div className="flex items-start gap-4">
           {/* Avatar */}
           <div className="flex flex-col items-center gap-2">
-            <div
-              className="w-16 h-16 rounded-2xl flex items-center justify-center text-2xl font-bold text-white overflow-hidden"
-              style={{ background: avatarColor, boxShadow: '0 0 20px rgba(108,92,231,0.4)' }}
-            >
-              {avatarPhoto ? (
-                <img src={avatarPhoto} alt="avatar" className="w-full h-full object-cover" />
-              ) : profile?.first_name || user?.user_metadata?.full_name || user?.email ? (
-                <span>{getInitial()}</span>
-              ) : (
-                <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-                  <circle cx="16" cy="12" r="6" fill="rgba(255,255,255,0.7)" />
-                  <path d="M4 28c0-6.627 5.373-12 12-12s12 5.373 12 12" stroke="rgba(255,255,255,0.7)" strokeWidth="2" strokeLinecap="round" />
-                </svg>
+            <div className="relative">
+              <div
+                className="w-16 h-16 rounded-2xl flex items-center justify-center text-2xl font-bold text-white overflow-hidden"
+                style={{ background: avatarColor, boxShadow: '0 0 20px rgba(108,92,231,0.4)' }}
+              >
+                {avatarPhoto ? (
+                  <img src={avatarPhoto} alt="avatar" className="w-full h-full object-cover" />
+                ) : profile?.first_name || user?.user_metadata?.full_name || user?.email ? (
+                  <span>{getInitial()}</span>
+                ) : (
+                  <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                    <circle cx="16" cy="12" r="6" fill="rgba(255,255,255,0.7)" />
+                    <path d="M4 28c0-6.627 5.373-12 12-12s12 5.373 12 12" stroke="rgba(255,255,255,0.7)" strokeWidth="2" strokeLinecap="round" />
+                  </svg>
+                )}
+              </div>
+              {avatarPhoto && (
+                <button
+                  onClick={() => setAvatarPhoto(null)}
+                  className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-900 hover:bg-red-700 border border-red-800 flex items-center justify-center z-10 transition-colors"
+                >
+                  <span className="text-white text-[10px] font-bold leading-none">×</span>
+                </button>
               )}
             </div>
             <button

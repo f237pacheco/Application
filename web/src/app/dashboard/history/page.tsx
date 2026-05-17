@@ -168,8 +168,8 @@ export default function HistoryPage() {
               <p className="text-gray-500 text-sm max-w-xs mt-1">
                 Vos futures créations IA apparaîtront ici. Choisissez un service pour commencer.
               </p>
-              <p className="text-gray-400 text-sm mt-2 max-w-sm">
-                Commencez maintenant — chaque génération IA vous fait gagner 2h de travail
+              <p className="text-gray-500 text-xs mt-2 max-w-sm text-center">
+                Chaque création Velona vous libère des heures de travail manuel
               </p>
             </div>
             {/* Shimmer CTA button */}

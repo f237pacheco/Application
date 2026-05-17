@@ -527,6 +527,29 @@ export default function PartnerPage() {
 
       <SocialProofBackground />
 
+      {/* Agency/brand contact banner */}
+      <motion.div
+        initial={{ opacity: 0, y: -8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="relative z-10 mb-2 rounded-2xl border border-violet-500/20 px-5 py-4 flex items-center gap-4"
+        style={{ background: 'rgba(108,92,231,0.06)', backdropFilter: 'blur(8px)' }}
+      >
+        <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'rgba(108,92,231,0.15)' }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" stroke="#a78bfa" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            <polyline points="22,6 12,13 2,6" stroke="#a78bfa" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </div>
+        <p className="text-sm text-gray-300 flex-1">
+          Vous êtes une marque ou une agence ?{' '}
+          <a href="mailto:hello@velona.io" className="text-violet-400 hover:text-violet-300 font-medium transition-colors underline underline-offset-2">
+            Contactez-nous
+          </a>{' '}
+          pour un code promo partenaire personnalisé.
+        </p>
+      </motion.div>
+
       {/* Main content */}
       <div className="relative z-10 max-w-2xl flex flex-col gap-6">
         <div>
