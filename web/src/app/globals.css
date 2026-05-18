@@ -80,6 +80,15 @@
   }
 }
 
+@keyframes name-shimmer {
+  0%   { background-position: 200% center; }
+  100% { background-position: -200% center; }
+}
+
+@keyframes spin-slow {
+  to { transform: rotate(360deg); }
+}
+
 /* ── Light mode overrides ───────────────────────────────────────────────────── */
 html.light-mode body {
   background-color: #f3f4f6;
