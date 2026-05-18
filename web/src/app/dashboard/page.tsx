@@ -10,7 +10,6 @@ import { useUsage } from '@/hooks/useUsage';
 import { UsageBar } from '@/components/ui/UsageBar';
 import { LimitWarning } from '@/components/ui/LimitWarning';
 import { SERVICES } from '@/lib/services';
-import { clsx } from 'clsx';
 
 /* ── Marquee data ───────────────────────────────────────────────────────────── */
 const ROW1_CARDS = [
@@ -289,6 +288,7 @@ function ServiceCard({ service, index }: { service: (typeof SERVICES)[number]; i
     <motion.div
       initial={{ opacity: 0, y: 32 }}
       whileInView={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: 16 }}
       viewport={{ once: true }}
       transition={{ type: 'spring', stiffness: 160, damping: 22, delay: index * 0.07 }}
       className="h-full"
@@ -306,7 +306,6 @@ function ServiceCard({ service, index }: { service: (typeof SERVICES)[number]; i
             background: 'rgba(15,12,36,0.85)',
             backdropFilter: 'blur(12px)',
             border: hovered ? '1px solid rgba(108,92,231,0.5)' : '1px solid rgba(255,255,255,0.06)',
-            transition: 'border-color 0.25s',
           }}
         >
           {/* Top gradient line */}
@@ -477,19 +476,19 @@ export default function DashboardPage() {
           className="absolute rounded-full"
           style={{ top: '-15%', left: '-10%', width: 560, height: 560, background: 'radial-gradient(circle, rgba(108,92,231,0.14) 0%, transparent 70%)' }}
           animate={{ x: [0, 50, -20, 0], y: [0, -40, 20, 0] }}
-          transition={{ duration: 20, repeat: Infinity, ease: 'easeInOut', repeatType: 'reverse' }}
+          transition={{ duration: 20, repeat: Infinity, ease: 'easeInOut' }}
         />
         <motion.div
           className="absolute rounded-full"
           style={{ top: '35%', right: '-12%', width: 480, height: 480, background: 'radial-gradient(circle, rgba(99,102,241,0.11) 0%, transparent 70%)' }}
           animate={{ x: [0, -40, 20, 0], y: [0, 50, -30, 0] }}
-          transition={{ duration: 25, repeat: Infinity, ease: 'easeInOut', repeatType: 'reverse' }}
+          transition={{ duration: 25, repeat: Infinity, ease: 'easeInOut' }}
         />
         <motion.div
           className="absolute rounded-full"
           style={{ bottom: '-8%', left: '30%', width: 400, height: 400, background: 'radial-gradient(circle, rgba(139,92,246,0.1) 0%, transparent 70%)' }}
           animate={{ x: [0, 30, -10, 0], y: [0, -30, 40, 0] }}
-          transition={{ duration: 22, repeat: Infinity, ease: 'easeInOut', repeatType: 'reverse' }}
+          transition={{ duration: 22, repeat: Infinity, ease: 'easeInOut' }}
         />
         {/* Subtle grid */}
         <div className="absolute inset-0" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
@@ -545,7 +544,10 @@ export default function DashboardPage() {
                     aria-hidden
                     className="block absolute"
                     style={{
-                      inset: '-100%',
+                      width: '300%',
+                      height: '300%',
+                      top: '-100%',
+                      left: '-100%',
                       background: 'conic-gradient(from 0deg, #6C5CE7 0%, #a78bfa 30%, #e879f9 55%, #4834d4 80%, #6C5CE7 100%)',
                     }}
                     animate={{ rotate: 360 }}
@@ -687,7 +689,7 @@ export default function DashboardPage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              <AnimatePresence mode="popLayout">
+              <AnimatePresence mode="sync">
                 {visibleServices.map((service, i) => (
                   <ServiceCard key={service.id} service={service} index={i} />
                 ))}
