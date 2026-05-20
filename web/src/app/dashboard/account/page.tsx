@@ -108,6 +108,14 @@ function SectionTitle({ children, icon }: { children: React.ReactNode; icon?: Re
 
 /* ── Page ───────────────────────────────────────────────────────────────────── */
 
+interface SubscriptionRow {
+  plan_key: string;
+  billing: string;
+  status: string;
+  current_period_end: string | null;
+  trial_end: string | null;
+}
+
 export default function AccountPage() {
   const { session, signOut, user } = useAuth();
   const { profile, loading } = useProfile();
@@ -123,19 +131,35 @@ export default function AccountPage() {
   const [notifSaved, setNotifSaved] = useState(false);
   const [isDark, setIsDark] = useState(true);
   const [editMode, setEditMode] = useState(false);
+  const [subscription, setSubscription] = useState<SubscriptionRow | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const spotlightRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   /* Derived data */
-  const planInfo = PLAN_LABELS[profile?.plan_key as string] ?? FREE_PLAN;
-  const hasPlan = !!profile?.plan_key;
+  const activePlanKey = subscription?.plan_key ?? profile?.plan_key ?? null;
+  const planInfo = PLAN_LABELS[activePlanKey as string] ?? FREE_PLAN;
+  const hasPlan = !!(activePlanKey && subscription);
+
+  const renewalDate = subscription?.current_period_end
+    ? new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(subscription.current_period_end))
+    : null;
+
+  const billingLabel = subscription?.billing === 'annual' ? 'Annuel' : 'Mensuel';
+
+  const statusLabel: Record<string, string> = {
+    active: 'Actif',
+    trialing: 'Essai gratuit',
+    past_due: 'Paiement en retard',
+    canceled: 'Annulé',
+  };
+  const subStatusLabel = subscription ? (statusLabel[subscription.status] ?? subscription.status) : null;
 
   const totalCreations = usage ? Object.values(usage.usage).reduce((a, b) => a + b, 0) : 0;
   const hoursSaved = totalCreations * 2;
-  const daysActive = profile?.created_at
-    ? Math.floor((Date.now() - new Date(profile.created_at).getTime()) / 86_400_000)
+  const daysActive = user?.created_at
+    ? Math.floor((Date.now() - new Date(user.created_at).getTime()) / 86_400_000)
     : 0;
 
   const countCreations = useCountUp(totalCreations, 1200, !loading);
@@ -188,6 +212,24 @@ export default function AccountPage() {
     load();
   }, [user?.id]);
 
+  /* Load subscription data */
+  useEffect(() => {
+    if (!user?.id) return;
+    const load = async () => {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from('subscriptions')
+        .select('plan_key, billing, status, current_period_end, trial_end')
+        .eq('user_id', user.id)
+        .in('status', ['active', 'trialing', 'past_due'])
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+      if (data) setSubscription(data as SubscriptionRow);
+    };
+    load();
+  }, [user?.id]);
+
   const getInitial = () => {
     const name = (user?.user_metadata?.full_name as string) || profile?.first_name || user?.email || '?';
     return name.charAt(0).toUpperCase();
@@ -204,13 +246,13 @@ export default function AccountPage() {
   const handleBillingPortal = async () => {
     try {
       setBillingLoading(true);
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/payments/create-portal`, {
+      const res = await fetch('/api/stripe/portal', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ returnUrl: `${window.location.origin}/dashboard/account` }),
       });
       if (!res.ok) throw new Error();
-      const { url } = await res.json();
+      const { url } = await res.json() as { url: string };
       window.location.href = url;
     } catch { /* silent */ }
     finally { setBillingLoading(false); }
@@ -412,12 +454,17 @@ export default function AccountPage() {
 
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
               <div className="flex items-center gap-4">
-                <div className="w-3 h-3 rounded-full bg-emerald-400 shrink-0" style={{ boxShadow: '0 0 8px rgba(52,211,153,0.6)' }} />
+                <div className="w-3 h-3 rounded-full shrink-0" style={{
+                  backgroundColor: subscription?.status === 'trialing' ? '#fbbf24' : '#34d399',
+                  boxShadow: `0 0 8px ${subscription?.status === 'trialing' ? 'rgba(251,191,36,0.6)' : 'rgba(52,211,153,0.6)'}`,
+                }} />
                 <div>
                   <p className="text-base font-semibold text-white">
-                    {PLAN_LABELS[profile?.plan_key as string]?.label ?? profile?.plan_key ?? 'Plan actif'}
+                    {planInfo.label}
                   </p>
-                  <p className="text-xs text-gray-500 mt-0.5">Abonnement actif · Renouvelé automatiquement via Stripe</p>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    {subStatusLabel} · Renouvelé automatiquement via Stripe
+                  </p>
                 </div>
               </div>
               <button
@@ -432,9 +479,9 @@ export default function AccountPage() {
 
             <div className="mt-5 grid grid-cols-1 sm:grid-cols-3 gap-4">
               {[
-                { label: 'Type', value: 'Mensuel', icon: '📅' },
-                { label: 'Renouvellement', value: 'Portail Stripe', icon: '🔄' },
-                { label: 'Paiement', value: '•••• ••••', icon: '💳' },
+                { label: 'Type', value: billingLabel, icon: '📅' },
+                { label: 'Renouvellement', value: renewalDate ?? 'Via portail Stripe', icon: '🔄' },
+                { label: 'Paiement', value: '•••• •••• via Stripe', icon: '💳' },
               ].map(({ label, value, icon }) => (
                 <div key={label} className="flex items-center gap-3 px-4 py-3 rounded-xl" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' }}>
                   <span className="text-base shrink-0">{icon}</span>
@@ -564,7 +611,7 @@ export default function AccountPage() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <p className="text-sm text-white font-medium">{opt.label}</p>
-                    {opt.isMobile && (
+                    {'isMobile' in opt && opt.isMobile && (
                       <span className="text-[9px] font-bold px-1.5 py-0.5 rounded" style={{ background: 'rgba(99,102,241,0.2)', color: '#818cf8' }}>
                         Mobile
                       </span>
@@ -590,12 +637,23 @@ export default function AccountPage() {
             {[
               {
                 label: 'Plan actuel',
-                value: PLAN_LABELS[profile?.plan_key as string]?.label ?? 'Aucun plan actif',
-                accent: hasPlan ? '#34d399' : '#f87171',
+                value: hasPlan ? planInfo.label : 'Aucun plan actif',
+                accent: hasPlan ? planInfo.color : '#f87171',
                 dot: true,
               },
-              { label: 'Renouvellement', value: 'Géré automatiquement via Stripe', accent: '#6b7280', dot: false },
-              { label: 'Moyen de paiement', value: '•••• •••• •••• ••••', accent: '#6b7280', dot: false },
+              {
+                label: 'Statut',
+                value: subStatusLabel ?? 'Aucun abonnement',
+                accent: '#6b7280',
+                dot: false,
+              },
+              {
+                label: 'Renouvellement',
+                value: renewalDate ? `Le ${renewalDate}` : 'Géré via Stripe',
+                accent: '#6b7280',
+                dot: false,
+              },
+              { label: 'Moyen de paiement', value: '•••• •••• via Stripe', accent: '#6b7280', dot: false },
             ].map(({ label, value, accent, dot }) => (
               <div key={label} className="flex items-center justify-between py-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                 <div>
@@ -610,11 +668,19 @@ export default function AccountPage() {
           <div className="mt-5 flex flex-wrap gap-3">
             <button
               onClick={handleBillingPortal}
-              disabled={billingLoading}
-              className="text-sm font-semibold px-5 py-2.5 rounded-xl transition-all disabled:opacity-50"
+              disabled={billingLoading || !hasPlan}
+              className="text-sm font-semibold px-5 py-2.5 rounded-xl transition-all disabled:opacity-40"
               style={{ border: '1px solid rgba(108,92,231,0.4)', color: '#a78bfa' }}
             >
               {billingLoading ? 'Chargement...' : 'Portail de facturation →'}
+            </button>
+            <button
+              onClick={handleBillingPortal}
+              disabled={billingLoading || !hasPlan}
+              className="text-sm font-semibold px-5 py-2.5 rounded-xl transition-all disabled:opacity-40"
+              style={{ border: '1px solid rgba(239,68,68,0.3)', color: '#f87171' }}
+            >
+              Annuler l&apos;abonnement
             </button>
             {!hasPlan && (
               <a

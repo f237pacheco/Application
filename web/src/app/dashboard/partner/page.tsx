@@ -422,7 +422,7 @@ export default function PartnerPage() {
                 />
               </div>
 
-              {HOW_IT_WORKS.map(({ step, title, desc, color, icon, badge }, index) => (
+              {HOW_IT_WORKS.map((step_item, index) => { const { step, title, desc, color, icon } = step_item; const badge = 'badge' in step_item ? step_item.badge as string : undefined; return (
                 <motion.div
                   key={step}
                   initial={{ opacity: 0, x: -16 }}
@@ -463,7 +463,7 @@ export default function PartnerPage() {
                     <p className="text-xs text-gray-500 leading-relaxed">{desc}</p>
                   </div>
                 </motion.div>
-              ))}
+              ); })}
             </div>
           </div>
         </motion.section>
