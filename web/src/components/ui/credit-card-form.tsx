@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useId, useMemo, useState } from "react";
 
 type CardState = {
   number: string;
@@ -45,9 +45,6 @@ function clampDigits(value: string, maxLen: number) {
   return value.replace(/\D/g, "").slice(0, maxLen);
 }
 
-/* Unique scope ID so multiple instances don't clash */
-let instanceCounter = 0;
-
 const CreditCardForm = ({
   defaultNumber = "",
   defaultHolder = "",
@@ -71,8 +68,8 @@ const CreditCardForm = ({
   const [cvv, setCVV] = useState(clampDigits(defaultCVV, 4));
   const [focusField, setFocusField] = useState<null | "number" | "holder" | "expire" | "cvv">(null);
 
-  const scopeRef = useRef(`ccf-${++instanceCounter}`);
-  const scope = scopeRef.current;
+  const id = useId();
+  const scope = `ccf${id.replace(/:/g, '')}`;
 
   const flip = focusField === "cvv";
   const years = useMemo(() => {
@@ -153,7 +150,7 @@ const CreditCardForm = ({
   } as React.CSSProperties;
 
   /* Scoped static CSS injected once */
-  const staticCss = `
+  const staticCss = useMemo(() => `
     .${scope} { width:100%; display:flex; justify-content:center; padding:0; background:transparent; background-color:transparent; color:var(--ccf-color); }
     .${scope}-wrap { width:100%; display:grid; grid-template-columns:${stacked ? "1fr" : "1fr 1fr"}; gap:24px; align-items:start; }
     @media(max-width:920px){ .${scope}-wrap { grid-template-columns:1fr; } }
@@ -241,7 +238,7 @@ const CreditCardForm = ({
       background:var(--ccf-submit-bg); color:#fff; font-weight:600; cursor:pointer;
       opacity:var(--ccf-submit-opacity); transition:opacity 0.2s; width:100%;
     }
-  `;
+  `, [scope, stacked]);
 
   return (
     <section className={`${scope} ${className}`} style={cssVars}>

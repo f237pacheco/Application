@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/hooks/useAuth';
@@ -20,16 +20,7 @@ const PLAN_COLORS: Record<string, { badge: string; glow: string }> = {
   enterprise: { badge: '#34d399', glow: 'rgba(0,184,148,0.2)' },
 };
 
-const TESTIMONIAL = {
-  name: 'Sophie R.',
-  role: 'Responsable marketing',
-  text: 'Velona a divisé par 3 le temps passé sur mes créations. L\'essai gratuit m\'a convaincue en 24h.',
-  stars: 5,
-  avatar: 'S',
-  avatarColor: '#6C5CE7',
-};
-
-export default function PaymentPage() {
+function PaymentPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { session } = useAuth();
@@ -186,6 +177,7 @@ export default function PaymentPage() {
       className="relative min-h-screen overflow-hidden"
       style={{ background: '#080812' }}
     >
+      <style dangerouslySetInnerHTML={{ __html: `@keyframes payment-shimmer{0%{transform:translateX(-100%)}100%{transform:translateX(200%)}}` }} />
       {/* Spotlight */}
       <div ref={spotlightRef} className="pointer-events-none absolute inset-0 z-0 transition-opacity duration-300" style={{ opacity: 0 }} aria-hidden />
 
@@ -416,11 +408,12 @@ export default function PaymentPage() {
                   >
                     <span className="relative z-10">{loading ? 'Chargement…' : "Commencer l'essai gratuit →"}</span>
                     {/* Shimmer */}
-                    <motion.span
+                    <span
                       className="absolute inset-0 pointer-events-none"
-                      style={{ background: 'linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.18) 50%, transparent 60%)' }}
-                      animate={{ x: ['-100%', '200%'] }}
-                      transition={{ duration: 2.2, repeat: Infinity, ease: 'linear', repeatDelay: 1.5 }}
+                      style={{
+                        background: 'linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.18) 50%, transparent 60%)',
+                        animation: 'payment-shimmer 3.7s linear infinite',
+                      }}
                     />
                     <span className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-in-out" style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent)' }} />
                   </button>
@@ -528,27 +521,36 @@ export default function PaymentPage() {
               </div>
             </div>
 
-            {/* Testimonial */}
+            {/* Gain de temps garanti */}
             <div
-              className="rounded-2xl p-5 flex flex-col gap-3"
+              className="rounded-2xl p-5 flex flex-col gap-4"
               style={{ background: 'rgba(15,12,36,0.7)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.06)' }}
             >
-              <div className="flex gap-0.5">
-                {[...Array(TESTIMONIAL.stars)].map((_, i) => (
-                  <svg key={i} width="13" height="13" viewBox="0 0 24 24" fill="#fbbf24">
-                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                  </svg>
-                ))}
-              </div>
-              <p className="text-sm text-gray-300 leading-relaxed italic">&ldquo;{TESTIMONIAL.text}&rdquo;</p>
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white shrink-0" style={{ background: TESTIMONIAL.avatarColor }}>
-                  {TESTIMONIAL.avatar}
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'rgba(52,211,153,0.15)' }}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="#34d399">
+                    <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67V7z"/>
+                  </svg>
                 </div>
                 <div>
-                  <p className="text-xs font-semibold text-white">{TESTIMONIAL.name}</p>
-                  <p className="text-[10px] text-gray-500">{TESTIMONIAL.role}</p>
+                  <p className="text-sm font-bold text-white">Gain de temps garanti</p>
+                  <p className="text-xs text-gray-500 mt-0.5">En moyenne 3h économisées par création</p>
                 </div>
+              </div>
+              <p className="text-xs text-gray-400 leading-relaxed">
+                Rejoignez 2 400+ professionnels qui automatisent leur business avec Velona
+              </p>
+              <div className="grid grid-cols-3 gap-2 pt-1 border-t" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
+                {[
+                  { value: '2 min', label: 'pour créer un site' },
+                  { value: '47s', label: 'de génération moyenne' },
+                  { value: '92%', label: 'de satisfaction' },
+                ].map((stat) => (
+                  <div key={stat.label} className="flex flex-col items-center text-center gap-0.5">
+                    <span className="text-base font-extrabold" style={{ color: '#34d399' }}>{stat.value}</span>
+                    <span className="text-[10px] text-gray-500 leading-tight">{stat.label}</span>
+                  </div>
+                ))}
               </div>
             </div>
           </motion.div>
@@ -559,5 +561,13 @@ export default function PaymentPage() {
       {/* Suppress unused var warning */}
       <span className="hidden" aria-hidden>{cardState?.number}{cardValid?.allValid}</span>
     </div>
+  );
+}
+
+export default function PaymentPage() {
+  return (
+    <Suspense fallback={<div style={{ background: '#080812', minHeight: '100vh' }} />}>
+      <PaymentPageInner />
+    </Suspense>
   );
 }
