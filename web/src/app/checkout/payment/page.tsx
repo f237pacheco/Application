@@ -229,7 +229,7 @@ export default function PaymentPage() {
       </div>
 
       {/* Free trial banner */}
-      <div className="relative z-10 mx-4 mt-4 lg:mx-auto lg:max-w-5xl">
+      <div className="relative z-10 mx-4 mt-4 lg:mx-auto lg:max-w-7xl lg:px-10">
         <motion.div
           initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}
           className="rounded-2xl px-5 py-3.5 flex items-center gap-4"
@@ -244,8 +244,8 @@ export default function PaymentPage() {
       </div>
 
       {/* Main layout */}
-      <div className="relative z-10 max-w-5xl mx-auto px-4 lg:px-6 py-8 lg:py-10">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-start">
+      <div className="relative z-10 max-w-7xl mx-auto w-full px-6 lg:px-10 py-8 lg:py-10">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-start w-full">
 
           {/* ── LEFT COLUMN ─────────────────────────────────────────────────── */}
           <div className="flex flex-col gap-5">
@@ -393,6 +393,7 @@ export default function PaymentPage() {
                     ring2="#a29bfe"
                     showSubmit={false}
                     dark={true}
+                    stacked={true}
                     onChange={(state, validity) => {
                       setCardState(state);
                       setCardValid(validity);
@@ -463,7 +464,7 @@ export default function PaymentPage() {
           {/* ── RIGHT COLUMN: Summary ─────────────────────────────────────── */}
           <motion.div
             initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.5, delay: 0.1 }}
-            className="flex flex-col gap-5 lg:sticky lg:top-8"
+            className="flex flex-col gap-5 lg:sticky lg:top-8 w-full"
           >
             {/* Order summary */}
             <div

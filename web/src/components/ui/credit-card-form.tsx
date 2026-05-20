@@ -33,6 +33,8 @@ type Props = {
   onSubmit?: (state: CardState, validity: CardValidity) => void;
   className?: string;
   dark?: boolean;
+  /** Stack card above form instead of side-by-side */
+  stacked?: boolean;
 };
 
 function formatNumberSpaces(num: string): string {
@@ -60,6 +62,7 @@ const CreditCardForm = ({
   onSubmit,
   className = "",
   dark = false,
+  stacked = false,
 }: Props) => {
   const [number, setNumber] = useState(clampDigits(defaultNumber, 19));
   const [holder, setHolder] = useState(defaultHolder.toUpperCase());
@@ -131,7 +134,6 @@ const CreditCardForm = ({
   const cssVars = {
     "--ccf-ring1": ring1,
     "--ccf-ring2": ring2,
-    "--ccf-bg": dark ? "transparent" : "#fbfcff",
     "--ccf-color": dark ? "#fff" : "#0d0c22",
     "--ccf-form-bg": dark ? "rgba(15,12,36,0.82)" : "#fff",
     "--ccf-form-border": dark ? "rgba(255,255,255,0.07)" : "#f1f1f1",
@@ -152,12 +154,12 @@ const CreditCardForm = ({
 
   /* Scoped static CSS injected once */
   const staticCss = `
-    .${scope} { width:100%; display:flex; justify-content:center; padding:0; background:var(--ccf-bg); color:var(--ccf-color); }
-    .${scope}-wrap { width:100%; display:grid; grid-template-columns:1fr 1fr; gap:24px; align-items:start; }
+    .${scope} { width:100%; display:flex; justify-content:center; padding:0; background:transparent; background-color:transparent; color:var(--ccf-color); }
+    .${scope}-wrap { width:100%; display:grid; grid-template-columns:${stacked ? "1fr" : "1fr 1fr"}; gap:24px; align-items:start; }
     @media(max-width:920px){ .${scope}-wrap { grid-template-columns:1fr; } }
     .${scope} *{ box-sizing:border-box; }
 
-    .${scope}-highlight { position:absolute; border:1px solid #fff; border-radius:12px; z-index:1; width:0; height:0; top:0; left:0; box-shadow:0 0 5px #fff; transition:0.3s; }
+    .${scope}-highlight { position:absolute; border:1px solid #fff; border-radius:12px; z-index:0; width:0; height:0; top:0; left:0; box-shadow:0 0 5px #fff; transition:0.3s; }
     .${scope}-highlight--hidden { display:none; }
     .${scope}-highlight--number { width:346px; height:40px; top:92px; left:18px; }
     .${scope}-highlight--holder { width:264px; height:56px; top:156px; left:18px; }
@@ -170,11 +172,11 @@ const CreditCardForm = ({
       .${scope}-highlight--cvv { width:330px; left:14px; }
     }
 
-    .${scope}-card { position:relative; width:100%; max-width:420px; margin:0 auto; transform-style:preserve-3d; transition:0.8s; perspective:1000px; }
+    .${scope}-card { position:relative; width:100%; max-width:${stacked ? "100%" : "420px"}; margin:0 auto; transform-style:preserve-3d; transition:0.8s; perspective:1000px; }
     .${scope}-card--flip { transform:rotateY(180deg); }
 
     .${scope}-front, .${scope}-back {
-      width:100%; max-width:420px; height:233px; border-radius:20px; padding:24px 30px 30px;
+      width:100%; max-width:${stacked ? "100%" : "420px"}; height:233px; border-radius:20px; padding:24px 30px 30px;
       background:linear-gradient(to right bottom,#323941,#061018);
       box-shadow:0 33px 50px -15px rgba(50,55,63,0.66);
       color:#fff; overflow:hidden; margin:0 auto; backface-visibility:hidden; position:relative;
@@ -192,21 +194,21 @@ const CreditCardForm = ({
       width:300px; top:55%; left:-200px; height:300px; filter:blur(13px);
     }
 
-    .${scope}-hide-line { height:40px; width:100%; background-color:#6b7280; position:relative; z-index:1; }
+    .${scope}-hide-line { height:40px; width:100%; background-color:#6b7280; position:relative; z-index:2; }
 
-    .${scope}-cvv { position:relative; z-index:1; margin-top:24px; padding:0 32px; display:flex; flex-direction:column; align-items:flex-end; font-size:14px; font-weight:600; text-transform:uppercase; }
+    .${scope}-cvv { position:relative; z-index:2; margin-top:24px; padding:0 32px; display:flex; flex-direction:column; align-items:flex-end; font-size:14px; font-weight:600; text-transform:uppercase; }
     .${scope}-cvv-field { margin-top:6px; background-color:#fff; border-radius:12px; height:44px; width:100%; color:#000; display:flex; align-items:center; justify-content:flex-end; padding:0 12px; font-size:25px; line-height:21px; }
 
-    .${scope}-header { display:flex; align-items:center; justify-content:space-between; font-weight:600; margin-bottom:32px; position:relative; z-index:1; }
+    .${scope}-header { display:flex; align-items:center; justify-content:space-between; font-weight:600; margin-bottom:32px; position:relative; z-index:2; }
 
-    .${scope}-number { font-size:22px; margin-bottom:32px; position:relative; z-index:1; display:flex; height:33px; overflow:hidden; color:#fff; }
+    .${scope}-number { font-size:22px; margin-bottom:32px; position:relative; z-index:2; display:flex; height:33px; overflow:hidden; color:#fff; }
     .${scope}-number .slot { display:inline-flex; margin-right:0; }
     .${scope}-number .slot:nth-child(4n) { margin-right:10px; }
     .${scope}-number .digit { display:flex; flex-direction:column; height:33px; line-height:33px; transition:transform 0.2s; }
     .${scope}-number .digit.filed { transform:translateY(-33px); }
     .${scope}-number .row { height:33px; display:block; }
 
-    .${scope}-footer { display:flex; align-items:center; justify-content:space-between; position:relative; z-index:1; }
+    .${scope}-footer { display:flex; align-items:center; justify-content:space-between; position:relative; z-index:2; }
     .${scope}-holder { text-transform:uppercase; }
     .${scope}-section-title { font-size:14px; font-weight:600; text-transform:uppercase; }
 
