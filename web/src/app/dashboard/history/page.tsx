@@ -327,43 +327,30 @@ function EmptyState() {
         <circle cx="60" cy="60" r="36" fill="none" stroke="rgba(108,92,231,0.25)" strokeWidth="1" />
         <circle cx="60" cy="60" r="20" fill="none" stroke="rgba(108,92,231,0.35)" strokeWidth="1" />
 
-        {/* Center pulse ring */}
-        <motion.circle
+        {/* Center pulse ring — CSS animation avoids framer-motion SVG attr issues */}
+        <circle
           cx="60" cy="60" r="10"
           fill="none" stroke="#6C5CE7" strokeWidth="1.5"
-          animate={{ r: [10, 26, 10], opacity: [0.8, 0, 0.8] }}
-          transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
+          style={{ transformOrigin: '60px 60px', animation: 'ring-pulse 2.2s ease-in-out infinite' }}
         />
 
         {/* Center dot */}
         <circle cx="60" cy="60" r="8" fill="#6C5CE7" opacity="0.95" filter="url(#orb-glow)" />
 
         {/* Outer orbiting dot */}
-        <motion.g
-          style={{ transformOrigin: '60px 60px' }}
-          animate={{ rotate: 360 }}
-          transition={{ duration: 8, repeat: Infinity, ease: 'linear' }}
-        >
+        <g style={{ transformOrigin: '60px 60px', animation: 'orbit-cw 8s linear infinite' }}>
           <circle cx="112" cy="60" r="4.5" fill="#6C5CE7" opacity="0.9" filter="url(#orb-glow)" />
-        </motion.g>
+        </g>
 
         {/* Middle orbiting dot */}
-        <motion.g
-          style={{ transformOrigin: '60px 60px' }}
-          animate={{ rotate: -360 }}
-          transition={{ duration: 5, repeat: Infinity, ease: 'linear' }}
-        >
+        <g style={{ transformOrigin: '60px 60px', animation: 'orbit-ccw 5s linear infinite' }}>
           <circle cx="96" cy="60" r="3.5" fill="#a78bfa" opacity="0.9" filter="url(#orb-glow)" />
-        </motion.g>
+        </g>
 
         {/* Inner orbiting dot */}
-        <motion.g
-          style={{ transformOrigin: '60px 60px' }}
-          animate={{ rotate: 360 }}
-          transition={{ duration: 3.5, repeat: Infinity, ease: 'linear' }}
-        >
+        <g style={{ transformOrigin: '60px 60px', animation: 'orbit-cw 3.5s linear infinite' }}>
           <circle cx="80" cy="60" r="2.5" fill="#e879f9" opacity="0.9" />
-        </motion.g>
+        </g>
       </svg>
 
       {/* Text block */}
@@ -578,7 +565,7 @@ export default function HistoryPage() {
           />
         </div>
 
-        <div className="relative z-10 max-w-7xl mx-auto flex flex-col gap-8 px-6 lg:px-10">
+        <div className="relative z-10 flex flex-col gap-8">
 
           {/* ── HEADER ──────────────────────────────────────────────────────── */}
           <motion.section

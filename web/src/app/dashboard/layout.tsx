@@ -72,7 +72,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         className="sticky top-0 z-40 backdrop-blur-xl border-b"
         style={{ background: 'rgba(3,7,18,0.85)', borderColor: 'rgba(255,255,255,0.06)' }}
       >
-        <div className="max-w-5xl mx-auto px-6 py-3 flex items-center justify-between gap-4">
+        <div className="max-w-[1400px] mx-auto px-6 lg:px-12 py-3 flex items-center justify-between gap-4">
           <Logo size="sm" />
 
           <div className="flex items-center gap-3">
@@ -114,7 +114,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         </div>
 
-        <nav className="max-w-5xl mx-auto px-6 flex gap-1 border-t" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
+        <nav className="max-w-[1400px] mx-auto px-6 lg:px-12 flex gap-1 border-t" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
           {tabs.map((tab) => {
             const isActive = tab.href === '/dashboard'
               ? pathname === '/dashboard'
@@ -137,7 +137,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </nav>
       </header>
 
-      <main className="flex-1 max-w-5xl mx-auto w-full px-6 py-8">
+      <main className="flex-1 w-full max-w-[1400px] mx-auto px-6 lg:px-12 py-8">
         {children}
       </main>
     </div>

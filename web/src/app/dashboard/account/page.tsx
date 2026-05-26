@@ -129,9 +129,9 @@ export default function AccountPage() {
     product_news: false, exclusive_offers: false, push_mobile: false,
   });
   const [notifSaved, setNotifSaved] = useState(false);
-  const [isDark, setIsDark] = useState(true);
   const [editMode, setEditMode] = useState(false);
   const [subscription, setSubscription] = useState<SubscriptionRow | null>(null);
+  const [currentLang, setCurrentLang] = useState<Locale>('fr');
 
   const containerRef = useRef<HTMLDivElement>(null);
   const spotlightRef = useRef<HTMLDivElement>(null);
@@ -166,7 +166,9 @@ export default function AccountPage() {
   const countHours     = useCountUp(hoursSaved, 1100, !loading);
   const countDays      = useCountUp(daysActive, 1000, !loading);
 
-  const currentLang = (i18n.language?.slice(0, 2) ?? 'fr') as Locale;
+  useEffect(() => {
+    setCurrentLang((i18n.language?.slice(0, 2) ?? 'fr') as Locale);
+  }, []);
 
   const last7Days = useMemo(() => {
     return [...Array(7)].map((_, i) => {
@@ -190,14 +192,6 @@ export default function AccountPage() {
     el.addEventListener('mousemove', onMove);
     el.addEventListener('mouseleave', onLeave);
     return () => { el.removeEventListener('mousemove', onMove); el.removeEventListener('mouseleave', onLeave); };
-  }, []);
-
-  /* Theme init */
-  useEffect(() => {
-    if (localStorage.getItem('velona_theme') === 'light') {
-      setIsDark(false);
-      document.documentElement.classList.add('light-mode');
-    }
   }, []);
 
   /* Load notification prefs */
@@ -272,17 +266,6 @@ export default function AccountPage() {
     } catch { /* silent */ }
   };
 
-  const handleThemeToggle = (lightMode: boolean) => {
-    setIsDark(!lightMode);
-    if (lightMode) {
-      document.documentElement.classList.add('light-mode');
-      localStorage.setItem('velona_theme', 'light');
-    } else {
-      document.documentElement.classList.remove('light-mode');
-      localStorage.setItem('velona_theme', 'dark');
-    }
-  };
-
   const handleLanguageChange = async (locale: Locale) => {
     await i18n.changeLanguage(locale);
     localStorage.setItem('velona_language', locale);
@@ -292,7 +275,7 @@ export default function AccountPage() {
 
   if (loading) {
     return (
-      <div className="flex flex-col gap-5 max-w-7xl mx-auto px-6 lg:px-10">
+      <div className="flex flex-col gap-5">
         {[...Array(4)].map((_, i) => (
           <div key={i} className="h-36 rounded-2xl shimmer" style={{ background: 'rgba(15,12,36,0.6)', border: '1px solid rgba(255,255,255,0.05)' }} />
         ))}
@@ -325,7 +308,7 @@ export default function AccountPage() {
         <div className="absolute inset-0" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.018) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
       </div>
 
-      <div className="relative z-10 max-w-7xl mx-auto flex flex-col gap-6 px-6 lg:px-10">
+      <div className="relative z-10 flex flex-col gap-6">
 
         {/* Page title */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, ease: 'easeOut' }}>
@@ -499,9 +482,8 @@ export default function AccountPage() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.45, ease: 'easeOut' }}
-            animate={{ boxShadow: ['0 0 0 0 rgba(249,115,22,0)', '0 0 0 6px rgba(249,115,22,0.18)', '0 0 0 0 rgba(249,115,22,0)'] }}
             className="relative rounded-2xl p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5"
-            style={{ background: 'rgba(15,12,36,0.82)', backdropFilter: 'blur(12px)', border: '1px solid rgba(249,115,22,0.4)' }}
+            style={{ background: 'rgba(15,12,36,0.82)', backdropFilter: 'blur(12px)', border: '1px solid rgba(249,115,22,0.4)', animation: 'no-plan-pulse 2.5s ease-in-out infinite' }}
           >
             <div className="flex items-start gap-4">
               <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'rgba(249,115,22,0.15)' }}>
@@ -701,32 +683,6 @@ export default function AccountPage() {
               <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>
             </svg>
           }>Préférences</SectionTitle>
-
-          {/* Theme toggle */}
-          <div className="flex items-center justify-between gap-4 py-3 mb-2" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-            <div className="flex items-center gap-3">
-              <AnimatePresence mode="wait">
-                {isDark ? (
-                  <motion.div key="moon" initial={{ scale: 0, rotate: -30 }} animate={{ scale: 1, rotate: 0 }} exit={{ scale: 0, rotate: 30 }} transition={{ duration: 0.25 }}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="#a78bfa">
-                      <path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-.46-.04-.92-.1-1.36-.98 1.37-2.58 2.26-4.4 2.26-2.98 0-5.4-2.42-5.4-5.4 0-1.81.89-3.42 2.26-4.4-.44-.06-.9-.1-1.36-.1z"/>
-                    </svg>
-                  </motion.div>
-                ) : (
-                  <motion.div key="sun" initial={{ scale: 0, rotate: 30 }} animate={{ scale: 1, rotate: 0 }} exit={{ scale: 0, rotate: -30 }} transition={{ duration: 0.25 }}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="#fbbf24">
-                      <path d="M6.76 4.84l-1.8-1.79-1.41 1.41 1.79 1.79 1.42-1.41zM4 10.5H1v2h3v-2zm9-9.95h-2V3.5h2V.55zm7.45 3.91l-1.41-1.41-1.79 1.79 1.41 1.41 1.79-1.79zm-3.21 13.7l1.79 1.8 1.41-1.41-1.8-1.79-1.4 1.4zM20 10.5v2h3v-2h-3zm-8-5c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6-2.69-6-6-6zm-1 16.95h2V19.5h-2v2.95zm-7.45-3.91l1.41 1.41 1.79-1.8-1.41-1.41-1.79 1.8z"/>
-                    </svg>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-              <div>
-                <p className="text-sm text-white font-medium">{isDark ? 'Mode sombre' : 'Mode clair'}</p>
-                <p className="text-xs text-gray-500 mt-0.5">Basculer l&apos;apparence de l&apos;interface</p>
-              </div>
-            </div>
-            <Toggle checked={!isDark} onChange={(v) => handleThemeToggle(v)} />
-          </div>
 
           {/* Language picker */}
           <div className="pt-4">

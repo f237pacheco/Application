@@ -305,7 +305,8 @@ function ServiceCard({ service, index }: { service: (typeof SERVICES)[number]; i
           style={{
             background: 'rgba(15,12,36,0.85)',
             backdropFilter: 'blur(12px)',
-            border: hovered ? '1px solid rgba(108,92,231,0.5)' : '1px solid rgba(255,255,255,0.06)',
+            border: hovered ? `1.5px solid ${meta.color}65` : '1px solid rgba(255,255,255,0.06)',
+            boxShadow: hovered ? `0 0 0 1px ${meta.color}20` : 'none',
           }}
         >
           {/* Top gradient line */}
@@ -505,7 +506,7 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      <div className="relative z-10 max-w-7xl mx-auto flex flex-col gap-10 px-0 lg:px-2">
+      <div className="relative z-10 flex flex-col gap-10">
 
         {/* ── HEADER ────────────────────────────────────────────────────────── */}
         <motion.section
@@ -563,7 +564,7 @@ export default function DashboardPage() {
             )}
           </div>
 
-          {/* 3 metric glassmorphism cards */}
+          {/* 3 metric cards — violet / cyan / orange */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-2">
             {[
               {
@@ -579,12 +580,12 @@ export default function DashboardPage() {
               {
                 icon: (
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                    <path d="M4 8h4V4H4v4zm6 12h4v-4h-4v4zm-6 0h4v-4H4v4zm0-6h4v-4H4v4zm6 0h4v-4h-4v4zm6-10v4h4V4h-4zm-6 4h4V4h-4v4zm6 6h4v-4h-4v4zm0 6h4v-4h-4v4z"/>
                   </svg>
                 ),
                 value: servicesUsed,
                 label: 'services utilisés',
-                color: '#10b981',
+                color: '#06b6d4',
               },
               {
                 icon: (
@@ -599,19 +600,21 @@ export default function DashboardPage() {
             ].map(({ icon, value, label, color }) => (
               <div
                 key={label}
-                className="flex items-center gap-3 rounded-2xl px-5 py-4"
+                className="flex items-center gap-3 rounded-2xl px-5 py-4 relative overflow-hidden"
                 style={{
-                  background: 'rgba(255,255,255,0.03)',
+                  background: `linear-gradient(135deg, ${color}14, rgba(255,255,255,0.02))`,
                   backdropFilter: 'blur(10px)',
-                  border: '1px solid rgba(255,255,255,0.07)',
+                  border: `1px solid ${color}35`,
+                  boxShadow: `0 4px 24px ${color}18`,
                 }}
               >
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: `${color}22`, color }}>
+                <div className="absolute top-0 left-0 w-1 h-full rounded-l-2xl" style={{ background: color }} />
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ml-2" style={{ background: `${color}25`, color }}>
                   {icon}
                 </div>
                 <div>
                   <p className="text-xl font-bold text-white leading-none">{value}</p>
-                  <p className="text-xs text-gray-500 mt-1">{label}</p>
+                  <p className="text-xs mt-1" style={{ color: `${color}cc` }}>{label}</p>
                 </div>
               </div>
             ))}
@@ -648,9 +651,15 @@ export default function DashboardPage() {
         >
           {/* Section header */}
           <div className="flex items-center gap-3">
-            <h2 className="text-xl font-bold text-white">Vos outils IA</h2>
-            <span className="text-xs font-semibold px-2.5 py-1 rounded-full" style={{ background: 'rgba(108,92,231,0.18)', color: '#a78bfa' }}>
+            <div className="flex items-center gap-2">
+              <div className="w-1 h-5 rounded-full" style={{ background: 'linear-gradient(180deg, #6C5CE7, #06b6d4)' }} />
+              <h2 className="text-xl font-bold text-white">Vos outils IA</h2>
+            </div>
+            <span className="text-xs font-semibold px-2.5 py-1 rounded-full" style={{ background: 'rgba(108,92,231,0.18)', color: '#a78bfa', border: '1px solid rgba(108,92,231,0.25)' }}>
               6 disponibles
+            </span>
+            <span className="text-xs font-semibold px-2.5 py-1 rounded-full" style={{ background: 'rgba(6,182,212,0.12)', color: '#67e8f9', border: '1px solid rgba(6,182,212,0.25)' }}>
+              ✦ Nouveau: Vidéo IA
             </span>
           </div>
 

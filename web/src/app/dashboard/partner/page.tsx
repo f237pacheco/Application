@@ -262,7 +262,7 @@ export default function PartnerPage() {
         />
       </div>
 
-      <div className="relative z-10 max-w-7xl mx-auto flex flex-col gap-10 px-6 lg:px-10">
+      <div className="relative z-10 flex flex-col gap-10">
 
         {/* ── HEADER ────────────────────────────────────────────────────────── */}
         <motion.section
