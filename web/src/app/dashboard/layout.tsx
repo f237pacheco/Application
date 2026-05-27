@@ -83,15 +83,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             ) : (
               <Link
                 href="/plans?source=header"
-                className="pulse-glow text-xs font-semibold px-3 py-1.5 rounded-full bg-gradient-to-r from-violet-600 to-indigo-600 text-white hover:opacity-90 transition-opacity"
+                className="text-xs font-bold px-3 py-1.5 rounded-full transition-all hover:opacity-90"
+                style={{ background: '#F59E0B', color: '#000', boxShadow: '0 2px 12px rgba(245,158,11,0.25)' }}
               >
                 Choisir un plan
               </Link>
             )}
 
             {countdown && (
-              <div className="flex items-center gap-1.5 text-xs font-mono text-red-400">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <div className="flex items-center gap-1.5 text-xs font-mono px-2.5 py-1 rounded-full" style={{ background: 'rgba(15,15,25,0.8)', border: '1px solid rgba(255,255,255,0.08)', color: '#94A3B8' }}>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="12" cy="12" r="10" />
                   <polyline points="12 6 12 12 16 14" />
                 </svg>
@@ -100,7 +101,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             )}
 
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-600 to-indigo-600 flex items-center justify-center text-sm font-bold text-white shadow-lg shadow-violet-500/20">
+              <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white" style={{ background: '#6366F1', boxShadow: '0 2px 8px rgba(99,102,241,0.25)' }}>
                 {firstName.charAt(0).toUpperCase()}
               </div>
               <button

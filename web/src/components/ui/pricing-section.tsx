@@ -148,22 +148,23 @@ export function PricingSection() {
   return (
     <div
       ref={containerRef}
-      className="relative overflow-hidden min-h-screen bg-gray-950 flex flex-col items-center px-4 py-16 sm:py-24"
+      className="relative overflow-hidden min-h-screen flex flex-col items-center px-4 py-16 sm:py-24"
+      style={{ background: '#0A0A0F' }}
       onMouseMove={handleMouseMove}
     >
       {/* Decorative background — parallax orbs */}
       <div className="absolute inset-0 pointer-events-none select-none" aria-hidden>
         <motion.div
           className="absolute -top-32 -left-32 w-96 h-96 rounded-full blur-[100px]"
-          style={{ background: 'rgba(108,92,231,0.2)', x: orb1X, y: orb1Y }}
+          style={{ background: 'rgba(99,102,241,0.07)', x: orb1X, y: orb1Y }}
         />
         <motion.div
           className="absolute -bottom-32 -right-32 w-96 h-96 rounded-full blur-[100px]"
-          style={{ background: 'rgba(99,102,241,0.16)', x: orb2X, y: orb2Y }}
+          style={{ background: 'rgba(99,102,241,0.06)', x: orb2X, y: orb2Y }}
         />
         <motion.div
           className="absolute top-1/2 -left-20 w-64 h-64 rounded-full blur-[80px]"
-          style={{ background: 'rgba(139,92,246,0.1)', x: orb3X, y: orb3Y }}
+          style={{ background: 'rgba(99,102,241,0.05)', x: orb3X, y: orb3Y }}
         />
         <div className="absolute inset-0" style={{ backgroundImage: 'linear-gradient(rgba(108,92,231,0.045) 1px, transparent 1px), linear-gradient(90deg, rgba(108,92,231,0.045) 1px, transparent 1px)', backgroundSize: '48px 48px' }} />
         {([
@@ -177,8 +178,8 @@ export function PricingSection() {
           <motion.div
             key={i}
             className="absolute rounded-full"
-            style={{ left: d.x, top: d.y, width: d.s, height: d.s, background: 'rgba(108,92,231,0.65)' }}
-            animate={{ y: [0, -22, 0], opacity: [0.3, 0.85, 0.3] }}
+            style={{ left: d.x, top: d.y, width: d.s, height: d.s, background: 'rgba(99,102,241,0.4)' }}
+            animate={{ y: [0, -22, 0], opacity: [0.2, 0.55, 0.2] }}
             transition={{ duration: 4.5 + i * 0.6, delay: d.delay, repeat: Infinity, ease: 'easeInOut' }}
           />
         ))}
@@ -204,12 +205,13 @@ export function PricingSection() {
           Essai gratuit 3 jours — sans carte bancaire requise
         </motion.p>
         <motion.div
-          className="mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-red-950/40 border border-red-500/20"
+          className="mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-full"
+          style={{ background: 'rgba(15,15,20,0.7)', border: '1px solid rgba(245,158,11,0.3)' }}
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.65, duration: 0.4 }}
         >
-          <span className="text-sm font-medium" style={{ color: '#f87171' }}>
+          <span className="text-sm font-medium" style={{ color: '#F59E0B' }}>
             Offre d&apos;essai disponible encore{' '}
             <span className="font-mono font-bold">{formatOfferCountdown(offerSeconds)}</span>
           </span>
@@ -223,13 +225,13 @@ export function PricingSection() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.6, duration: 0.4 }}
       >
-        <div className="flex items-center gap-4 bg-gray-900 border border-gray-800 rounded-full px-2 py-1.5">
+        <div className="flex items-center gap-4 rounded-full px-2 py-1.5" style={{ background: '#111118', border: '1px solid rgba(255,255,255,0.07)' }}>
           <button
             onClick={() => setBilling('monthly')}
             className={cn(
-              'px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-200',
+              'px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-150',
               billing === 'monthly'
-                ? 'bg-[#6C5CE7] text-white shadow-md shadow-[#6C5CE7]/30'
+                ? 'bg-[#6366F1] text-white shadow-md shadow-[#6366F1]/30'
                 : 'text-gray-400 hover:text-white'
             )}
           >
@@ -238,9 +240,9 @@ export function PricingSection() {
           <button
             onClick={() => setBilling('annual')}
             className={cn(
-              'px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-200',
+              'px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-150',
               billing === 'annual'
-                ? 'bg-[#6C5CE7] text-white shadow-md shadow-[#6C5CE7]/30'
+                ? 'bg-[#6366F1] text-white shadow-md shadow-[#6366F1]/30'
                 : 'text-gray-400 hover:text-white'
             )}
           >
@@ -252,7 +254,8 @@ export function PricingSection() {
             <motion.span
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="text-xs font-semibold px-3 py-1 rounded-full bg-[#6C5CE7]/20 text-[#a899ff] border border-[#6C5CE7]/30"
+              className="text-xs font-semibold px-3 py-1 rounded-full"
+              style={{ background: 'rgba(99,102,241,0.12)', color: '#a5b4fc', border: '1px solid rgba(99,102,241,0.22)' }}
             >
               Économisez jusqu&apos;à 22%
             </motion.span>
@@ -261,7 +264,7 @@ export function PricingSection() {
       </motion.div>
 
       {/* Gradient separator */}
-      <div className="w-full max-w-5xl mb-2" style={{ height: '1px', background: 'linear-gradient(90deg, transparent, rgba(108,92,231,0.45) 30%, rgba(99,102,241,0.55) 50%, rgba(108,92,231,0.45) 70%, transparent)' }} />
+      <div className="w-full max-w-5xl mb-2" style={{ height: '1px', background: 'linear-gradient(90deg, transparent, rgba(99,102,241,0.25) 30%, rgba(99,102,241,0.35) 50%, rgba(99,102,241,0.25) 70%, transparent)' }} />
 
       {/* Cards */}
       <motion.div
@@ -283,14 +286,14 @@ export function PricingSection() {
               {plan.highlighted && (
                 <div
                   className="pointer-events-none absolute -top-px left-1/2 -translate-x-1/2 h-px w-3/4"
-                  style={{ background: 'linear-gradient(90deg, transparent, #6C5CE7, transparent)' }}
+                  style={{ background: 'linear-gradient(90deg, transparent, #6366F1, transparent)' }}
                 />
               )}
 
               {/* Badge */}
               {plan.badge && (
                 <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
-                  <span className="bg-[#6C5CE7] text-white text-xs font-bold px-4 py-1.5 rounded-full whitespace-nowrap shadow-lg shadow-[#6C5CE7]/30">
+                  <span className="text-xs font-bold px-4 py-1.5 rounded-full whitespace-nowrap shadow-lg" style={{ background: '#F59E0B', color: '#000', boxShadow: '0 4px 16px rgba(245,158,11,0.3)' }}>
                     {plan.badge}
                   </span>
                 </div>
@@ -303,8 +306,9 @@ export function PricingSection() {
                     key={kw}
                     initial={{ opacity: 0, x: 12 }}
                     animate={isHovered ? { opacity: 1, x: 0 } : { opacity: 0, x: 12 }}
-                    transition={{ delay: ki * 0.06, duration: 0.25, ease: 'easeOut' }}
-                    className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-violet-500/15 text-violet-300 border border-violet-500/20 whitespace-nowrap"
+                    transition={{ delay: ki * 0.06, duration: 0.2, ease: 'easeOut' }}
+                    className="text-[10px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap"
+                    style={{ background: 'rgba(99,102,241,0.12)', color: '#a5b4fc', border: '1px solid rgba(99,102,241,0.2)' }}
                   >
                     {kw}
                   </motion.span>
@@ -337,7 +341,7 @@ export function PricingSection() {
                 </div>
                 <div style={{ height: 20 }}>
                   {billing === 'annual' && (
-                    <p className="text-xs text-[#a899ff]">
+                    <p className="text-xs text-[#a5b4fc]">
                       soit {(price * 12).toFixed(0)}€/an · {saving}% d&apos;économie
                     </p>
                   )}
@@ -350,7 +354,7 @@ export function PricingSection() {
                   <li key={i} className="flex items-start gap-2.5 text-sm text-gray-300">
                     <span
                       className="mt-0.5 shrink-0 flex items-center justify-center w-4 h-4 rounded-full"
-                      style={{ background: plan.highlighted ? '#6C5CE7' : '#374151' }}
+                      style={{ background: plan.highlighted ? '#6366F1' : '#374151' }}
                     >
                       <svg width="8" height="6" viewBox="0 0 8 6" fill="none">
                         <path d="M1 3l2 2 4-4" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -372,12 +376,11 @@ export function PricingSection() {
               ) : (
                 <button
                   onClick={() => handleSelect(plan.id)}
-                  className={cn(
-                    'w-full rounded-xl py-3 text-sm font-semibold transition-all duration-200',
-                    plan.highlighted
-                      ? 'bg-[#6C5CE7] text-white hover:bg-[#5a48d4] shadow-lg shadow-[#6C5CE7]/30 hover:shadow-[#6C5CE7]/50'
-                      : 'border border-gray-700 text-white hover:border-[#6C5CE7] hover:bg-[#6C5CE7]/10'
-                  )}
+                  className="w-full rounded-xl py-3 text-sm font-semibold transition-all duration-150"
+                  style={plan.highlighted
+                    ? { background: '#6366F1', color: '#fff', boxShadow: '0 4px 20px rgba(99,102,241,0.3)' }
+                    : { background: '#F59E0B', color: '#000', boxShadow: '0 4px 16px rgba(245,158,11,0.25)' }
+                  }
                 >
                   Essayer 3 jours gratuits
                 </button>
@@ -392,7 +395,7 @@ export function PricingSection() {
                 variants={cardVariants}
                 onMouseEnter={() => setHoveredPlan(plan.id)}
                 onMouseLeave={() => setHoveredPlan(null)}
-                className="relative flex flex-col rounded-2xl border p-7 transition-all duration-300 border-[#6C5CE7] bg-[#6C5CE7]/5 shadow-xl shadow-[#6C5CE7]/10"
+                className="relative flex flex-col rounded-2xl border p-7 transition-all duration-200 border-[#6366F1] bg-[#6366F1]/5 shadow-xl shadow-[#6366F1]/10"
               >
                 {cardContent}
               </motion.div>
@@ -405,10 +408,11 @@ export function PricingSection() {
               variants={cardVariants}
               onMouseEnter={() => setHoveredPlan(plan.id)}
               onMouseLeave={() => setHoveredPlan(null)}
-              className="relative flex flex-col rounded-2xl border p-7 transition-colors duration-300 border-gray-800 bg-gray-900/60"
+              className="relative flex flex-col rounded-2xl border p-7 transition-colors duration-200"
+              style={{ borderColor: 'rgba(255,255,255,0.07)', background: '#111118' }}
               whileHover={{
-                boxShadow: '0 0 30px rgba(108,92,231,0.3)',
-                borderColor: 'rgba(108,92,231,0.6)',
+                boxShadow: '0 0 24px rgba(99,102,241,0.15)',
+                borderColor: 'rgba(99,102,241,0.4)',
               }}
             >
               {cardContent}

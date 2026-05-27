@@ -63,7 +63,7 @@ function PaymentPageInner() {
     const onMove = (e: MouseEvent) => {
       if (!spotlightRef.current) return;
       const rect = el.getBoundingClientRect();
-      spotlightRef.current.style.background = `radial-gradient(500px circle at ${e.clientX - rect.left}px ${e.clientY - rect.top}px, rgba(108,92,231,0.09), transparent 60%)`;
+      spotlightRef.current.style.background = `radial-gradient(500px circle at ${e.clientX - rect.left}px ${e.clientY - rect.top}px, rgba(99,102,241,0.05), transparent 60%)`;
       spotlightRef.current.style.opacity = '1';
     };
     const onLeave = () => { if (spotlightRef.current) spotlightRef.current.style.opacity = '0'; };
@@ -403,8 +403,8 @@ function PaymentPageInner() {
                   <button
                     onClick={handleStripeCheckout}
                     disabled={loading}
-                    className="relative w-full py-4 rounded-xl text-base font-bold text-white disabled:opacity-60 overflow-hidden group"
-                    style={{ background: 'linear-gradient(135deg, #6C5CE7, #4834d4)', boxShadow: '0 8px 32px rgba(108,92,231,0.45)' }}
+                    className="relative w-full py-4 rounded-xl text-base font-bold disabled:opacity-60 overflow-hidden group"
+                    style={{ background: '#F59E0B', color: '#000', boxShadow: '0 8px 32px rgba(245,158,11,0.35)' }}
                   >
                     <span className="relative z-10">{loading ? 'Chargement…' : "Commencer l'essai gratuit →"}</span>
                     {/* Shimmer */}

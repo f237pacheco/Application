@@ -200,7 +200,7 @@ export default function HelpPage() {
     const onMove = (e: MouseEvent) => {
       if (!spotlightRef.current) return;
       const rect = el.getBoundingClientRect();
-      spotlightRef.current.style.background = `radial-gradient(400px circle at ${e.clientX - rect.left}px ${e.clientY - rect.top}px, rgba(108,92,231,0.1), transparent 60%)`;
+      spotlightRef.current.style.background = `radial-gradient(400px circle at ${e.clientX - rect.left}px ${e.clientY - rect.top}px, rgba(99,102,241,0.05), transparent 60%)`;
       spotlightRef.current.style.opacity = '1';
     };
     const onLeave = () => { if (spotlightRef.current) spotlightRef.current.style.opacity = '0'; };
@@ -481,7 +481,7 @@ export default function HelpPage() {
           viewport={{ once: true }}
           transition={{ duration: 0.45, ease: 'easeOut' }}
           className="relative rounded-2xl p-8 flex flex-col sm:flex-row items-center justify-between gap-6 overflow-hidden"
-          style={{ background: 'linear-gradient(135deg, rgba(108,92,231,0.3) 0%, rgba(72,52,212,0.4) 50%, rgba(99,102,241,0.25) 100%)', border: '1px solid rgba(108,92,231,0.35)', backdropFilter: 'blur(16px)' }}
+          style={{ background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)', backdropFilter: 'blur(16px)' }}
         >
           {/* Decorative glow */}
           <div className="absolute -top-10 -right-10 w-48 h-48 rounded-full pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(167,139,250,0.2) 0%, transparent 70%)' }} />
@@ -506,7 +506,7 @@ export default function HelpPage() {
             animate={{ scale: [1, 1.03, 1] }}
             transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
             className="relative overflow-hidden px-6 py-3 rounded-xl text-sm font-bold shrink-0 group"
-            style={{ background: 'rgba(255,255,255,0.95)', color: '#4834d4', boxShadow: '0 8px 28px rgba(0,0,0,0.25)' }}
+            style={{ background: '#F59E0B', color: '#000', boxShadow: '0 8px 28px rgba(245,158,11,0.3)' }}
           >
             <span className="relative z-10">Contacter le support</span>
             <span

@@ -108,7 +108,7 @@ type CardData = (typeof ROW1_CARDS)[number] | (typeof ROW2_CARDS)[number];
 function MarqueeCard({ card }: { card: CardData }) {
   if (card.type === 'tweet') {
     return (
-      <div className="flex-shrink-0 w-68 bg-gray-900/80 backdrop-blur border border-white/[0.06] rounded-2xl p-4 shadow-xl" style={{ width: 272 }}>
+      <div className="flex-shrink-0 w-68 backdrop-blur border border-white/[0.06] rounded-2xl p-4 shadow-xl" style={{ width: 272, background: 'rgba(17,17,24,0.85)' }}>
         <div className="flex items-center gap-2.5 mb-2.5">
           <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0" style={{ backgroundColor: card.avatarBg }}>
             {card.avatarLetter}
@@ -134,7 +134,7 @@ function MarqueeCard({ card }: { card: CardData }) {
   }
   if (card.type === 'stat') {
     return (
-      <div className="flex-shrink-0 w-44 bg-gray-900/80 backdrop-blur border border-white/[0.06] rounded-2xl p-4 shadow-xl">
+      <div className="flex-shrink-0 w-44 backdrop-blur border border-white/[0.06] rounded-2xl p-4 shadow-xl" style={{ background: 'rgba(17,17,24,0.85)' }}>
         <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">{card.label}</p>
         <p className="text-2xl font-extrabold text-white">{card.value}</p>
         <p className="text-[10px] font-bold mt-1" style={{ color: card.color }}>↑ {card.change}</p>
@@ -146,7 +146,7 @@ function MarqueeCard({ card }: { card: CardData }) {
   }
   if (card.type === 'site') {
     return (
-      <div className="flex-shrink-0 w-52 bg-gray-900/80 backdrop-blur border border-white/[0.06] rounded-2xl overflow-hidden shadow-xl">
+      <div className="flex-shrink-0 w-52 backdrop-blur border border-white/[0.06] rounded-2xl overflow-hidden shadow-xl" style={{ background: 'rgba(17,17,24,0.85)' }}>
         <div className="bg-gray-700/50 px-3 py-1.5 flex items-center gap-1.5">
           <div className="w-1.5 h-1.5 rounded-full bg-red-400" />
           <div className="w-1.5 h-1.5 rounded-full bg-yellow-400" />
@@ -169,7 +169,7 @@ function MarqueeCard({ card }: { card: CardData }) {
   }
   if (card.type === 'video') {
     return (
-      <div className="flex-shrink-0 w-44 bg-gray-900/80 backdrop-blur border border-white/[0.06] rounded-2xl overflow-hidden shadow-xl">
+      <div className="flex-shrink-0 w-44 backdrop-blur border border-white/[0.06] rounded-2xl overflow-hidden shadow-xl" style={{ background: 'rgba(17,17,24,0.85)' }}>
         <div className="h-24 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center relative">
           <div className="w-10 h-10 rounded-full bg-white/20 border border-white/30 flex items-center justify-center">
             <div className="w-0 h-0 border-t-[6px] border-t-transparent border-l-[12px] border-l-white border-b-[6px] border-b-transparent ml-1" />
@@ -187,7 +187,7 @@ function MarqueeCard({ card }: { card: CardData }) {
   }
   if (card.type === 'kpi') {
     return (
-      <div className="flex-shrink-0 w-44 bg-gray-900/80 backdrop-blur border border-white/[0.06] rounded-2xl p-4 shadow-xl">
+      <div className="flex-shrink-0 w-44 backdrop-blur border border-white/[0.06] rounded-2xl p-4 shadow-xl" style={{ background: 'rgba(17,17,24,0.85)' }}>
         <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">{card.label}</p>
         <p className="text-2xl font-extrabold text-white">{card.value}</p>
         <p className="text-xs mt-0.5" style={{ color: card.color }}>{card.sub}</p>
@@ -303,10 +303,11 @@ function ServiceCard({ service, index }: { service: (typeof SERVICES)[number]; i
           transition={{ type: 'spring', stiffness: 280, damping: 22 }}
           className="relative flex flex-col h-full rounded-2xl p-5 overflow-hidden"
           style={{
-            background: 'rgba(15,12,36,0.85)',
+            background: hovered ? '#16161F' : '#111118',
             backdropFilter: 'blur(12px)',
-            border: hovered ? `1.5px solid ${meta.color}65` : '1px solid rgba(255,255,255,0.06)',
-            boxShadow: hovered ? `0 0 0 1px ${meta.color}20` : 'none',
+            border: hovered ? `1px solid rgba(99,102,241,0.45)` : '1px solid rgba(255,255,255,0.06)',
+            boxShadow: hovered ? `0 8px 32px rgba(99,102,241,0.12)` : 'none',
+            transition: 'background 0.15s, border-color 0.15s, box-shadow 0.15s',
           }}
         >
           {/* Top gradient line */}
@@ -370,7 +371,7 @@ function ServiceCard({ service, index }: { service: (typeof SERVICES)[number]; i
           <div className="relative overflow-hidden rounded-xl">
             <div
               className="w-full py-2.5 text-sm font-semibold text-white text-center rounded-xl"
-              style={{ background: `linear-gradient(135deg, ${meta.color}, ${meta.color}cc)` }}
+              style={{ background: 'linear-gradient(135deg, #6366F1, #4F52E8)', boxShadow: '0 4px 16px rgba(99,102,241,0.2)' }}
             >
               Lancer →
             </div>
@@ -443,7 +444,7 @@ export default function DashboardPage() {
     const onMove = (e: MouseEvent) => {
       if (!spotlightRef.current) return;
       const rect = el.getBoundingClientRect();
-      spotlightRef.current.style.background = `radial-gradient(400px circle at ${e.clientX - rect.left}px ${e.clientY - rect.top}px, rgba(108,92,231,0.12), transparent 60%)`;
+      spotlightRef.current.style.background = `radial-gradient(400px circle at ${e.clientX - rect.left}px ${e.clientY - rect.top}px, rgba(99,102,241,0.06), transparent 60%)`;
       spotlightRef.current.style.opacity = '1';
     };
     const onLeave = () => { if (spotlightRef.current) spotlightRef.current.style.opacity = '0'; };
@@ -475,19 +476,19 @@ export default function DashboardPage() {
       <div className="pointer-events-none select-none absolute inset-0 overflow-hidden rounded-3xl" aria-hidden>
         <motion.div
           className="absolute rounded-full"
-          style={{ top: '-15%', left: '-10%', width: 560, height: 560, background: 'radial-gradient(circle, rgba(108,92,231,0.14) 0%, transparent 70%)' }}
+          style={{ top: '-15%', left: '-10%', width: 560, height: 560, background: 'radial-gradient(circle, rgba(99,102,241,0.07) 0%, transparent 70%)' }}
           animate={{ x: [0, 50, -20, 0], y: [0, -40, 20, 0] }}
           transition={{ duration: 20, repeat: Infinity, ease: 'easeInOut' }}
         />
         <motion.div
           className="absolute rounded-full"
-          style={{ top: '35%', right: '-12%', width: 480, height: 480, background: 'radial-gradient(circle, rgba(99,102,241,0.11) 0%, transparent 70%)' }}
+          style={{ top: '35%', right: '-12%', width: 480, height: 480, background: 'radial-gradient(circle, rgba(99,102,241,0.06) 0%, transparent 70%)' }}
           animate={{ x: [0, -40, 20, 0], y: [0, 50, -30, 0] }}
           transition={{ duration: 25, repeat: Infinity, ease: 'easeInOut' }}
         />
         <motion.div
           className="absolute rounded-full"
-          style={{ bottom: '-8%', left: '30%', width: 400, height: 400, background: 'radial-gradient(circle, rgba(139,92,246,0.1) 0%, transparent 70%)' }}
+          style={{ bottom: '-8%', left: '30%', width: 400, height: 400, background: 'radial-gradient(circle, rgba(99,102,241,0.05) 0%, transparent 70%)' }}
           animate={{ x: [0, 30, -10, 0], y: [0, -30, 40, 0] }}
           transition={{ duration: 22, repeat: Infinity, ease: 'easeInOut' }}
         />
@@ -524,15 +525,7 @@ export default function DashboardPage() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <h1 className="text-4xl font-bold text-white leading-tight">
               Bienvenue{' '}
-              <span
-                style={{
-                  background: 'linear-gradient(90deg, #a78bfa 0%, #6C5CE7 25%, #e879f9 50%, #6C5CE7 75%, #a78bfa 100%)',
-                  backgroundSize: '200% auto',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                  animation: 'name-shimmer 3s linear infinite',
-                }}
-              >
+              <span className="text-white">
                 {firstName}
               </span>
             </h1>
@@ -549,15 +542,15 @@ export default function DashboardPage() {
                       height: '300%',
                       top: '-100%',
                       left: '-100%',
-                      background: 'conic-gradient(from 0deg, #6C5CE7 0%, #a78bfa 30%, #e879f9 55%, #4834d4 80%, #6C5CE7 100%)',
+                      background: 'conic-gradient(from 0deg, #F59E0B 0%, #FCD34D 30%, #F97316 55%, #D97706 80%, #F59E0B 100%)',
                     }}
                     animate={{ rotate: 360 }}
                     transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
                   />
-                  <span className="relative z-10 flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold text-white" style={{ background: '#0c0a24' }}>
-                    <span className="text-violet-300">✦</span>
+                  <span className="relative z-10 flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold" style={{ background: '#0A0A0F', color: '#F59E0B' }}>
+                    <span>✦</span>
                     <span>3 jours d&apos;essai gratuits</span>
-                    <span className="text-violet-400 text-xs">→</span>
+                    <span className="text-xs">→</span>
                   </span>
                 </div>
               </Link>
@@ -655,10 +648,10 @@ export default function DashboardPage() {
               <div className="w-1 h-5 rounded-full" style={{ background: 'linear-gradient(180deg, #6C5CE7, #06b6d4)' }} />
               <h2 className="text-xl font-bold text-white">Vos outils IA</h2>
             </div>
-            <span className="text-xs font-semibold px-2.5 py-1 rounded-full" style={{ background: 'rgba(108,92,231,0.18)', color: '#a78bfa', border: '1px solid rgba(108,92,231,0.25)' }}>
+            <span className="text-xs font-semibold px-2.5 py-1 rounded-full" style={{ background: 'rgba(99,102,241,0.12)', color: '#a5b4fc', border: '1px solid rgba(99,102,241,0.2)' }}>
               6 disponibles
             </span>
-            <span className="text-xs font-semibold px-2.5 py-1 rounded-full" style={{ background: 'rgba(6,182,212,0.12)', color: '#67e8f9', border: '1px solid rgba(6,182,212,0.25)' }}>
+            <span className="text-xs font-semibold px-2.5 py-1 rounded-full" style={{ background: 'rgba(6,182,212,0.10)', color: '#67e8f9', border: '1px solid rgba(6,182,212,0.2)' }}>
               ✦ Nouveau: Vidéo IA
             </span>
           </div>
@@ -678,10 +671,10 @@ export default function DashboardPage() {
               placeholder="Rechercher un service..."
               className="w-full pl-10 pr-4 py-2.5 rounded-xl text-sm text-white placeholder-gray-600 transition-all focus:outline-none"
               style={{
-                background: 'rgba(255,255,255,0.04)',
+                background: '#111118',
                 backdropFilter: 'blur(8px)',
-                border: search ? '1px solid rgba(108,92,231,0.5)' : '1px solid rgba(255,255,255,0.07)',
-                boxShadow: search ? '0 0 0 3px rgba(108,92,231,0.1)' : 'none',
+                border: search ? '1px solid rgba(99,102,241,0.5)' : '1px solid rgba(255,255,255,0.07)',
+                boxShadow: search ? '0 0 0 3px rgba(99,102,241,0.08)' : 'none',
               }}
             />
             {search && (

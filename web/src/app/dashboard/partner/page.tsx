@@ -184,7 +184,7 @@ export default function PartnerPage() {
     const onMove = (e: MouseEvent) => {
       if (!spotlightRef.current) return;
       const rect = el.getBoundingClientRect();
-      spotlightRef.current.style.background = `radial-gradient(400px circle at ${e.clientX - rect.left}px ${e.clientY - rect.top}px, rgba(108,92,231,0.1), transparent 60%)`;
+      spotlightRef.current.style.background = `radial-gradient(400px circle at ${e.clientX - rect.left}px ${e.clientY - rect.top}px, rgba(99,102,241,0.05), transparent 60%)`;
       spotlightRef.current.style.opacity = '1';
     };
     const onLeave = () => { if (spotlightRef.current) spotlightRef.current.style.opacity = '0'; };
@@ -312,15 +312,7 @@ export default function PartnerPage() {
           <div>
             <h1 className="text-4xl font-bold text-white leading-tight">
               Partagez Velona,{' '}
-              <span
-                style={{
-                  background: 'linear-gradient(90deg, #a78bfa 0%, #6C5CE7 40%, #e879f9 75%, #a78bfa 100%)',
-                  backgroundSize: '200% auto',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                  animation: 'name-shimmer 4s linear infinite',
-                }}
-              >
+              <span className="text-white">
                 gagnez des récompenses
               </span>
             </h1>
@@ -454,7 +446,7 @@ export default function PartnerPage() {
                           animate={{ scale: [1, 1.06, 1] }}
                           transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
                           className="text-[10px] font-extrabold px-2 py-0.5 rounded-full"
-                          style={{ background: '#00D68F', color: '#000', boxShadow: '0 0 10px rgba(0,214,143,0.5)' }}
+                          style={{ background: '#F59E0B', color: '#000', boxShadow: '0 0 10px rgba(245,158,11,0.4)' }}
                         >
                           {badge}
                         </motion.span>
@@ -570,7 +562,7 @@ export default function PartnerPage() {
                   type="submit"
                   disabled={!partnerUrl.trim() || submitting || submitStatus === 'success'}
                   className="relative w-full py-3 text-sm font-bold text-white rounded-xl disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden group"
-                  style={{ background: submitStatus === 'success' ? 'linear-gradient(135deg, #00b894, #00a381)' : 'linear-gradient(135deg, #6C5CE7, #4834d4)', boxShadow: submitStatus === 'success' ? '0 8px 32px rgba(0,184,148,0.3)' : '0 8px 32px rgba(108,92,231,0.3)' }}
+                  style={{ background: submitStatus === 'success' ? 'linear-gradient(135deg, #00b894, #00a381)' : 'linear-gradient(135deg, #6366F1, #4F52E8)', boxShadow: submitStatus === 'success' ? '0 8px 32px rgba(0,184,148,0.3)' : '0 8px 32px rgba(99,102,241,0.3)' }}
                 >
                   <AnimatePresence mode="wait">
                     {submitStatus === 'success' ? (

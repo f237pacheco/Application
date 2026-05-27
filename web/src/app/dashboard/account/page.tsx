@@ -64,7 +64,7 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
       aria-checked={checked}
       onClick={() => onChange(!checked)}
       className="relative w-11 h-6 rounded-full shrink-0"
-      style={{ background: checked ? '#6C5CE7' : 'rgba(75,85,99,0.5)', transition: 'background 0.2s' }}
+      style={{ background: checked ? '#6366F1' : 'rgba(75,85,99,0.5)', transition: 'background 0.2s' }}
     >
       <motion.div
         className="absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow-md"
@@ -85,7 +85,7 @@ function SectionCard({ children, className = '' }: { children: React.ReactNode; 
       viewport={{ once: true }}
       transition={{ duration: 0.45, ease: 'easeOut' }}
       className={`relative rounded-2xl p-6 sm:p-8 ${className}`}
-      style={{ background: 'rgba(15,12,36,0.82)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.06)' }}
+      style={{ background: '#111118', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.06)' }}
     >
       {children}
     </motion.section>
@@ -185,7 +185,7 @@ export default function AccountPage() {
     const onMove = (e: MouseEvent) => {
       if (!spotlightRef.current) return;
       const rect = el.getBoundingClientRect();
-      spotlightRef.current.style.background = `radial-gradient(400px circle at ${e.clientX - rect.left}px ${e.clientY - rect.top}px, rgba(108,92,231,0.1), transparent 60%)`;
+      spotlightRef.current.style.background = `radial-gradient(400px circle at ${e.clientX - rect.left}px ${e.clientY - rect.top}px, rgba(99,102,241,0.05), transparent 60%)`;
       spotlightRef.current.style.opacity = '1';
     };
     const onLeave = () => { if (spotlightRef.current) spotlightRef.current.style.opacity = '0'; };
@@ -498,10 +498,10 @@ export default function AccountPage() {
             </div>
             <motion.a
               href="/checkout/plans"
-              animate={{ scale: [1, 1.03, 1] }}
+              animate={{ scale: [1, 1.02, 1] }}
               transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
-              className="relative overflow-hidden px-6 py-3 rounded-xl text-sm font-bold text-white shrink-0 group"
-              style={{ background: 'linear-gradient(135deg, #6C5CE7, #4834d4)', boxShadow: '0 8px 28px rgba(108,92,231,0.35)' }}
+              className="relative overflow-hidden px-6 py-3 rounded-xl text-sm font-bold shrink-0 group"
+              style={{ background: '#F59E0B', color: '#000', boxShadow: '0 8px 28px rgba(245,158,11,0.3)' }}
             >
               <span className="relative z-10">Activer maintenant →</span>
               <span className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-in-out" style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent)' }} />

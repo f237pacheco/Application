@@ -180,9 +180,10 @@ function HistoryCard({ order, index }: { order: Order; index: number }) {
         transition={{ type: 'spring', stiffness: 280, damping: 22 }}
         className="relative flex items-start gap-4 rounded-2xl p-4 sm:p-5 overflow-hidden"
         style={{
-          background: 'rgba(15,12,36,0.8)',
+          background: hovered ? '#16161F' : '#111118',
           backdropFilter: 'blur(12px)',
-          border: hovered ? `1px solid ${meta.color}50` : '1px solid rgba(255,255,255,0.06)',
+          border: hovered ? `1px solid rgba(99,102,241,0.35)` : '1px solid rgba(255,255,255,0.06)',
+          transition: 'background 0.15s, border-color 0.15s',
         }}
       >
         {/* Top accent line */}
@@ -368,22 +369,23 @@ function EmptyState() {
       <div className="flex flex-col sm:flex-row gap-3">
         <Link
           href="/dashboard"
-          className="relative overflow-hidden px-7 py-3 rounded-xl text-sm font-bold text-white group"
+          className="relative overflow-hidden px-7 py-3 rounded-xl text-sm font-bold group"
           style={{
-            background: 'linear-gradient(135deg, #6C5CE7, #4834d4)',
-            boxShadow: '0 8px 32px rgba(108,92,231,0.35)',
+            background: '#F59E0B',
+            color: '#000',
+            boxShadow: '0 8px 28px rgba(245,158,11,0.3)',
           }}
         >
           <span className="relative z-10">Découvrir les services →</span>
           <span
             className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-in-out"
-            style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent)' }}
+            style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)' }}
           />
         </Link>
         <Link
           href="/dashboard/help"
-          className="px-7 py-3 rounded-xl text-sm font-semibold text-violet-300 hover:text-white transition-colors"
-          style={{ border: '1px solid rgba(108,92,231,0.35)' }}
+          className="px-7 py-3 rounded-xl text-sm font-semibold text-slate-400 hover:text-white transition-colors"
+          style={{ border: '1px solid rgba(255,255,255,0.1)' }}
         >
           En savoir plus
         </Link>
@@ -441,7 +443,7 @@ export default function HistoryPage() {
     const onMove = (e: MouseEvent) => {
       if (!spotlightRef.current) return;
       const rect = el.getBoundingClientRect();
-      spotlightRef.current.style.background = `radial-gradient(400px circle at ${e.clientX - rect.left}px ${e.clientY - rect.top}px, rgba(108,92,231,0.1), transparent 60%)`;
+      spotlightRef.current.style.background = `radial-gradient(400px circle at ${e.clientX - rect.left}px ${e.clientY - rect.top}px, rgba(99,102,241,0.05), transparent 60%)`;
       spotlightRef.current.style.opacity = '1';
     };
     const onLeave = () => { if (spotlightRef.current) spotlightRef.current.style.opacity = '0'; };
@@ -584,18 +586,18 @@ export default function HistoryPage() {
 
               {/* Pulsing badge counter */}
               <motion.div
-                animate={{ boxShadow: ['0 0 0 0 rgba(108,92,231,0)', '0 0 0 6px rgba(108,92,231,0.14)', '0 0 0 0 rgba(108,92,231,0)'] }}
+                animate={{ boxShadow: ['0 0 0 0 rgba(99,102,241,0)', '0 0 0 5px rgba(99,102,241,0.1)', '0 0 0 0 rgba(99,102,241,0)'] }}
                 transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
                 className="flex items-center gap-2 rounded-full px-4 py-2 shrink-0 mt-1"
-                style={{ background: 'rgba(108,92,231,0.15)', border: '1px solid rgba(108,92,231,0.3)' }}
+                style={{ background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.22)' }}
               >
                 <motion.span
                   className="w-2 h-2 rounded-full"
-                  style={{ background: '#a78bfa' }}
+                  style={{ background: '#a5b4fc' }}
                   animate={{ opacity: [1, 0.4, 1] }}
                   transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
                 />
-                <span className="text-sm font-semibold text-violet-300">
+                <span className="text-sm font-semibold" style={{ color: '#a5b4fc' }}>
                   {loading ? '—' : countUpTotal} création{totalCount !== 1 ? 's' : ''}
                 </span>
               </motion.div>
@@ -682,11 +684,11 @@ export default function HistoryPage() {
                 placeholder="Rechercher une création..."
                 className="w-full pl-10 pr-10 py-2.5 rounded-xl text-sm text-white placeholder-gray-600 focus:outline-none"
                 style={{
-                  background: 'rgba(255,255,255,0.04)',
+                  background: '#111118',
                   backdropFilter: 'blur(8px)',
-                  border: search ? '1px solid rgba(108,92,231,0.5)' : '1px solid rgba(255,255,255,0.07)',
-                  boxShadow: search ? '0 0 0 3px rgba(108,92,231,0.1)' : 'none',
-                  transition: 'border-color 0.2s, box-shadow 0.2s',
+                  border: search ? '1px solid rgba(99,102,241,0.45)' : '1px solid rgba(255,255,255,0.07)',
+                  boxShadow: search ? '0 0 0 3px rgba(99,102,241,0.07)' : 'none',
+                  transition: 'border-color 0.15s, box-shadow 0.15s',
                 }}
               />
               {search && (
@@ -719,7 +721,7 @@ export default function HistoryPage() {
                       <motion.div
                         layoutId="pill-active"
                         className="absolute inset-0 rounded-full"
-                        style={{ background: '#6C5CE7', boxShadow: '0 4px 16px rgba(108,92,231,0.35)' }}
+                        style={{ background: '#6366F1', boxShadow: '0 4px 16px rgba(99,102,241,0.3)' }}
                         transition={{ type: 'spring', stiffness: 380, damping: 30 }}
                       />
                     )}
