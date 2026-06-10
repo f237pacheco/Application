@@ -85,7 +85,7 @@ function SectionCard({ children, className = '' }: { children: React.ReactNode; 
       viewport={{ once: true }}
       transition={{ duration: 0.45, ease: 'easeOut' }}
       className={`relative rounded-2xl p-6 sm:p-8 ${className}`}
-      style={{ background: '#111118', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.06)' }}
+      style={{ background: '#18181B', border: '1px solid #27272A' }}
     >
       {children}
     </motion.section>
@@ -133,8 +133,6 @@ export default function AccountPage() {
   const [subscription, setSubscription] = useState<SubscriptionRow | null>(null);
   const [currentLang, setCurrentLang] = useState<Locale>('fr');
 
-  const containerRef = useRef<HTMLDivElement>(null);
-  const spotlightRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   /* Derived data */
@@ -176,22 +174,6 @@ export default function AccountPage() {
       d.setDate(d.getDate() - (6 - i));
       return { label: DAY_ABBR[d.getDay()], value: 0 };
     });
-  }, []);
-
-  /* Cursor spotlight */
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    const onMove = (e: MouseEvent) => {
-      if (!spotlightRef.current) return;
-      const rect = el.getBoundingClientRect();
-      spotlightRef.current.style.background = `radial-gradient(400px circle at ${e.clientX - rect.left}px ${e.clientY - rect.top}px, rgba(99,102,241,0.05), transparent 60%)`;
-      spotlightRef.current.style.opacity = '1';
-    };
-    const onLeave = () => { if (spotlightRef.current) spotlightRef.current.style.opacity = '0'; };
-    el.addEventListener('mousemove', onMove);
-    el.addEventListener('mouseleave', onLeave);
-    return () => { el.removeEventListener('mousemove', onMove); el.removeEventListener('mouseleave', onLeave); };
   }, []);
 
   /* Load notification prefs */
@@ -277,38 +259,16 @@ export default function AccountPage() {
     return (
       <div className="flex flex-col gap-5">
         {[...Array(4)].map((_, i) => (
-          <div key={i} className="h-36 rounded-2xl shimmer" style={{ background: 'rgba(15,12,36,0.6)', border: '1px solid rgba(255,255,255,0.05)' }} />
+          <div key={i} className="h-36 rounded-2xl shimmer" style={{ background: '#18181B', border: '1px solid #27272A' }} />
         ))}
       </div>
     );
   }
 
   return (
-    <div ref={containerRef} className="relative">
-      {/* Cursor spotlight */}
-      <div ref={spotlightRef} className="pointer-events-none absolute inset-0 z-0 transition-opacity duration-300 rounded-3xl" style={{ opacity: 0 }} aria-hidden />
-
-      {/* Background orbs + grid */}
-      <div className="pointer-events-none select-none absolute inset-0 overflow-hidden rounded-3xl" aria-hidden>
-        <motion.div className="absolute rounded-full"
-          style={{ top: '-10%', right: '-6%', width: 520, height: 520, background: 'radial-gradient(circle, rgba(108,92,231,0.11) 0%, transparent 70%)' }}
-          animate={{ x: [0, -40, 0], y: [0, 28, 0] }}
-          transition={{ duration: 22, repeat: Infinity, ease: 'easeInOut' }}
-        />
-        <motion.div className="absolute rounded-full"
-          style={{ bottom: '-8%', left: '-4%', width: 440, height: 440, background: 'radial-gradient(circle, rgba(99,102,241,0.09) 0%, transparent 70%)' }}
-          animate={{ x: [0, 32, 0], y: [0, -32, 0] }}
-          transition={{ duration: 26, repeat: Infinity, ease: 'easeInOut' }}
-        />
-        <motion.div className="absolute rounded-full"
-          style={{ top: '50%', left: '40%', width: 320, height: 320, background: 'radial-gradient(circle, rgba(139,92,246,0.06) 0%, transparent 70%)' }}
-          animate={{ x: [0, -18, 0], y: [0, -22, 0] }}
-          transition={{ duration: 19, repeat: Infinity, ease: 'easeInOut' }}
-        />
-        <div className="absolute inset-0" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.018) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
-      </div>
-
-      <div className="relative z-10 flex flex-col gap-6">
+    <div className="relative">
+      <div className="page-beam" />
+      <div className="flex flex-col gap-6">
 
         {/* Page title */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, ease: 'easeOut' }}>
@@ -402,12 +362,12 @@ export default function AccountPage() {
                       {planInfo.label}
                     </span>
                     {profile?.account_type && (
-                      <span className="text-xs px-2.5 py-1 rounded-full text-gray-400" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                      <span className="text-xs px-2.5 py-1 rounded-full text-gray-400" style={{ background: '#27272A', border: '1px solid #3F3F46' }}>
                         {profile.account_type === 'individual' ? 'Particulier' : 'Professionnel'}
                       </span>
                     )}
                     {profile?.sector && (
-                      <span className="text-xs px-2.5 py-1 rounded-full text-gray-400" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                      <span className="text-xs px-2.5 py-1 rounded-full text-gray-400" style={{ background: '#27272A', border: '1px solid #3F3F46' }}>
                         {profile.sector}
                       </span>
                     )}
@@ -466,7 +426,7 @@ export default function AccountPage() {
                 { label: 'Renouvellement', value: renewalDate ?? 'Via portail Stripe', icon: '🔄' },
                 { label: 'Paiement', value: '•••• •••• via Stripe', icon: '💳' },
               ].map(({ label, value, icon }) => (
-                <div key={label} className="flex items-center gap-3 px-4 py-3 rounded-xl" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' }}>
+                <div key={label} className="flex items-center gap-3 px-4 py-3 rounded-xl" style={{ background: '#27272A', border: '1px solid #3F3F46' }}>
                   <span className="text-base shrink-0">{icon}</span>
                   <div>
                     <p className="text-[10px] text-gray-600 uppercase tracking-wider">{label}</p>
@@ -483,7 +443,7 @@ export default function AccountPage() {
             viewport={{ once: true }}
             transition={{ duration: 0.45, ease: 'easeOut' }}
             className="relative rounded-2xl p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5"
-            style={{ background: 'rgba(15,12,36,0.82)', backdropFilter: 'blur(12px)', border: '1px solid rgba(249,115,22,0.4)', animation: 'no-plan-pulse 2.5s ease-in-out infinite' }}
+            style={{ background: '#18181B', border: '1px solid rgba(249,115,22,0.4)', animation: 'no-plan-pulse 2.5s ease-in-out infinite' }}
           >
             <div className="flex items-start gap-4">
               <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'rgba(249,115,22,0.15)' }}>
@@ -524,7 +484,7 @@ export default function AccountPage() {
               { label: 'Heures économisées', value: `${countHours}h`, color: '#00b894', icon: '⏱' },
               { label: 'Jours actif', value: countDays, color: '#f97316', icon: '📅' },
             ].map(({ label, value, color, icon }) => (
-              <div key={label} className="flex items-center gap-3 rounded-2xl px-5 py-4" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+              <div key={label} className="flex items-center gap-3 rounded-2xl px-5 py-4" style={{ background: '#27272A', border: '1px solid #3F3F46' }}>
                 <span className="text-lg shrink-0">{icon}</span>
                 <div>
                   <p className="text-2xl font-extrabold leading-none" style={{ color }}>{value}</p>
@@ -543,7 +503,7 @@ export default function AccountPage() {
                   <div className="w-full flex items-end justify-center" style={{ height: 56 }}>
                     <motion.div
                       className="w-full rounded-t-md"
-                      style={{ backgroundColor: '#6C5CE7', minHeight: 3 }}
+                      style={{ backgroundColor: '#6366F1', minHeight: 3 }}
                       initial={{ height: 3 }}
                       whileInView={{ height: value > 0 ? Math.max(3, (value / Math.max(...last7Days.map((d) => d.value), 1)) * 52) : 3 }}
                       viewport={{ once: true }}
@@ -668,7 +628,7 @@ export default function AccountPage() {
               <a
                 href="/checkout/plans"
                 className="text-sm font-bold px-5 py-2.5 rounded-xl text-white"
-                style={{ background: 'linear-gradient(135deg, #6C5CE7, #4834d4)' }}
+                style={{ background: '#4F46E5' }}
               >
                 Activer un plan
               </a>
@@ -721,7 +681,7 @@ export default function AccountPage() {
           viewport={{ once: true }}
           transition={{ duration: 0.45, ease: 'easeOut' }}
           className="relative flex items-center gap-5 rounded-2xl p-5 overflow-hidden"
-          style={{ background: 'rgba(108,92,231,0.08)', backdropFilter: 'blur(12px)', border: '1px solid rgba(108,92,231,0.22)' }}
+          style={{ background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.18)' }}
         >
           <div className="absolute top-0 left-0 right-0 h-px" style={{ background: 'linear-gradient(90deg, transparent, rgba(108,92,231,0.5), transparent)' }} />
           <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'rgba(108,92,231,0.18)' }}>

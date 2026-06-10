@@ -173,17 +173,13 @@ function HistoryCard({ order, index }: { order: Order; index: number }) {
       onHoverStart={() => setHovered(true)}
       onHoverEnd={() => setHovered(false)}
     >
-      <motion.div
-        animate={hovered
-          ? { y: -3, boxShadow: `0 16px 48px ${meta.glow}` }
-          : { y: 0,  boxShadow: '0 2px 12px rgba(0,0,0,0.25)' }}
-        transition={{ type: 'spring', stiffness: 280, damping: 22 }}
-        className="relative flex items-start gap-4 rounded-2xl p-4 sm:p-5 overflow-hidden"
+      <div
+        className="relative flex items-start gap-4 rounded-xl p-4 sm:p-5 overflow-hidden"
         style={{
-          background: hovered ? '#16161F' : '#111118',
-          backdropFilter: 'blur(12px)',
-          border: hovered ? `1px solid rgba(99,102,241,0.35)` : '1px solid rgba(255,255,255,0.06)',
-          transition: 'background 0.15s, border-color 0.15s',
+          background: '#18181B',
+          border: hovered ? '1px solid #3F3F46' : '1px solid #27272A',
+          transform: hovered ? 'translateY(-2px)' : 'translateY(0)',
+          transition: 'border-color 0.15s, transform 0.15s ease',
         }}
       >
         {/* Top accent line */}
@@ -197,16 +193,12 @@ function HistoryCard({ order, index }: { order: Order; index: number }) {
         />
 
         {/* Icon */}
-        <motion.div
-          animate={hovered
-            ? { boxShadow: `0 0 20px ${meta.glow}`, scale: 1.05 }
-            : { boxShadow: '0 0 0px transparent', scale: 1 }}
-          transition={{ duration: 0.25 }}
+        <div
           className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
-          style={{ background: `linear-gradient(135deg, ${meta.color}30, ${meta.color}18)`, color: meta.color }}
+          style={{ background: `${meta.color}22`, color: meta.color }}
         >
           {SERVICE_ICONS[order.service_type] ?? <span className="text-lg">{service?.icon ?? '🤖'}</span>}
-        </motion.div>
+        </div>
 
         {/* Content */}
         <div className="flex-1 min-w-0">
@@ -271,14 +263,14 @@ function HistoryCard({ order, index }: { order: Order; index: number }) {
                 href={order.result_url}
                 download
                 className="text-[11px] font-semibold px-2.5 py-1 rounded-lg text-gray-400 hover:text-white"
-                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)' }}
+                style={{ background: '#27272A', border: '1px solid #3F3F46' }}
               >
                 ↓
               </a>
             </div>
           )}
         </div>
-      </motion.div>
+      </div>
     </motion.div>
   );
 }
@@ -287,7 +279,7 @@ function SkeletonCard() {
   return (
     <div
       className="relative flex items-start gap-4 rounded-2xl p-5"
-      style={{ background: 'rgba(15,12,36,0.6)', border: '1px solid rgba(255,255,255,0.05)' }}
+      style={{ background: '#18181B', border: '1px solid #27272A' }}
     >
       <div className="w-11 h-11 rounded-xl bg-gray-800/80 shimmer shrink-0" />
       <div className="flex-1 min-w-0 flex flex-col gap-2.5">
@@ -408,9 +400,6 @@ export default function HistoryPage() {
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'type'>('newest');
   const [search, setSearch] = useState('');
 
-  const containerRef = useRef<HTMLDivElement>(null);
-  const spotlightRef = useRef<HTMLDivElement>(null);
-
   const fetchHistory = useCallback(async (p: number) => {
     if (!session?.access_token) return;
     try {
@@ -436,24 +425,6 @@ export default function HistoryPage() {
     const id = setTimeout(() => setError(null), 4000);
     return () => clearTimeout(id);
   }, [error]);
-
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    const onMove = (e: MouseEvent) => {
-      if (!spotlightRef.current) return;
-      const rect = el.getBoundingClientRect();
-      spotlightRef.current.style.background = `radial-gradient(400px circle at ${e.clientX - rect.left}px ${e.clientY - rect.top}px, rgba(99,102,241,0.05), transparent 60%)`;
-      spotlightRef.current.style.opacity = '1';
-    };
-    const onLeave = () => { if (spotlightRef.current) spotlightRef.current.style.opacity = '0'; };
-    el.addEventListener('mousemove', onMove);
-    el.addEventListener('mouseleave', onLeave);
-    return () => {
-      el.removeEventListener('mousemove', onMove);
-      el.removeEventListener('mouseleave', onLeave);
-    };
-  }, []);
 
   /* Derived metrics */
   const { thisMonthCount, servicesUsedCount } = useMemo(() => {
@@ -509,7 +480,7 @@ export default function HistoryPage() {
             exit={{ x: 60, opacity: 0 }}
             transition={{ duration: 0.35, ease: 'easeOut' }}
             className="fixed top-4 right-4 z-50 rounded-xl shadow-xl px-5 py-4 flex items-center gap-3 max-w-sm"
-            style={{ background: 'rgba(15,12,36,0.95)', border: '1px solid rgba(249,115,22,0.3)', backdropFilter: 'blur(16px)' }}
+            style={{ background: '#18181B', border: '1px solid rgba(249,115,22,0.3)' }}
           >
             <span className="text-orange-400 text-sm flex-1">{error}</span>
             <button
@@ -529,45 +500,9 @@ export default function HistoryPage() {
         )}
       </AnimatePresence>
 
-      <div ref={containerRef} className="relative">
-        {/* Cursor spotlight */}
-        <div
-          ref={spotlightRef}
-          className="pointer-events-none absolute inset-0 z-0 transition-opacity duration-300 rounded-3xl"
-          style={{ opacity: 0 }}
-          aria-hidden
-        />
-
-        {/* Background orbs + grid */}
-        <div className="pointer-events-none select-none absolute inset-0 overflow-hidden rounded-3xl" aria-hidden>
-          <motion.div
-            className="absolute rounded-full"
-            style={{ top: '-15%', right: '-8%', width: 500, height: 500, background: 'radial-gradient(circle, rgba(108,92,231,0.12) 0%, transparent 70%)' }}
-            animate={{ x: [0, -40, 0], y: [0, 30, 0] }}
-            transition={{ duration: 20, repeat: Infinity, ease: 'easeInOut' }}
-          />
-          <motion.div
-            className="absolute rounded-full"
-            style={{ bottom: '-10%', left: '-5%', width: 420, height: 420, background: 'radial-gradient(circle, rgba(99,102,241,0.09) 0%, transparent 70%)' }}
-            animate={{ x: [0, 30, 0], y: [0, -40, 0] }}
-            transition={{ duration: 25, repeat: Infinity, ease: 'easeInOut' }}
-          />
-          <motion.div
-            className="absolute rounded-full"
-            style={{ top: '40%', left: '35%', width: 320, height: 320, background: 'radial-gradient(circle, rgba(139,92,246,0.07) 0%, transparent 70%)' }}
-            animate={{ x: [0, -20, 0], y: [0, -20, 0] }}
-            transition={{ duration: 18, repeat: Infinity, ease: 'easeInOut' }}
-          />
-          <div
-            className="absolute inset-0"
-            style={{
-              backgroundImage: 'linear-gradient(rgba(255,255,255,0.018) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px)',
-              backgroundSize: '40px 40px',
-            }}
-          />
-        </div>
-
-        <div className="relative z-10 flex flex-col gap-8">
+      <div className="relative">
+        <div className="page-beam" />
+        <div className="flex flex-col gap-8">
 
           {/* ── HEADER ──────────────────────────────────────────────────────── */}
           <motion.section
@@ -641,9 +576,8 @@ export default function HistoryPage() {
                   key={label}
                   className="flex items-center gap-3 rounded-2xl px-5 py-4"
                   style={{
-                    background: 'rgba(255,255,255,0.03)',
-                    backdropFilter: 'blur(10px)',
-                    border: '1px solid rgba(255,255,255,0.07)',
+                    background: '#18181B',
+                    border: '1px solid #27272A',
                   }}
                 >
                   <div
@@ -684,9 +618,8 @@ export default function HistoryPage() {
                 placeholder="Rechercher une création..."
                 className="w-full pl-10 pr-10 py-2.5 rounded-xl text-sm text-white placeholder-gray-600 focus:outline-none"
                 style={{
-                  background: '#111118',
-                  backdropFilter: 'blur(8px)',
-                  border: search ? '1px solid rgba(99,102,241,0.45)' : '1px solid rgba(255,255,255,0.07)',
+                  background: '#18181B',
+                  border: search ? '1px solid #6366F1' : '1px solid #27272A',
                   boxShadow: search ? '0 0 0 3px rgba(99,102,241,0.07)' : 'none',
                   transition: 'border-color 0.15s, box-shadow 0.15s',
                 }}
@@ -735,9 +668,8 @@ export default function HistoryPage() {
                 onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
                 className="text-sm text-gray-400 rounded-xl px-3.5 py-1.5 focus:outline-none cursor-pointer"
                 style={{
-                  background: 'rgba(255,255,255,0.04)',
-                  border: '1px solid rgba(255,255,255,0.07)',
-                  backdropFilter: 'blur(8px)',
+                  background: '#18181B',
+                  border: '1px solid #27272A',
                 }}
               >
                 {SORT_OPTIONS.map((o) => (
@@ -788,7 +720,7 @@ export default function HistoryPage() {
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                   disabled={page === 1}
                   className="px-4 py-2 rounded-xl text-sm text-gray-400 hover:text-white disabled:opacity-40 transition-colors"
-                  style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}
+                  style={{ background: '#18181B', border: '1px solid #27272A' }}
                 >
                   ← Précédent
                 </button>
@@ -797,7 +729,7 @@ export default function HistoryPage() {
                   onClick={() => setPage((p) => Math.min(data.totalPages, p + 1))}
                   disabled={page === data.totalPages}
                   className="px-4 py-2 rounded-xl text-sm text-gray-400 hover:text-white disabled:opacity-40 transition-colors"
-                  style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}
+                  style={{ background: '#18181B', border: '1px solid #27272A' }}
                 >
                   Suivant →
                 </button>

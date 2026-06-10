@@ -154,8 +154,6 @@ export default function PartnerPage() {
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [copied, setCopied] = useState<'code' | 'link' | null>(null);
 
-  const containerRef = useRef<HTMLDivElement>(null);
-  const spotlightRef = useRef<HTMLDivElement>(null);
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 
   const activePartnersCount = useCountUp(247, 1800);
@@ -177,21 +175,6 @@ export default function PartnerPage() {
     const id = setTimeout(() => setSubmitStatus('idle'), 3000);
     return () => clearTimeout(id);
   }, [submitStatus]);
-
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    const onMove = (e: MouseEvent) => {
-      if (!spotlightRef.current) return;
-      const rect = el.getBoundingClientRect();
-      spotlightRef.current.style.background = `radial-gradient(400px circle at ${e.clientX - rect.left}px ${e.clientY - rect.top}px, rgba(99,102,241,0.05), transparent 60%)`;
-      spotlightRef.current.style.opacity = '1';
-    };
-    const onLeave = () => { if (spotlightRef.current) spotlightRef.current.style.opacity = '0'; };
-    el.addEventListener('mousemove', onMove);
-    el.addEventListener('mouseleave', onLeave);
-    return () => { el.removeEventListener('mousemove', onMove); el.removeEventListener('mouseleave', onLeave); };
-  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -224,45 +207,9 @@ export default function PartnerPage() {
   };
 
   return (
-    <div ref={containerRef} className="relative">
-      {/* Cursor spotlight */}
-      <div
-        ref={spotlightRef}
-        className="pointer-events-none absolute inset-0 z-0 transition-opacity duration-300 rounded-3xl"
-        style={{ opacity: 0 }}
-        aria-hidden
-      />
-
-      {/* Background orbs + grid */}
-      <div className="pointer-events-none select-none absolute inset-0 overflow-hidden rounded-3xl" aria-hidden>
-        <motion.div
-          className="absolute rounded-full"
-          style={{ top: '-12%', right: '-6%', width: 560, height: 560, background: 'radial-gradient(circle, rgba(108,92,231,0.13) 0%, transparent 70%)' }}
-          animate={{ x: [0, -45, 0], y: [0, 25, 0] }}
-          transition={{ duration: 22, repeat: Infinity, ease: 'easeInOut' }}
-        />
-        <motion.div
-          className="absolute rounded-full"
-          style={{ bottom: '-10%', left: '-5%', width: 460, height: 460, background: 'radial-gradient(circle, rgba(99,102,241,0.1) 0%, transparent 70%)' }}
-          animate={{ x: [0, 35, 0], y: [0, -35, 0] }}
-          transition={{ duration: 26, repeat: Infinity, ease: 'easeInOut' }}
-        />
-        <motion.div
-          className="absolute rounded-full"
-          style={{ top: '45%', left: '38%', width: 340, height: 340, background: 'radial-gradient(circle, rgba(139,92,246,0.07) 0%, transparent 70%)' }}
-          animate={{ x: [0, -20, 0], y: [0, -25, 0] }}
-          transition={{ duration: 19, repeat: Infinity, ease: 'easeInOut' }}
-        />
-        <div
-          className="absolute inset-0"
-          style={{
-            backgroundImage: 'linear-gradient(rgba(255,255,255,0.018) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px)',
-            backgroundSize: '40px 40px',
-          }}
-        />
-      </div>
-
-      <div className="relative z-10 flex flex-col gap-10">
+    <div className="relative">
+      <div className="page-beam" />
+      <div className="flex flex-col gap-10">
 
         {/* ── HEADER ────────────────────────────────────────────────────────── */}
         <motion.section
@@ -274,7 +221,7 @@ export default function PartnerPage() {
           {/* Contact banner */}
           <div
             className="flex items-center gap-4 rounded-2xl px-5 py-4"
-            style={{ background: 'rgba(108,92,231,0.07)', border: '1px solid rgba(108,92,231,0.2)', backdropFilter: 'blur(8px)' }}
+            style={{ background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.18)' }}
           >
             <div
               className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
@@ -359,9 +306,8 @@ export default function PartnerPage() {
                 whileHover={{ y: -6, boxShadow: `0 24px 60px ${reward.glow}` }}
                 className="relative flex flex-col gap-4 rounded-2xl p-6 cursor-default"
                 style={{
-                  background: 'rgba(15,12,36,0.85)',
-                  backdropFilter: 'blur(12px)',
-                  border: '1px solid rgba(255,255,255,0.07)',
+                  background: '#18181B',
+                  border: '1px solid #27272A',
                 }}
               >
                 <div className="absolute top-0 left-0 right-0 h-px" style={{ background: `linear-gradient(90deg, transparent, ${reward.color}70, transparent)` }} />
@@ -395,7 +341,7 @@ export default function PartnerPage() {
 
           <div
             className="rounded-2xl p-6 sm:p-8"
-            style={{ background: 'rgba(15,12,36,0.8)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.06)' }}
+            style={{ background: '#18181B', border: '1px solid #27272A' }}
           >
             <div className="relative flex flex-col">
               {/* Vertical fill line */}
@@ -529,7 +475,7 @@ export default function PartnerPage() {
 
           <div
             className="rounded-2xl p-6 sm:p-8 flex flex-col gap-5"
-            style={{ background: 'rgba(15,12,36,0.8)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.06)' }}
+            style={{ background: '#18181B', border: '1px solid #27272A' }}
           >
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
               {/* URL input */}
@@ -547,10 +493,9 @@ export default function PartnerPage() {
                   placeholder="https://..."
                   className="w-full pl-10 pr-4 py-3 rounded-xl text-sm text-white placeholder-gray-600 focus:outline-none"
                   style={{
-                    background: 'rgba(255,255,255,0.04)',
-                    backdropFilter: 'blur(8px)',
-                    border: partnerUrl ? '1px solid rgba(108,92,231,0.5)' : '1px solid rgba(255,255,255,0.08)',
-                    boxShadow: partnerUrl ? '0 0 0 3px rgba(108,92,231,0.1)' : 'none',
+                    background: '#18181B',
+                    border: partnerUrl ? '1px solid #6366F1' : '1px solid #27272A',
+                    boxShadow: partnerUrl ? '0 0 0 3px rgba(99,102,241,0.08)' : 'none',
                     transition: 'border-color 0.2s, box-shadow 0.2s',
                   }}
                 />
@@ -631,7 +576,7 @@ export default function PartnerPage() {
           {loading ? (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {[...Array(3)].map((_, i) => (
-                <div key={i} className="h-20 rounded-2xl shimmer" style={{ background: 'rgba(15,12,36,0.6)', border: '1px solid rgba(255,255,255,0.05)' }} />
+                <div key={i} className="h-20 rounded-2xl shimmer" style={{ background: '#18181B', border: '1px solid #27272A' }} />
               ))}
             </div>
           ) : stats && (stats.totalSubmissions > 0) ? (
@@ -646,7 +591,7 @@ export default function PartnerPage() {
                   <div
                     key={label}
                     className="flex items-center gap-3 rounded-2xl px-5 py-4"
-                    style={{ background: 'rgba(15,12,36,0.8)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.06)' }}
+                    style={{ background: '#18181B', border: '1px solid #27272A' }}
                   >
                     <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: color }} />
                     <div>
@@ -661,7 +606,7 @@ export default function PartnerPage() {
               {submissions.length > 0 && (
                 <div
                   className="rounded-2xl overflow-hidden"
-                  style={{ background: 'rgba(15,12,36,0.8)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.06)' }}
+                  style={{ background: '#18181B', border: '1px solid #27272A' }}
                 >
                   {submissions.map((sub, i) => {
                     const sc = STATUS_CONFIG[sub.status];
@@ -707,7 +652,7 @@ export default function PartnerPage() {
           ) : (
             <div
               className="flex flex-col items-center justify-center py-14 gap-4 rounded-2xl text-center"
-              style={{ background: 'rgba(15,12,36,0.6)', border: '1px dashed rgba(255,255,255,0.08)' }}
+              style={{ background: '#18181B', border: '1px dashed #27272A' }}
             >
               <div
                 className="w-12 h-12 rounded-2xl flex items-center justify-center"

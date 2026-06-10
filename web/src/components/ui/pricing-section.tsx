@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
-import { motion, useMotionValue, useTransform } from 'framer-motion'
+import { useState, useEffect } from 'react'
+import { motion } from 'framer-motion'
 import NumberFlow from '@number-flow/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { cn } from '@/lib/utils'
@@ -103,23 +103,6 @@ export function PricingSection() {
   const [offerSeconds, setOfferSeconds] = useState(23 * 3600 + 47 * 60 + 12)
   const [hoveredPlan, setHoveredPlan] = useState<string | null>(null)
 
-  const containerRef = useRef<HTMLDivElement>(null)
-  const mouseX = useMotionValue(0)
-  const mouseY = useMotionValue(0)
-
-  const orb1X = useTransform(mouseX, [-0.5, 0.5], ['-30px', '30px'])
-  const orb1Y = useTransform(mouseY, [-0.5, 0.5], ['-30px', '30px'])
-  const orb2X = useTransform(mouseX, [-0.5, 0.5], ['30px', '-30px'])
-  const orb2Y = useTransform(mouseY, [-0.5, 0.5], ['30px', '-30px'])
-  const orb3X = useTransform(mouseX, [-0.5, 0.5], ['-15px', '15px'])
-  const orb3Y = useTransform(mouseY, [-0.5, 0.5], ['15px', '-15px'])
-
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect()
-    mouseX.set((e.clientX - rect.left - rect.width / 2) / rect.width)
-    mouseY.set((e.clientY - rect.top - rect.height / 2) / rect.height)
-  }
-
   useEffect(() => {
     const id = setInterval(() => {
       setOfferSeconds((prev) => (prev > 0 ? prev - 1 : 0))
@@ -147,43 +130,10 @@ export function PricingSection() {
 
   return (
     <div
-      ref={containerRef}
       className="relative overflow-hidden min-h-screen flex flex-col items-center px-4 py-16 sm:py-24"
-      style={{ background: '#0A0A0F' }}
-      onMouseMove={handleMouseMove}
+      style={{ background: '#09090B' }}
     >
-      {/* Decorative background — parallax orbs */}
-      <div className="absolute inset-0 pointer-events-none select-none" aria-hidden>
-        <motion.div
-          className="absolute -top-32 -left-32 w-96 h-96 rounded-full blur-[100px]"
-          style={{ background: 'rgba(99,102,241,0.07)', x: orb1X, y: orb1Y }}
-        />
-        <motion.div
-          className="absolute -bottom-32 -right-32 w-96 h-96 rounded-full blur-[100px]"
-          style={{ background: 'rgba(99,102,241,0.06)', x: orb2X, y: orb2Y }}
-        />
-        <motion.div
-          className="absolute top-1/2 -left-20 w-64 h-64 rounded-full blur-[80px]"
-          style={{ background: 'rgba(99,102,241,0.05)', x: orb3X, y: orb3Y }}
-        />
-        <div className="absolute inset-0" style={{ backgroundImage: 'linear-gradient(rgba(108,92,231,0.045) 1px, transparent 1px), linear-gradient(90deg, rgba(108,92,231,0.045) 1px, transparent 1px)', backgroundSize: '48px 48px' }} />
-        {([
-          { x: '8%',  y: '10%', delay: 0,   s: 3 },
-          { x: '88%', y: '8%',  delay: 1.4, s: 2.5 },
-          { x: '20%', y: '55%', delay: 0.7, s: 3.5 },
-          { x: '75%', y: '40%', delay: 2.0, s: 2 },
-          { x: '50%', y: '80%', delay: 0.3, s: 3 },
-          { x: '92%', y: '75%', delay: 1.7, s: 2.5 },
-        ] as const).map((d, i) => (
-          <motion.div
-            key={i}
-            className="absolute rounded-full"
-            style={{ left: d.x, top: d.y, width: d.s, height: d.s, background: 'rgba(99,102,241,0.4)' }}
-            animate={{ y: [0, -22, 0], opacity: [0.2, 0.55, 0.2] }}
-            transition={{ duration: 4.5 + i * 0.6, delay: d.delay, repeat: Infinity, ease: 'easeInOut' }}
-          />
-        ))}
-      </div>
+      <div className="page-beam" />
 
       {/* Heading */}
       <div className="text-center mb-4">
@@ -395,7 +345,8 @@ export function PricingSection() {
                 variants={cardVariants}
                 onMouseEnter={() => setHoveredPlan(plan.id)}
                 onMouseLeave={() => setHoveredPlan(null)}
-                className="relative flex flex-col rounded-2xl border p-7 transition-all duration-200 border-[#6366F1] bg-[#6366F1]/5 shadow-xl shadow-[#6366F1]/10"
+                className="relative flex flex-col rounded-2xl border p-7 transition-all duration-200 border-[#6366F1] bg-[#18181B]"
+                style={{ boxShadow: '0 0 30px rgba(99,102,241,0.15)' }}
               >
                 {cardContent}
               </motion.div>
@@ -409,10 +360,10 @@ export function PricingSection() {
               onMouseEnter={() => setHoveredPlan(plan.id)}
               onMouseLeave={() => setHoveredPlan(null)}
               className="relative flex flex-col rounded-2xl border p-7 transition-colors duration-200"
-              style={{ borderColor: 'rgba(255,255,255,0.07)', background: '#111118' }}
+              style={{ borderColor: '#27272A', background: '#18181B' }}
               whileHover={{
-                boxShadow: '0 0 24px rgba(99,102,241,0.15)',
-                borderColor: 'rgba(99,102,241,0.4)',
+                borderColor: '#3F3F46',
+                y: -2,
               }}
             >
               {cardContent}

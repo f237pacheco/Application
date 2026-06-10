@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 /* ── Data ───────────────────────────────────────────────────────────────────── */
@@ -140,12 +140,12 @@ function FaqItem({ q, a, index }: { q: string; a: string; index: number }) {
       viewport={{ once: true }}
       transition={{ type: 'spring', stiffness: 200, damping: 26, delay: index * 0.05 }}
       className="rounded-xl overflow-hidden"
-      style={{ border: open ? '1px solid rgba(108,92,231,0.3)' : '1px solid rgba(255,255,255,0.05)' }}
+      style={{ border: open ? '1px solid rgba(99,102,241,0.35)' : '1px solid #27272A' }}
     >
       <button
         onClick={() => setOpen((v) => !v)}
         className="w-full text-left px-5 py-4 flex items-center justify-between gap-4 group"
-        style={{ background: open ? 'rgba(108,92,231,0.07)' : 'rgba(255,255,255,0.02)' }}
+        style={{ background: open ? 'rgba(99,102,241,0.08)' : '#18181B' }}
       >
         <span className="text-sm font-semibold text-white leading-snug group-hover:text-violet-200" style={{ transition: 'color 0.2s' }}>
           {q}
@@ -185,8 +185,6 @@ function FaqItem({ q, a, index }: { q: string; a: string; index: number }) {
 
 export default function HelpPage() {
   const [search, setSearch] = useState('');
-  const containerRef = useRef<HTMLDivElement>(null);
-  const spotlightRef = useRef<HTMLDivElement>(null);
 
   const filtered = FAQ_ITEMS.filter(({ q, a }) => {
     if (!search.trim()) return true;
@@ -194,47 +192,10 @@ export default function HelpPage() {
     return q.toLowerCase().includes(q2) || a.toLowerCase().includes(q2);
   });
 
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    const onMove = (e: MouseEvent) => {
-      if (!spotlightRef.current) return;
-      const rect = el.getBoundingClientRect();
-      spotlightRef.current.style.background = `radial-gradient(400px circle at ${e.clientX - rect.left}px ${e.clientY - rect.top}px, rgba(99,102,241,0.05), transparent 60%)`;
-      spotlightRef.current.style.opacity = '1';
-    };
-    const onLeave = () => { if (spotlightRef.current) spotlightRef.current.style.opacity = '0'; };
-    el.addEventListener('mousemove', onMove);
-    el.addEventListener('mouseleave', onLeave);
-    return () => { el.removeEventListener('mousemove', onMove); el.removeEventListener('mouseleave', onLeave); };
-  }, []);
-
   return (
-    <div ref={containerRef} className="relative">
-      {/* Cursor spotlight */}
-      <div ref={spotlightRef} className="pointer-events-none absolute inset-0 z-0 transition-opacity duration-300 rounded-3xl" style={{ opacity: 0 }} aria-hidden />
-
-      {/* Background orbs + grid */}
-      <div className="pointer-events-none select-none absolute inset-0 overflow-hidden rounded-3xl" aria-hidden>
-        <motion.div className="absolute rounded-full"
-          style={{ top: '-12%', right: '-6%', width: 520, height: 520, background: 'radial-gradient(circle, rgba(108,92,231,0.12) 0%, transparent 70%)' }}
-          animate={{ x: [0, -40, 0], y: [0, 28, 0] }}
-          transition={{ duration: 22, repeat: Infinity, ease: 'easeInOut' }}
-        />
-        <motion.div className="absolute rounded-full"
-          style={{ bottom: '-8%', left: '-4%', width: 440, height: 440, background: 'radial-gradient(circle, rgba(99,102,241,0.09) 0%, transparent 70%)' }}
-          animate={{ x: [0, 30, 0], y: [0, -30, 0] }}
-          transition={{ duration: 26, repeat: Infinity, ease: 'easeInOut' }}
-        />
-        <motion.div className="absolute rounded-full"
-          style={{ top: '45%', left: '35%', width: 320, height: 320, background: 'radial-gradient(circle, rgba(139,92,246,0.06) 0%, transparent 70%)' }}
-          animate={{ x: [0, -18, 0], y: [0, -20, 0] }}
-          transition={{ duration: 19, repeat: Infinity, ease: 'easeInOut' }}
-        />
-        <div className="absolute inset-0" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.018) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
-      </div>
-
-      <div className="relative z-10 flex flex-col gap-10 pb-12">
+    <div className="relative">
+      <div className="page-beam" />
+      <div className="flex flex-col gap-10 pb-12">
 
         {/* ── HEADER ──────────────────────────────────────────────────────── */}
         <motion.section
@@ -274,10 +235,9 @@ export default function HelpPage() {
               placeholder="Rechercher une question..."
               className="w-full pl-12 pr-12 py-3.5 rounded-2xl text-sm text-white placeholder-gray-500 focus:outline-none"
               style={{
-                background: 'rgba(255,255,255,0.05)',
-                backdropFilter: 'blur(10px)',
-                border: search ? '1px solid rgba(108,92,231,0.55)' : '1px solid rgba(255,255,255,0.1)',
-                boxShadow: search ? '0 0 0 3px rgba(108,92,231,0.12)' : 'none',
+                background: '#18181B',
+                border: search ? '1px solid #6366F1' : '1px solid #27272A',
+                boxShadow: search ? '0 0 0 3px rgba(99,102,241,0.08)' : 'none',
                 transition: 'border-color 0.2s, box-shadow 0.2s',
               }}
             />
@@ -326,7 +286,7 @@ export default function HelpPage() {
                 transition={{ type: 'spring', stiffness: 180, damping: 24, delay: i * 0.1 }}
                 whileHover={{ y: -4, boxShadow: `0 20px 50px ${card.glow}` }}
                 className="relative flex flex-col gap-4 rounded-2xl p-6 overflow-hidden group"
-                style={{ background: 'rgba(15,12,36,0.85)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.06)' }}
+                style={{ background: '#18181B', border: '1px solid #27272A' }}
               >
                 <div className="absolute top-0 left-0 right-0 h-px" style={{ background: `linear-gradient(90deg, transparent, ${card.color}60, transparent)` }} />
 
@@ -423,7 +383,7 @@ export default function HelpPage() {
                 transition={{ type: 'spring', stiffness: 180, damping: 24, delay: i * 0.08 }}
                 whileHover={{ y: -3, boxShadow: `0 16px 40px rgba(0,0,0,0.3)` }}
                 className="relative flex items-center gap-4 rounded-2xl p-5 group"
-                style={{ background: 'rgba(15,12,36,0.82)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.06)' }}
+                style={{ background: '#18181B', border: '1px solid #27272A' }}
               >
                 <div
                   className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"

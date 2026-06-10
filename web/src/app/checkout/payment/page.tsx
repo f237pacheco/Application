@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, Suspense } from 'react';
+import { useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/hooks/useAuth';
@@ -47,30 +47,12 @@ function PaymentPageInner() {
   const [cardState, setCardState] = useState<CardState | null>(null);
   const [cardValid, setCardValid] = useState<CardValidity | null>(null);
 
-  const containerRef = useRef<HTMLDivElement>(null);
-  const spotlightRef = useRef<HTMLDivElement>(null);
-
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
   const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
   const planStyle = PLAN_COLORS[planId] ?? PLAN_COLORS.pro;
   const features   = PLAN_FEATURES[planId] ?? PLAN_FEATURES.pro;
 
   const finalPrice = promoDiscount > 0 ? Math.round(displayPrice * (1 - promoDiscount / 100)) : displayPrice;
-
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    const onMove = (e: MouseEvent) => {
-      if (!spotlightRef.current) return;
-      const rect = el.getBoundingClientRect();
-      spotlightRef.current.style.background = `radial-gradient(500px circle at ${e.clientX - rect.left}px ${e.clientY - rect.top}px, rgba(99,102,241,0.05), transparent 60%)`;
-      spotlightRef.current.style.opacity = '1';
-    };
-    const onLeave = () => { if (spotlightRef.current) spotlightRef.current.style.opacity = '0'; };
-    el.addEventListener('mousemove', onMove);
-    el.addEventListener('mouseleave', onLeave);
-    return () => { el.removeEventListener('mousemove', onMove); el.removeEventListener('mouseleave', onLeave); };
-  }, []);
 
   const handlePromoCheck = async () => {
     const code = promoCode.trim().toUpperCase();
@@ -173,36 +155,13 @@ function PaymentPageInner() {
 
   return (
     <div
-      ref={containerRef}
       className="relative min-h-screen overflow-hidden"
-      style={{ background: '#080812' }}
+      style={{ background: '#09090B' }}
     >
       <style dangerouslySetInnerHTML={{ __html: `@keyframes payment-shimmer{0%{transform:translateX(-100%)}100%{transform:translateX(200%)}}` }} />
-      {/* Spotlight */}
-      <div ref={spotlightRef} className="pointer-events-none absolute inset-0 z-0 transition-opacity duration-300" style={{ opacity: 0 }} aria-hidden />
-
-      {/* Background */}
-      <div className="pointer-events-none select-none absolute inset-0 overflow-hidden" aria-hidden>
-        <motion.div className="absolute rounded-full"
-          style={{ top: '-15%', right: '-8%', width: 600, height: 600, background: 'radial-gradient(circle, rgba(108,92,231,0.12) 0%, transparent 70%)' }}
-          animate={{ x: [0, -50, 0], y: [0, 35, 0] }}
-          transition={{ duration: 24, repeat: Infinity, ease: 'easeInOut' }}
-        />
-        <motion.div className="absolute rounded-full"
-          style={{ bottom: '-10%', left: '-5%', width: 480, height: 480, background: 'radial-gradient(circle, rgba(99,102,241,0.09) 0%, transparent 70%)' }}
-          animate={{ x: [0, 40, 0], y: [0, -30, 0] }}
-          transition={{ duration: 28, repeat: Infinity, ease: 'easeInOut' }}
-        />
-        <motion.div className="absolute rounded-full"
-          style={{ top: '45%', left: '40%', width: 360, height: 360, background: 'radial-gradient(circle, rgba(139,92,246,0.06) 0%, transparent 70%)' }}
-          animate={{ x: [0, -22, 0], y: [0, -18, 0] }}
-          transition={{ duration: 20, repeat: Infinity, ease: 'easeInOut' }}
-        />
-        <div className="absolute inset-0" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.016) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.016) 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
-      </div>
 
       {/* Top bar */}
-      <div className="relative z-10 flex items-center justify-between px-6 py-5 border-b" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
+      <div className="relative z-10 flex items-center justify-between px-6 py-5 border-b" style={{ borderColor: '#27272A' }}>
         <button
           onClick={() => router.push(backHref)}
           className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors"
@@ -225,7 +184,7 @@ function PaymentPageInner() {
         <motion.div
           initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}
           className="rounded-2xl px-5 py-3.5 flex items-center gap-4"
-          style={{ background: 'linear-gradient(135deg, rgba(0,184,148,0.14), rgba(0,184,148,0.06))', border: '1px solid rgba(0,184,148,0.28)' }}
+          style={{ background: '#052E16', border: '1px solid #065F46' }}
         >
           <span className="text-xl shrink-0">🎁</span>
           <p className="text-sm">
@@ -261,7 +220,7 @@ function PaymentPageInner() {
             <motion.div
               initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.08 }}
               className="rounded-2xl p-5 flex flex-col gap-4"
-              style={{ background: 'rgba(15,12,36,0.82)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.07)' }}
+              style={{ background: '#18181B', border: '1px solid #27272A' }}
             >
               {/* Plan row */}
               <div className="flex items-center justify-between gap-3">
@@ -462,7 +421,7 @@ function PaymentPageInner() {
             {/* Order summary */}
             <div
               className="rounded-2xl p-6 flex flex-col gap-5"
-              style={{ background: 'rgba(15,12,36,0.88)', backdropFilter: 'blur(14px)', border: '1px solid rgba(255,255,255,0.07)', boxShadow: `0 0 60px ${planStyle.glow}` }}
+              style={{ background: '#18181B', border: '1px solid #27272A' }}
             >
               <p className="text-[10px] text-gray-600 uppercase tracking-wider">Récapitulatif de commande</p>
 
@@ -482,7 +441,7 @@ function PaymentPageInner() {
               </div>
 
               {/* Trial reminder */}
-              <div className="rounded-xl px-4 py-3 flex items-center gap-3" style={{ background: 'rgba(0,184,148,0.08)', border: '1px solid rgba(0,184,148,0.2)' }}>
+              <div className="rounded-xl px-4 py-3 flex items-center gap-3" style={{ background: '#052E16', border: '1px solid #065F46' }}>
                 <span className="text-lg shrink-0">🎁</span>
                 <div>
                   <p className="text-xs font-bold" style={{ color: '#34d399' }}>3 jours d&apos;essai gratuit</p>
@@ -524,7 +483,7 @@ function PaymentPageInner() {
             {/* Gain de temps garanti */}
             <div
               className="rounded-2xl p-5 flex flex-col gap-4"
-              style={{ background: 'rgba(15,12,36,0.7)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.06)' }}
+              style={{ background: '#18181B', border: '1px solid #27272A' }}
             >
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'rgba(52,211,153,0.15)' }}>
