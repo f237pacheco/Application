@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -108,7 +108,7 @@ type CardData = (typeof ROW1_CARDS)[number] | (typeof ROW2_CARDS)[number];
 function MarqueeCard({ card }: { card: CardData }) {
   if (card.type === 'tweet') {
     return (
-      <div className="flex-shrink-0 w-68 backdrop-blur border border-white/[0.06] rounded-2xl p-4 shadow-xl" style={{ width: 272, background: 'rgba(17,17,24,0.85)' }}>
+      <div className="flex-shrink-0 w-68 backdrop-blur border border-white/[0.06] rounded-2xl p-4 shadow-xl" style={{ width: 272, background: '#18181B' }}>
         <div className="flex items-center gap-2.5 mb-2.5">
           <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0" style={{ backgroundColor: card.avatarBg }}>
             {card.avatarLetter}
@@ -134,7 +134,7 @@ function MarqueeCard({ card }: { card: CardData }) {
   }
   if (card.type === 'stat') {
     return (
-      <div className="flex-shrink-0 w-44 backdrop-blur border border-white/[0.06] rounded-2xl p-4 shadow-xl" style={{ background: 'rgba(17,17,24,0.85)' }}>
+      <div className="flex-shrink-0 w-44 backdrop-blur border border-white/[0.06] rounded-2xl p-4 shadow-xl" style={{ background: '#18181B' }}>
         <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">{card.label}</p>
         <p className="text-2xl font-extrabold text-white">{card.value}</p>
         <p className="text-[10px] font-bold mt-1" style={{ color: card.color }}>↑ {card.change}</p>
@@ -146,7 +146,7 @@ function MarqueeCard({ card }: { card: CardData }) {
   }
   if (card.type === 'site') {
     return (
-      <div className="flex-shrink-0 w-52 backdrop-blur border border-white/[0.06] rounded-2xl overflow-hidden shadow-xl" style={{ background: 'rgba(17,17,24,0.85)' }}>
+      <div className="flex-shrink-0 w-52 backdrop-blur border border-white/[0.06] rounded-2xl overflow-hidden shadow-xl" style={{ background: '#18181B' }}>
         <div className="bg-gray-700/50 px-3 py-1.5 flex items-center gap-1.5">
           <div className="w-1.5 h-1.5 rounded-full bg-red-400" />
           <div className="w-1.5 h-1.5 rounded-full bg-yellow-400" />
@@ -169,7 +169,7 @@ function MarqueeCard({ card }: { card: CardData }) {
   }
   if (card.type === 'video') {
     return (
-      <div className="flex-shrink-0 w-44 backdrop-blur border border-white/[0.06] rounded-2xl overflow-hidden shadow-xl" style={{ background: 'rgba(17,17,24,0.85)' }}>
+      <div className="flex-shrink-0 w-44 backdrop-blur border border-white/[0.06] rounded-2xl overflow-hidden shadow-xl" style={{ background: '#18181B' }}>
         <div className="h-24 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center relative">
           <div className="w-10 h-10 rounded-full bg-white/20 border border-white/30 flex items-center justify-center">
             <div className="w-0 h-0 border-t-[6px] border-t-transparent border-l-[12px] border-l-white border-b-[6px] border-b-transparent ml-1" />
@@ -187,7 +187,7 @@ function MarqueeCard({ card }: { card: CardData }) {
   }
   if (card.type === 'kpi') {
     return (
-      <div className="flex-shrink-0 w-44 backdrop-blur border border-white/[0.06] rounded-2xl p-4 shadow-xl" style={{ background: 'rgba(17,17,24,0.85)' }}>
+      <div className="flex-shrink-0 w-44 backdrop-blur border border-white/[0.06] rounded-2xl p-4 shadow-xl" style={{ background: '#18181B' }}>
         <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">{card.label}</p>
         <p className="text-2xl font-extrabold text-white">{card.value}</p>
         <p className="text-xs mt-0.5" style={{ color: card.color }}>{card.sub}</p>
@@ -301,30 +301,25 @@ function ServiceCard({ service, index }: { service: (typeof SERVICES)[number]; i
             ? { y: -6, boxShadow: `0 24px 60px ${meta.glowColor}` }
             : { y: 0, boxShadow: `0 4px 20px rgba(0,0,0,0.3)` }}
           transition={{ type: 'spring', stiffness: 280, damping: 22 }}
-          className="relative flex flex-col h-full rounded-2xl p-5 overflow-hidden"
+          className="relative flex flex-col h-full rounded-xl p-5 overflow-hidden"
           style={{
-            background: hovered ? '#16161F' : '#111118',
-            backdropFilter: 'blur(12px)',
-            border: hovered ? `1px solid rgba(99,102,241,0.45)` : '1px solid rgba(255,255,255,0.06)',
-            boxShadow: hovered ? `0 8px 32px rgba(99,102,241,0.12)` : 'none',
-            transition: 'background 0.15s, border-color 0.15s, box-shadow 0.15s',
+            background: '#18181B',
+            border: hovered ? '1px solid #3F3F46' : '1px solid #27272A',
+            transform: hovered ? 'translateY(-2px)' : 'translateY(0)',
+            transition: 'border-color 0.15s, transform 0.15s',
           }}
         >
-          {/* Top gradient line */}
-          <div className="absolute top-0 left-0 right-0 h-px" style={{ background: `linear-gradient(90deg, transparent, ${meta.color}80, transparent)` }} />
+          {/* Top color bar */}
+          <div className="absolute top-0 left-0 right-0 h-[3px] rounded-t-xl" style={{ background: meta.color }} />
 
           {/* Header row: icon + badge */}
           <div className="flex items-start justify-between mb-4">
-            <motion.div
-              animate={hovered
-                ? { boxShadow: `0 0 28px ${meta.glowColor}`, scale: 1.06 }
-                : { boxShadow: `0 0 12px ${meta.glowColor.replace('0.4', '0.2').replace('0.45', '0.2')}`, scale: 1 }}
-              transition={{ duration: 0.25 }}
+            <div
               className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
-              style={{ background: `linear-gradient(135deg, ${meta.color}30, ${meta.color}18)` }}
+              style={{ background: '#27272A' }}
             >
               <span style={{ color: meta.color }}>{SERVICE_ICONS[service.id]}</span>
-            </motion.div>
+            </div>
 
             <span
               className="text-[10px] font-bold px-2.5 py-1 rounded-full mt-0.5"
@@ -370,8 +365,12 @@ function ServiceCard({ service, index }: { service: (typeof SERVICES)[number]; i
           {/* Launch button */}
           <div className="relative overflow-hidden rounded-xl">
             <div
-              className="w-full py-2.5 text-sm font-semibold text-white text-center rounded-xl"
-              style={{ background: 'linear-gradient(135deg, #6366F1, #4F52E8)', boxShadow: '0 4px 16px rgba(99,102,241,0.2)' }}
+              className="w-full py-2.5 text-sm font-semibold text-center rounded-lg transition-all duration-150"
+              style={{
+                background: hovered ? '#4F46E5' : '#27272A',
+                color: '#FAFAFA',
+                border: hovered ? '1px solid #4F46E5' : '1px solid #3F3F46',
+              }}
             >
               Lancer →
             </div>
@@ -416,9 +415,6 @@ export default function DashboardPage() {
   const [search, setSearch] = useState('');
   const [greeting, setGreeting] = useState('');
 
-  const containerRef = useRef<HTMLDivElement>(null);
-  const spotlightRef = useRef<HTMLDivElement>(null);
-
   const firstName = profile?.first_name
     ?? (user?.user_metadata?.full_name as string)?.split(' ')[0]
     ?? 'vous';
@@ -437,22 +433,6 @@ export default function DashboardPage() {
     setGreeting(h < 12 ? 'Bonne matinée ☀️' : h < 18 ? 'Bon après-midi' : 'Bonne soirée 🌙');
   }, []);
 
-  // Cursor spotlight
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    const onMove = (e: MouseEvent) => {
-      if (!spotlightRef.current) return;
-      const rect = el.getBoundingClientRect();
-      spotlightRef.current.style.background = `radial-gradient(400px circle at ${e.clientX - rect.left}px ${e.clientY - rect.top}px, rgba(99,102,241,0.06), transparent 60%)`;
-      spotlightRef.current.style.opacity = '1';
-    };
-    const onLeave = () => { if (spotlightRef.current) spotlightRef.current.style.opacity = '0'; };
-    el.addEventListener('mousemove', onMove);
-    el.addEventListener('mouseleave', onLeave);
-    return () => { el.removeEventListener('mousemove', onMove); el.removeEventListener('mouseleave', onLeave); };
-  }, []);
-
   // Filtered services for search
   const visibleServices = useMemo(() => {
     if (search.trim()) {
@@ -468,44 +448,10 @@ export default function DashboardPage() {
   const isSearching = !!search.trim();
 
   return (
-    <div ref={containerRef} className="relative">
-      {/* Cursor spotlight */}
-      <div ref={spotlightRef} className="pointer-events-none absolute inset-0 z-50 transition-opacity duration-300 rounded-3xl" style={{ opacity: 0 }} aria-hidden />
-
-      {/* Slow-moving background orbs */}
-      <div className="pointer-events-none select-none absolute inset-0 overflow-hidden rounded-3xl" aria-hidden>
-        <motion.div
-          className="absolute rounded-full"
-          style={{ top: '-15%', left: '-10%', width: 560, height: 560, background: 'radial-gradient(circle, rgba(99,102,241,0.07) 0%, transparent 70%)' }}
-          animate={{ x: [0, 50, -20, 0], y: [0, -40, 20, 0] }}
-          transition={{ duration: 20, repeat: Infinity, ease: 'easeInOut' }}
-        />
-        <motion.div
-          className="absolute rounded-full"
-          style={{ top: '35%', right: '-12%', width: 480, height: 480, background: 'radial-gradient(circle, rgba(99,102,241,0.06) 0%, transparent 70%)' }}
-          animate={{ x: [0, -40, 20, 0], y: [0, 50, -30, 0] }}
-          transition={{ duration: 25, repeat: Infinity, ease: 'easeInOut' }}
-        />
-        <motion.div
-          className="absolute rounded-full"
-          style={{ bottom: '-8%', left: '30%', width: 400, height: 400, background: 'radial-gradient(circle, rgba(99,102,241,0.05) 0%, transparent 70%)' }}
-          animate={{ x: [0, 30, -10, 0], y: [0, -30, 40, 0] }}
-          transition={{ duration: 22, repeat: Infinity, ease: 'easeInOut' }}
-        />
-        {/* Subtle grid */}
-        <div className="absolute inset-0" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
-        {/* Floating dots */}
-        {([
-          { x: '7%', y: '5%', d: 0, s: 3 }, { x: '85%', y: '11%', d: 1.5, s: 2.5 },
-          { x: '52%', y: '36%', d: 0.8, s: 3.5 }, { x: '91%', y: '60%', d: 2.2, s: 2 },
-          { x: '15%', y: '72%', d: 0.4, s: 3 }, { x: '68%', y: '85%', d: 1.1, s: 2.5 },
-        ] as const).map((p, i) => (
-          <motion.div key={i} className="absolute rounded-full"
-            style={{ left: p.x, top: p.y, width: p.s, height: p.s, background: 'rgba(108,92,231,0.65)' }}
-            animate={{ y: [0, -18, 0], opacity: [0.25, 0.8, 0.25] }}
-            transition={{ duration: 4 + i * 0.5, delay: p.d, repeat: Infinity, ease: 'easeInOut' }} />
-        ))}
-      </div>
+    <div className="relative">
+      {/* Top beam + dashboard glow */}
+      <div className="page-beam" />
+      <div className="dashboard-glow-top" />
 
       <div className="relative z-10 flex flex-col gap-10">
 
@@ -593,21 +539,18 @@ export default function DashboardPage() {
             ].map(({ icon, value, label, color }) => (
               <div
                 key={label}
-                className="flex items-center gap-3 rounded-2xl px-5 py-4 relative overflow-hidden"
+                className="flex items-center gap-3 rounded-xl px-5 py-4 relative overflow-hidden transition-all duration-150"
                 style={{
-                  background: `linear-gradient(135deg, ${color}14, rgba(255,255,255,0.02))`,
-                  backdropFilter: 'blur(10px)',
-                  border: `1px solid ${color}35`,
-                  boxShadow: `0 4px 24px ${color}18`,
+                  background: '#18181B',
+                  border: `1px solid #27272A`,
                 }}
               >
-                <div className="absolute top-0 left-0 w-1 h-full rounded-l-2xl" style={{ background: color }} />
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ml-2" style={{ background: `${color}25`, color }}>
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: '#27272A', color }}>
                   {icon}
                 </div>
                 <div>
                   <p className="text-xl font-bold text-white leading-none">{value}</p>
-                  <p className="text-xs mt-1" style={{ color: `${color}cc` }}>{label}</p>
+                  <p className="text-xs mt-1 text-zinc-500">{label}</p>
                 </div>
               </div>
             ))}
@@ -622,7 +565,8 @@ export default function DashboardPage() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.4 }}
-            className="bg-gray-900/60 border border-white/[0.06] rounded-2xl p-6"
+            className="rounded-xl p-6"
+            style={{ background: '#18181B', border: '1px solid #27272A' }}
           >
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-sm font-semibold text-white">{t('dashboard.usageThisMonth')}</h2>
@@ -648,10 +592,10 @@ export default function DashboardPage() {
               <div className="w-1 h-5 rounded-full" style={{ background: 'linear-gradient(180deg, #6C5CE7, #06b6d4)' }} />
               <h2 className="text-xl font-bold text-white">Vos outils IA</h2>
             </div>
-            <span className="text-xs font-semibold px-2.5 py-1 rounded-full" style={{ background: 'rgba(99,102,241,0.12)', color: '#a5b4fc', border: '1px solid rgba(99,102,241,0.2)' }}>
+            <span className="text-xs font-medium px-2.5 py-1 rounded-full" style={{ background: '#1E1B4B', color: '#818CF8', border: '1px solid #3730A3' }}>
               6 disponibles
             </span>
-            <span className="text-xs font-semibold px-2.5 py-1 rounded-full" style={{ background: 'rgba(6,182,212,0.10)', color: '#67e8f9', border: '1px solid rgba(6,182,212,0.2)' }}>
+            <span className="text-xs font-medium px-2.5 py-1 rounded-full" style={{ background: '#1C1400', color: '#F59E0B', border: '1px solid rgba(245,158,11,0.3)' }}>
               ✦ Nouveau: Vidéo IA
             </span>
           </div>
@@ -671,10 +615,8 @@ export default function DashboardPage() {
               placeholder="Rechercher un service..."
               className="w-full pl-10 pr-4 py-2.5 rounded-xl text-sm text-white placeholder-gray-600 transition-all focus:outline-none"
               style={{
-                background: '#111118',
-                backdropFilter: 'blur(8px)',
-                border: search ? '1px solid rgba(99,102,241,0.5)' : '1px solid rgba(255,255,255,0.07)',
-                boxShadow: search ? '0 0 0 3px rgba(99,102,241,0.08)' : 'none',
+                background: '#18181B',
+                border: search ? '1px solid #6366F1' : '1px solid #27272A',
               }}
             />
             {search && (
@@ -705,7 +647,7 @@ export default function DashboardPage() {
               <button
                 onClick={() => setShowAll((v) => !v)}
                 className="flex items-center gap-2.5 px-5 py-2.5 rounded-xl text-sm font-medium text-gray-400 hover:text-white transition-colors"
-                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}
+                style={{ background: '#18181B', border: '1px solid #27272A', color: '#71717A' }}
               >
                 <motion.svg
                   width="18" height="18" viewBox="0 0 24 24" fill="none"

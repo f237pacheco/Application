@@ -6,15 +6,14 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import { Logo } from '@/components/ui/Logo';
-import { clsx } from 'clsx';
 import { useState, useEffect, useRef } from 'react';
 
-const PLAN_LABELS: Record<string, { label: string; color: string }> = {
-  starter_individual:   { label: 'Starter',    color: 'bg-gray-700 text-gray-300' },
-  starter_professional: { label: 'Starter Pro', color: 'bg-gray-700 text-gray-300' },
-  pro_individual:       { label: 'Pro',         color: 'bg-primary-500/20 text-primary-300 border border-primary-500/30' },
-  pro_professional:     { label: 'Pro',         color: 'bg-primary-500/20 text-primary-300 border border-primary-500/30' },
-  enterprise:           { label: 'Enterprise',  color: 'bg-success-DEFAULT/20 text-success-DEFAULT border border-success-DEFAULT/30' },
+const PLAN_LABELS: Record<string, { label: string; bg: string; color: string; border: string }> = {
+  starter_individual:   { label: 'Starter',    bg: '#18181B', color: '#A1A1AA', border: '#3F3F46' },
+  starter_professional: { label: 'Starter Pro', bg: '#18181B', color: '#A1A1AA', border: '#3F3F46' },
+  pro_individual:       { label: 'Pro',         bg: '#1E1B4B', color: '#818CF8', border: '#3730A3' },
+  pro_professional:     { label: 'Pro',         bg: '#1E1B4B', color: '#818CF8', border: '#3730A3' },
+  enterprise:           { label: 'Enterprise',  bg: '#052E16', color: '#10B981', border: '#065F46' },
 };
 
 function formatCountdown(ms: number): string {
@@ -67,31 +66,37 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col" style={{ background: '#09090B' }}>
       <header
-        className="sticky top-0 z-40 backdrop-blur-xl border-b"
-        style={{ background: 'rgba(3,7,18,0.85)', borderColor: 'rgba(255,255,255,0.06)' }}
+        className="sticky top-0 z-40 backdrop-blur border-b"
+        style={{ background: 'rgba(9,9,11,0.92)', borderColor: '#18181B' }}
       >
         <div className="max-w-[1400px] mx-auto px-6 lg:px-12 py-3 flex items-center justify-between gap-4">
           <Logo size="sm" />
 
           <div className="flex items-center gap-3">
             {planInfo ? (
-              <span className={clsx('text-xs font-semibold px-3 py-1 rounded-full', planInfo.color)}>
+              <span
+                className="text-xs font-semibold px-3 py-1 rounded-full"
+                style={{ background: planInfo.bg, color: planInfo.color, border: `1px solid ${planInfo.border}` }}
+              >
                 {planInfo.label}
               </span>
             ) : (
               <Link
                 href="/plans?source=header"
-                className="text-xs font-bold px-3 py-1.5 rounded-full transition-all hover:opacity-90"
-                style={{ background: '#F59E0B', color: '#000', boxShadow: '0 2px 12px rgba(245,158,11,0.25)' }}
+                className="text-xs font-bold px-3 py-1.5 rounded-lg transition-all"
+                style={{ background: '#F59E0B', color: '#000' }}
               >
                 Choisir un plan
               </Link>
             )}
 
             {countdown && (
-              <div className="flex items-center gap-1.5 text-xs font-mono px-2.5 py-1 rounded-full" style={{ background: 'rgba(15,15,25,0.8)', border: '1px solid rgba(255,255,255,0.08)', color: '#94A3B8' }}>
+              <div
+                className="flex items-center gap-1.5 text-xs font-mono px-2.5 py-1 rounded-full"
+                style={{ background: '#18181B', border: '1px solid #27272A', color: '#71717A' }}
+              >
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="12" cy="12" r="10" />
                   <polyline points="12 6 12 12 16 14" />
@@ -101,13 +106,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             )}
 
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white" style={{ background: '#6366F1', boxShadow: '0 2px 8px rgba(99,102,241,0.25)' }}>
+              <div
+                className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white"
+                style={{ background: '#4F46E5' }}
+              >
                 {firstName.charAt(0).toUpperCase()}
               </div>
               <button
                 onClick={handleSignOut}
                 disabled={signingOut}
-                className="text-xs text-gray-500 hover:text-gray-300 transition-colors hidden sm:block"
+                className="text-xs hidden sm:block transition-colors"
+                style={{ color: '#71717A' }}
               >
                 {signingOut ? '…' : 'Déconnexion'}
               </button>
@@ -115,7 +124,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         </div>
 
-        <nav className="max-w-[1400px] mx-auto px-6 lg:px-12 flex gap-1 border-t" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
+        <nav
+          className="max-w-[1400px] mx-auto px-6 lg:px-12 flex gap-0 border-t"
+          style={{ borderColor: '#18181B' }}
+        >
           {tabs.map((tab) => {
             const isActive = tab.href === '/dashboard'
               ? pathname === '/dashboard'
@@ -124,12 +136,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <Link
                 key={tab.href}
                 href={tab.href}
-                className={clsx(
-                  'px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap',
-                  isActive
-                    ? 'border-primary-500 text-white'
-                    : 'border-transparent text-gray-500 hover:text-gray-300 hover:border-gray-700'
-                )}
+                className="px-4 py-3 text-sm font-medium border-b-2 transition-all duration-150 whitespace-nowrap"
+                style={{
+                  borderColor: isActive ? '#6366F1' : 'transparent',
+                  color: isActive ? '#FAFAFA' : '#71717A',
+                }}
               >
                 {tab.label}
               </Link>
