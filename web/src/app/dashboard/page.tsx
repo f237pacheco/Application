@@ -293,7 +293,7 @@ function ServiceCard({ service, index }: { service: (typeof SERVICES)[number]; i
       transition={{ type: 'spring', stiffness: 160, damping: 22, delay: index * 0.07 }}
       className="h-full"
     >
-      <Link href={`/services/${service.id}`} className="block h-full group">
+      <Link href={service.id === 'website' ? '/dashboard/services/website' : `/services/${service.id}`} className="block h-full group">
         <motion.div
           onHoverStart={() => setHovered(true)}
           onHoverEnd={() => setHovered(false)}
