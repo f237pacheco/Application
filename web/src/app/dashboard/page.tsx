@@ -296,6 +296,7 @@ function ServiceCard({ service, index }: { service: (typeof SERVICES)[number]; i
       <Link href={
         service.id === 'website' ? '/dashboard/services/website' :
         service.id === 'voice_agent' ? '/dashboard/services/voice' :
+        service.id === 'video_editing' ? '/dashboard/services/video' :
         `/services/${service.id}`
       } className="block h-full group">
         <motion.div
