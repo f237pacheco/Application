@@ -297,6 +297,7 @@ function ServiceCard({ service, index }: { service: (typeof SERVICES)[number]; i
         service.id === 'website' ? '/dashboard/services/website' :
         service.id === 'voice_agent' ? '/dashboard/services/voice' :
         service.id === 'video_editing' ? '/dashboard/services/video' :
+        service.id === 'appointments' ? '/dashboard/services/booking' :
         `/services/${service.id}`
       } className="block h-full group">
         <motion.div
