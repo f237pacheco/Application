@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { useTranslation } from 'react-i18next';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useInView } from 'framer-motion';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import { useUsage } from '@/hooks/useUsage';
@@ -413,6 +413,189 @@ function ServiceCard({ service, index }: { service: (typeof SERVICES)[number]; i
   );
 }
 
+/* ── Conversion sections data & components ────────────────────────────────────── */
+
+function useCountUpValue(target: number, decimals = 0, duration = 1500) {
+  const ref = useRef<HTMLDivElement>(null);
+  const inView = useInView(ref, { once: true, margin: '-60px' });
+  const [value, setValue] = useState(0);
+  useEffect(() => {
+    if (!inView) return;
+    let start: number | null = null;
+    let raf: number;
+    function tick(ts: number) {
+      if (start === null) start = ts;
+      const progress = Math.min((ts - start) / duration, 1);
+      setValue(Number((progress * target).toFixed(decimals)));
+      if (progress < 1) raf = requestAnimationFrame(tick);
+    }
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [inView, target, decimals, duration]);
+  return { ref, value };
+}
+
+const SOCIAL_PROOF_STATS = [
+  { value: 12400, suffix: '+', label: 'sites générés' },
+  { value: 98, suffix: '%', label: 'de satisfaction client' },
+  { value: 3200, suffix: '+', label: 'entreprises actives' },
+  { value: 45000, suffix: 'h', label: 'économisées ce mois' },
+];
+
+function SocialProofStat({ stat }: { stat: typeof SOCIAL_PROOF_STATS[number] }) {
+  const { ref, value } = useCountUpValue(stat.value);
+  return (
+    <div ref={ref} className="flex-1 text-center px-4 py-3">
+      <p className="text-3xl sm:text-4xl font-extrabold text-white tabular-nums">
+        {value.toLocaleString('fr-FR')}{stat.suffix}
+      </p>
+      <p className="text-xs text-gray-500 mt-1.5">{stat.label}</p>
+    </div>
+  );
+}
+
+const BENEFITS = [
+  { icon: '⏱️', title: 'Gagnez 15h par semaine', desc: 'Automatisez les tâches répétitives et concentrez-vous sur ce qui compte vraiment pour votre activité.', color: '#10B981' },
+  { icon: '🪄', title: 'Aucune compétence technique requise', desc: "Une interface simple, pensée pour les entrepreneurs — pas pour les développeurs.", color: '#6366F1' },
+  { icon: '📈', title: 'Rentabilisé dès le premier mois', desc: "Le temps et l'argent économisés couvrent largement votre abonnement, dès les premières semaines.", color: '#F59E0B' },
+];
+
+function BenefitCard({ b, index }: { b: typeof BENEFITS[number]; index: number }) {
+  const [hovered, setHovered] = useState(false);
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      transition={{ delay: index * 0.1, duration: 0.45 }}
+      onHoverStart={() => setHovered(true)}
+      onHoverEnd={() => setHovered(false)}
+      animate={{ y: hovered ? -4 : 0 }}
+      className="rounded-2xl p-6"
+      style={{ background: '#18181B', border: hovered ? '1px solid #3F3F46' : '1px solid #27272A', transition: 'border-color 0.2s' }}
+    >
+      <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl mb-4" style={{ background: `${b.color}1F` }}>
+        {b.icon}
+      </div>
+      <h3 className="text-base font-bold text-white mb-2">{b.title}</h3>
+      <p className="text-sm text-gray-400 leading-relaxed">{b.desc}</p>
+    </motion.div>
+  );
+}
+
+const HOW_STEPS = [
+  { num: '1', icon: '🧩', title: 'Choisissez un outil IA', desc: 'Sélectionnez le service adapté à votre besoin parmi nos 6 outils.' },
+  { num: '2', icon: '✍️', title: 'Décrivez votre besoin', desc: "Quelques informations suffisent, l'IA s'occupe du reste." },
+  { num: '3', icon: '🚀', title: 'Récupérez votre résultat en minutes', desc: "Site, vidéo, agent vocal ou rapport — prêt à l'emploi." },
+];
+
+const TESTIMONIALS = [
+  {
+    initial: 'S', avatarBg: '#6366F1', name: 'Sophie Marchand', role: 'Fondatrice, Boutique Sophie M.',
+    quote: "Velona a complètement changé ma façon de travailler. En quelques minutes j'ai un site qui convertit mieux que celui que j'avais payé 2000€ à une agence. Mes clientes me disent que c'est devenu beaucoup plus simple de réserver et de commander en ligne.",
+    metric: '+340% de leads',
+  },
+  {
+    initial: 'K', avatarBg: '#10B981', name: 'Karim Belkacem', role: 'Coach sportif indépendant',
+    quote: "Entre les RDV, les relances et les réseaux sociaux, je passais mes soirées sur l'administratif. Aujourd'hui tout est automatisé : mes clients réservent seuls, reçoivent leurs rappels, et mes posts Instagram partent sans que j'y touche.",
+    metric: '12h économisées/semaine',
+  },
+  {
+    initial: 'L', avatarBg: '#F59E0B', name: 'Léa Dubreuil', role: 'Gérante, Le Petit Cèdre (restaurant)',
+    quote: "On hésitait à investir dans un outil IA, on pensait que ce serait compliqué. En réalité, en une semaine on avait notre nouveau site, nos réservations automatisées et nos réseaux gérés. Le bouche-à-oreille a fait le reste.",
+    metric: 'CA x2 en 3 mois',
+  },
+];
+
+function TestimonialCard({ tst, index }: { tst: typeof TESTIMONIALS[number]; index: number }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      transition={{ delay: index * 0.1, duration: 0.45 }}
+      className="rounded-2xl p-6 flex flex-col"
+      style={{ background: '#18181B', border: '1px solid #27272A' }}
+    >
+      <div className="flex items-center gap-3 mb-3">
+        <div className="w-11 h-11 rounded-full flex items-center justify-center text-base font-bold text-white shrink-0" style={{ background: tst.avatarBg }}>
+          {tst.initial}
+        </div>
+        <div>
+          <p className="text-sm font-semibold text-white">{tst.name}</p>
+          <p className="text-xs text-gray-500">{tst.role}</p>
+        </div>
+      </div>
+      <div className="flex gap-0.5 mb-3">
+        {[...Array(5)].map((_, i) => <span key={i} style={{ color: '#FBBF24' }}>★</span>)}
+      </div>
+      <p className="text-sm text-gray-400 leading-relaxed flex-1 mb-4">&quot;{tst.quote}&quot;</p>
+      <span className="inline-flex self-start items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full" style={{ background: 'rgba(16,185,129,0.12)', color: '#6EE7B7' }}>
+        ✓ {tst.metric}
+      </span>
+    </motion.div>
+  );
+}
+
+const BEFORE_POINTS = [
+  'Des heures perdues sur chaque tâche',
+  'Besoin de plusieurs outils coûteux',
+  'Résultats amateurs',
+  'Aucun support disponible',
+  'Décisions prises à l\'aveugle',
+];
+
+const AFTER_POINTS = [
+  'Tout automatisé en quelques minutes',
+  'Un seul outil tout-en-un',
+  'Qualité professionnelle',
+  'Support français 7j/7',
+  'Données et insights clairs',
+];
+
+const TRUST_BADGES = [
+  { icon: '🔒', label: 'Données chiffrées & sécurisées' },
+  { icon: '✓', label: 'Essai 3 jours sans carte' },
+  { icon: '↩', label: 'Annulation en 1 clic' },
+  { icon: '🇫🇷', label: 'Support français 7j/7' },
+  { icon: '⚡', label: 'Résultats en minutes' },
+];
+
+const QUICK_FAQS = [
+  { q: 'Est-ce que je peux essayer gratuitement ?', a: "Oui, vous bénéficiez de 3 jours d'essai gratuit, sans carte bancaire requise, pour tester l'ensemble des outils." },
+  { q: 'Ai-je besoin de compétences techniques ?', a: 'Aucune. Velona est conçu pour les entrepreneurs, pas pour les développeurs — tout se fait en quelques clics.' },
+  { q: 'Puis-je annuler à tout moment ?', a: "Oui, l'annulation se fait en un clic depuis votre espace, sans engagement ni frais cachés." },
+  { q: 'Mes données sont-elles protégées ?', a: 'Toutes vos données sont chiffrées et hébergées de manière sécurisée. Vous seul y avez accès.' },
+  { q: 'Combien de temps pour avoir un résultat ?', a: 'La plupart des outils génèrent un résultat exploitable en quelques minutes — un site, une vidéo ou un agent vocal prêt à l\'emploi.' },
+];
+
+function QuickFaqItem({ faq, index }: { faq: typeof QUICK_FAQS[number]; index: number }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      transition={{ delay: index * 0.07, duration: 0.4 }}
+      onClick={() => setOpen((v) => !v)}
+      className="rounded-xl overflow-hidden cursor-pointer"
+      style={{ border: open ? '1px solid #6366F1' : '1px solid #27272A', background: open ? 'rgba(99,102,241,0.06)' : '#18181B', transition: 'border-color 0.2s, background 0.2s' }}
+    >
+      <div className="flex items-center justify-between px-5 py-4">
+        <span className="text-sm font-semibold text-white pr-4">{faq.q}</span>
+        <motion.span animate={{ rotate: open ? 45 : 0 }} transition={{ duration: 0.2 }} className="shrink-0 text-gray-400 text-lg leading-none">+</motion.span>
+      </div>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div key="a" initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.22, ease: 'easeInOut' }} className="overflow-hidden">
+            <p className="px-5 pb-4 text-sm text-gray-400 leading-relaxed">{faq.a}</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+}
+
 /* ── Page ───────────────────────────────────────────────────────────────────── */
 export default function DashboardPage() {
   const { t } = useTranslation();
@@ -670,6 +853,96 @@ export default function DashboardPage() {
           )}
         </motion.section>
 
+        {/* ── SOCIAL PROOF STATS ────────────────────────────────────────────── */}
+        <motion.section
+          initial={{ opacity: 0, y: 24 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5, ease: 'easeOut' }}
+          className="rounded-2xl"
+          style={{ background: '#0D0D10', border: '1px solid #27272A' }}
+        >
+          <div className="flex flex-col sm:flex-row items-stretch">
+            {SOCIAL_PROOF_STATS.map((s, i) => (
+              <div key={s.label} className="flex-1 flex items-center">
+                {i > 0 && <div className="hidden sm:block w-px self-stretch my-3" style={{ background: '#27272A' }} />}
+                <SocialProofStat stat={s} />
+              </div>
+            ))}
+          </div>
+        </motion.section>
+
+        {/* ── POURQUOI VELONA ───────────────────────────────────────────────── */}
+        <motion.section
+          initial={{ opacity: 0, y: 24 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.45, ease: 'easeOut' }}
+          className="flex flex-col gap-5"
+        >
+          <div className="flex items-center gap-2">
+            <div className="w-1 h-5 rounded-full" style={{ background: 'linear-gradient(180deg, #10B981, #F59E0B)' }} />
+            <h2 className="text-xl font-bold text-white">Pourquoi Velona</h2>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+            {BENEFITS.map((b, i) => <BenefitCard key={b.title} b={b} index={i} />)}
+          </div>
+        </motion.section>
+
+        {/* ── COMMENT ÇA MARCHE ─────────────────────────────────────────────── */}
+        <motion.section
+          initial={{ opacity: 0, y: 24 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.45, ease: 'easeOut' }}
+          className="flex flex-col gap-5"
+        >
+          <div className="flex items-center gap-2">
+            <div className="w-1 h-5 rounded-full" style={{ background: 'linear-gradient(180deg, #6366F1, #818CF8)' }} />
+            <h2 className="text-xl font-bold text-white">Comment ça marche</h2>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {HOW_STEPS.map((s, i) => (
+              <motion.div
+                key={s.num}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.15, duration: 0.45 }}
+                className="relative rounded-2xl p-6 text-center"
+                style={{ background: '#18181B', border: '1px solid #27272A' }}
+              >
+                <span className="absolute top-3 right-4 text-3xl font-black" style={{ color: 'rgba(99,102,241,0.15)' }}>{s.num}</span>
+                <div className="w-12 h-12 rounded-full flex items-center justify-center text-xl mx-auto mb-3" style={{ background: 'rgba(99,102,241,0.12)' }}>
+                  {s.icon}
+                </div>
+                <h3 className="text-sm font-bold text-white mb-1.5">{s.title}</h3>
+                <p className="text-xs text-gray-500 leading-relaxed">{s.desc}</p>
+                {i < HOW_STEPS.length - 1 && (
+                  <div className="hidden sm:flex absolute top-1/2 -right-2.5 -translate-y-1/2 items-center justify-center text-gray-600 z-10 text-sm">→</div>
+                )}
+              </motion.div>
+            ))}
+          </div>
+        </motion.section>
+
+        {/* ── TÉMOIGNAGES DÉTAILLÉS ─────────────────────────────────────────── */}
+        <motion.section
+          initial={{ opacity: 0, y: 24 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.45, ease: 'easeOut' }}
+          className="flex flex-col gap-5"
+        >
+          <div className="flex items-center gap-2">
+            <div className="w-1 h-5 rounded-full" style={{ background: 'linear-gradient(180deg, #F59E0B, #FBBF24)' }} />
+            <h2 className="text-xl font-bold text-white">Ce qu&apos;ils en disent</h2>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+            {TESTIMONIALS.map((t, i) => <TestimonialCard key={t.name} tst={t} index={i} />)}
+          </div>
+        </motion.section>
+
         {/* ── MARQUEE ────────────────────────────────────────────────────────── */}
         <motion.section
           initial={{ opacity: 0, y: 24 }}
@@ -704,13 +977,139 @@ export default function DashboardPage() {
               {row2Doubled.map((card, i) => <MarqueeCard key={i} card={card as CardData} />)}
             </div>
           </div>
-
-          <p className="text-center text-xs text-gray-700 mt-2">
-            <Link href="/dashboard/help" className="hover:text-gray-500 transition-colors underline underline-offset-2">
-              Conditions générales d&apos;utilisation
-            </Link>
-          </p>
         </motion.section>
+
+        {/* ── AVANT / APRÈS ──────────────────────────────────────────────────── */}
+        <motion.section
+          initial={{ opacity: 0, y: 24 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.45, ease: 'easeOut' }}
+          className="flex flex-col gap-5"
+        >
+          <div className="flex items-center gap-2">
+            <div className="w-1 h-5 rounded-full" style={{ background: 'linear-gradient(180deg, #EF4444, #10B981)' }} />
+            <h2 className="text-xl font-bold text-white">Avant / Après Velona</h2>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5 }}
+              className="rounded-2xl p-6"
+              style={{ background: '#1A0E0E', border: '1px solid rgba(239,68,68,0.25)' }}
+            >
+              <h3 className="text-sm font-bold mb-4 flex items-center gap-2" style={{ color: '#FCA5A5' }}>
+                <span>✕</span> Sans Velona
+              </h3>
+              <div className="flex flex-col gap-3">
+                {BEFORE_POINTS.map((p) => (
+                  <div key={p} className="flex items-start gap-2.5">
+                    <span className="text-sm shrink-0" style={{ color: '#EF4444' }}>✕</span>
+                    <span className="text-sm text-gray-400">{p}</span>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5 }}
+              className="rounded-2xl p-6"
+              style={{ background: '#0E1A12', border: '1px solid rgba(16,185,129,0.25)' }}
+            >
+              <h3 className="text-sm font-bold mb-4 flex items-center gap-2" style={{ color: '#6EE7B7' }}>
+                <span>✓</span> Avec Velona
+              </h3>
+              <div className="flex flex-col gap-3">
+                {AFTER_POINTS.map((p) => (
+                  <div key={p} className="flex items-start gap-2.5">
+                    <span className="text-sm shrink-0" style={{ color: '#10B981' }}>✓</span>
+                    <span className="text-sm text-gray-300">{p}</span>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          </div>
+        </motion.section>
+
+        {/* ── GARANTIE & CONFIANCE ──────────────────────────────────────────── */}
+        <motion.section
+          initial={{ opacity: 0, y: 24 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.45, ease: 'easeOut' }}
+          className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 rounded-2xl py-6 px-4"
+          style={{ background: '#0D0D10', border: '1px solid #27272A' }}
+        >
+          {TRUST_BADGES.map((b, i) => (
+            <motion.div
+              key={b.label}
+              initial={{ opacity: 0, y: 10 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: i * 0.06, duration: 0.35 }}
+              className="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-medium text-gray-300"
+              style={{ background: '#18181B', border: '1px solid #27272A' }}
+            >
+              <span>{b.icon}</span>{b.label}
+            </motion.div>
+          ))}
+        </motion.section>
+
+        {/* ── FAQ RAPIDE ─────────────────────────────────────────────────────── */}
+        <motion.section
+          initial={{ opacity: 0, y: 24 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.45, ease: 'easeOut' }}
+          className="flex flex-col gap-5"
+        >
+          <div className="flex items-center gap-2">
+            <div className="w-1 h-5 rounded-full" style={{ background: 'linear-gradient(180deg, #6366F1, #818CF8)' }} />
+            <h2 className="text-xl font-bold text-white">Questions fréquentes</h2>
+          </div>
+          <div className="flex flex-col gap-3 max-w-2xl mx-auto w-full">
+            {QUICK_FAQS.map((faq, i) => <QuickFaqItem key={faq.q} faq={faq} index={i} />)}
+          </div>
+        </motion.section>
+
+        {/* ── CTA FINAL ──────────────────────────────────────────────────────── */}
+        <motion.section
+          initial={{ opacity: 0, y: 24 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5, ease: 'easeOut' }}
+          className="relative text-center rounded-2xl p-10 sm:p-14 overflow-hidden"
+          style={{ background: 'linear-gradient(135deg, #1E1B4B, #0D0D10)', border: '1px solid rgba(99,102,241,0.3)', boxShadow: '0 0 80px rgba(99,102,241,0.15)' }}
+        >
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-white mb-3">Prêt à automatiser votre business ?</h2>
+          <p className="text-gray-400 text-base mb-7">Rejoignez 3 200+ entrepreneurs qui gagnent du temps chaque jour.</p>
+          <Link
+            href="/checkout/plans"
+            className="inline-flex items-center gap-2 px-8 py-4 rounded-xl text-base font-bold text-white transition-all hover:opacity-90"
+            style={{ background: '#F59E0B', boxShadow: '0 4px 30px rgba(245,158,11,0.4)' }}
+          >
+            Commencer gratuitement →
+          </Link>
+          <p className="text-gray-600 text-xs mt-5">Sans carte bancaire · Annulation en 1 clic · Résultats en minutes</p>
+          <div className="flex items-center justify-center gap-2 mt-4">
+            <motion.span
+              className="w-1.5 h-1.5 rounded-full bg-emerald-400"
+              animate={{ opacity: [1, 0.3, 1] }}
+              transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
+            />
+            <span className="text-xs text-gray-500">🔥 47 personnes ont rejoint cette semaine</span>
+          </div>
+        </motion.section>
+
+        <p className="text-center text-xs text-gray-700">
+          <Link href="/dashboard/help" className="hover:text-gray-500 transition-colors underline underline-offset-2">
+            Conditions générales d&apos;utilisation
+          </Link>
+        </p>
 
       </div>
     </div>
