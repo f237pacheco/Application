@@ -492,37 +492,47 @@ function BentoCard({ color, className = '', delay = 0, children }: { color: stri
   );
 }
 
-const TIME_SAVED_CHART = [22, 35, 28, 48, 40, 60, 52, 70, 64, 80];
+const TIME_SAVED_CHART = [
+  { day: 'L', h: 32 },
+  { day: 'M', h: 44 },
+  { day: 'M', h: 38 },
+  { day: 'J', h: 58 },
+  { day: 'V', h: 50 },
+  { day: 'S', h: 72 },
+  { day: 'D', h: 64 },
+];
 
 function TimeSavedBlock() {
-  const width = 220;
-  const height = 70;
-  const max = Math.max(...TIME_SAVED_CHART);
-  const points = TIME_SAVED_CHART.map((v, i) => {
-    const x = (i / (TIME_SAVED_CHART.length - 1)) * width;
-    const y = height - (v / max) * height;
-    return `${x},${y}`;
-  }).join(' ');
+  const max = Math.max(...TIME_SAVED_CHART.map((d) => d.h));
+  const growthPct = Math.round(((TIME_SAVED_CHART[TIME_SAVED_CHART.length - 1].h - TIME_SAVED_CHART[0].h) / TIME_SAVED_CHART[0].h) * 100);
+  const { ref, value } = useCountUpValue(growthPct, 0, 1300);
   return (
     <BentoCard color="#10B981" delay={0} className="sm:col-span-2 lg:col-span-2 lg:row-span-2">
-      <div className="w-11 h-11 rounded-xl flex items-center justify-center text-xl mb-3" style={{ background: 'rgba(16,185,129,0.15)' }}>⏱️</div>
+      <div className="flex items-start justify-between mb-3">
+        <div className="w-11 h-11 rounded-xl flex items-center justify-center text-xl" style={{ background: 'rgba(16,185,129,0.15)' }}>⏱️</div>
+        <div ref={ref} className="flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full" style={{ background: 'rgba(16,185,129,0.15)', color: '#34D399' }}>
+          <span>↑</span>
+          <span className="tabular-nums">+{value}%</span>
+        </div>
+      </div>
       <h3 className="text-lg font-bold text-white mb-1">15h économisées par semaine</h3>
-      <p className="text-sm text-gray-400 leading-relaxed mb-4">Automatisez les tâches répétitives et concentrez-vous sur ce qui compte vraiment pour votre activité.</p>
-      <div className="mt-auto -mx-1">
-        <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-20" preserveAspectRatio="none">
-          <motion.polyline
-            points={points}
-            fill="none"
-            stroke="#10B981"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            initial={{ pathLength: 0 }}
-            whileInView={{ pathLength: 1 }}
-            viewport={{ once: true }}
-            transition={{ duration: 1.2, ease: 'easeOut' }}
-          />
-        </svg>
+      <p className="text-sm text-gray-400 leading-relaxed mb-5">Automatisez les tâches répétitives et concentrez-vous sur ce qui compte vraiment pour votre activité.</p>
+      <div className="mt-auto flex items-end justify-between gap-2.5 px-1">
+        {TIME_SAVED_CHART.map((d, i) => (
+          <div key={i} className="flex flex-col items-center gap-2 flex-1">
+            <div className="w-full rounded-md overflow-hidden flex items-end" style={{ height: 64, background: 'rgba(16,185,129,0.08)' }}>
+              <motion.div
+                className="w-full rounded-md"
+                style={{ background: 'linear-gradient(180deg, #34D399, #10B981)' }}
+                initial={{ height: 0 }}
+                whileInView={{ height: `${(d.h / max) * 100}%` }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.08, duration: 0.6, ease: 'easeOut' }}
+              />
+            </div>
+            <span className="text-[10px] text-gray-500">{d.day}</span>
+          </div>
+        ))}
       </div>
     </BentoCard>
   );
@@ -557,15 +567,20 @@ function NoSkillBlock() {
 }
 
 function RoiBlock() {
-  const { ref, value } = useCountUpValue(1850, 0, 1500);
   return (
     <BentoCard color="#F59E0B" delay={0.16}>
-      <div className="w-11 h-11 rounded-xl flex items-center justify-center text-xl mb-3" style={{ background: 'rgba(245,158,11,0.15)' }}>📈</div>
-      <h3 className="text-sm font-bold text-white mb-1.5">Rentabilisé dès le 1er mois</h3>
-      <p ref={ref} className="text-2xl font-extrabold tabular-nums mb-1" style={{ color: '#FBBF24' }}>
-        +{value.toLocaleString('fr-FR')}€
-      </p>
-      <p className="text-xs text-gray-500 leading-relaxed">économisés en moyenne le 1er mois</p>
+      <motion.div
+        className="w-11 h-11 rounded-xl flex items-center justify-center text-xl mb-3"
+        style={{ background: 'rgba(245,158,11,0.15)' }}
+        initial={{ scale: 0.6, opacity: 0 }}
+        whileInView={{ scale: 1, opacity: 1 }}
+        viewport={{ once: true }}
+        transition={{ type: 'spring', stiffness: 220, damping: 14 }}
+      >
+        📈
+      </motion.div>
+      <h3 className="text-sm font-bold text-white mb-1.5">Rentabilisé rapidement</h3>
+      <p className="text-xs text-gray-500 leading-relaxed">La plupart de nos utilisateurs amortissent leur abonnement dès les premières semaines grâce au temps gagné.</p>
     </BentoCard>
   );
 }
@@ -610,28 +625,50 @@ function SupportBlock() {
 }
 
 function ResultsTimerBlock() {
-  const radius = 26;
-  const circumference = 2 * Math.PI * radius;
+  const [cycle, setCycle] = useState(0);
+  const [done, setDone] = useState(false);
+
+  useEffect(() => {
+    setDone(false);
+    const fillTimer = setTimeout(() => setDone(true), 1800);
+    const restartTimer = setTimeout(() => setCycle((c) => c + 1), 2500);
+    return () => {
+      clearTimeout(fillTimer);
+      clearTimeout(restartTimer);
+    };
+  }, [cycle]);
+
   return (
     <BentoCard color="#EC4899" delay={0.4} className="sm:col-span-2 lg:col-span-4">
-      <div className="flex items-center gap-5">
-        <div className="relative w-16 h-16 shrink-0">
-          <svg viewBox="0 0 64 64" className="w-16 h-16 -rotate-90">
-            <circle cx="32" cy="32" r={radius} fill="none" stroke="#27272A" strokeWidth="5" />
-            <motion.circle
-              cx="32" cy="32" r={radius} fill="none" stroke="#EC4899" strokeWidth="5" strokeLinecap="round"
-              strokeDasharray={circumference}
-              initial={{ strokeDashoffset: circumference }}
-              whileInView={{ strokeDashoffset: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 1.8, repeat: Infinity, repeatType: 'loop', ease: 'easeInOut' }}
+      <div className="flex items-center gap-5 w-full">
+        <motion.div
+          key={done ? 'done' : 'pending'}
+          initial={{ scale: 0.7, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ type: 'spring', stiffness: 300, damping: 18 }}
+          className="w-11 h-11 rounded-xl flex items-center justify-center text-xl shrink-0"
+          style={{ background: done ? 'rgba(16,185,129,0.15)' : 'rgba(236,72,153,0.15)' }}
+        >
+          {done ? '✓' : '⚡'}
+        </motion.div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between gap-3 mb-2">
+            <h3 className="text-sm font-bold text-white">Résultats en minutes</h3>
+            <span className="text-xs font-semibold shrink-0" style={{ color: done ? '#34D399' : '#F472B6' }}>
+              {done ? 'Terminé ✓' : 'Génération en cours…'}
+            </span>
+          </div>
+          <div className="h-2 rounded-full overflow-hidden mb-2" style={{ background: '#27272A' }}>
+            <motion.div
+              key={cycle}
+              className="h-full rounded-full"
+              style={{ background: done ? 'linear-gradient(90deg, #34D399, #10B981)' : 'linear-gradient(90deg, #EC4899, #F472B6)', transition: 'background 0.3s' }}
+              initial={{ width: '0%' }}
+              animate={{ width: '100%' }}
+              transition={{ duration: 1.8, ease: 'easeInOut' }}
             />
-          </svg>
-          <span className="absolute inset-0 flex items-center justify-center text-lg">⚡</span>
-        </div>
-        <div>
-          <h3 className="text-sm font-bold text-white mb-1">Résultats en minutes</h3>
-          <p className="text-xs text-gray-500 leading-relaxed">Pas de longues semaines d&apos;attente : votre création est prête en quelques minutes, prête à être utilisée immédiatement.</p>
+          </div>
+          <p className="text-xs text-gray-500 leading-relaxed">Votre création prête en quelques minutes, pas en semaines.</p>
         </div>
       </div>
     </BentoCard>
@@ -643,6 +680,8 @@ const HOW_STEPS = [
   { num: '2', icon: '✍️', title: 'Décrivez votre besoin', desc: "Quelques informations suffisent — votre activité, votre style, vos objectifs. L'IA s'occupe du reste, sans jargon technique." },
   { num: '3', icon: '🚀', title: 'Récupérez votre résultat en minutes', desc: "Site, vidéo, agent vocal ou rapport — généré, prêt à l'emploi et personnalisable en quelques clics." },
 ];
+
+const ACCENT_GRADIENT = 'linear-gradient(90deg, #6366F1, #8B5CF6)';
 
 const ACTION_TABS = [
   {
@@ -671,42 +710,61 @@ function ActionMockup({ id, color }: { id: string; color: string }) {
   if (id === 'website') {
     return (
       <div className="rounded-xl overflow-hidden w-full" style={{ border: '1px solid #27272A' }}>
+        {/* Browser chrome */}
         <div className="flex items-center gap-1.5 px-3 py-2" style={{ background: '#0D0D10' }}>
           <span className="w-2.5 h-2.5 rounded-full" style={{ background: '#EF4444' }} />
           <span className="w-2.5 h-2.5 rounded-full" style={{ background: '#F59E0B' }} />
           <span className="w-2.5 h-2.5 rounded-full" style={{ background: '#10B981' }} />
         </div>
-        <div className="p-5 flex flex-col gap-2.5" style={{ background: '#0D0D10' }}>
-          <div className="h-4 w-2/3 rounded" style={{ background: `${color}33` }} />
-          <div className="h-2.5 w-full rounded" style={{ background: '#27272A' }} />
-          <div className="h-2.5 w-5/6 rounded" style={{ background: '#27272A' }} />
-          <div className="h-16 w-full rounded-lg mt-1" style={{ background: `${color}1F` }} />
+        {/* Site nav */}
+        <div className="flex items-center justify-between px-4 py-2.5" style={{ background: '#15151A', borderBottom: '1px solid #27272A' }}>
+          <div className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full" style={{ background: color }} />
+            <div className="h-2 w-12 rounded" style={{ background: '#3F3F46' }} />
+          </div>
+          <div className="flex gap-2">
+            {[0, 1, 2].map((i) => <div key={i} className="h-1.5 w-6 rounded" style={{ background: '#3F3F46' }} />)}
+          </div>
+        </div>
+        {/* Hero */}
+        <div className="h-16 w-full flex items-center px-4" style={{ background: `linear-gradient(135deg, ${color}, #8B5CF6)` }}>
+          <div className="h-2 w-1/3 rounded bg-white/70" />
+        </div>
+        {/* Content blocks */}
+        <div className="p-4 flex flex-col gap-2" style={{ background: '#0D0D10' }}>
+          <div className="h-2.5 w-1/2 rounded" style={{ background: '#27272A' }} />
+          <div className="h-2 w-full rounded" style={{ background: '#1F1F23' }} />
+          <div className="h-2 w-5/6 rounded" style={{ background: '#1F1F23' }} />
+          <div className="flex gap-2 mt-1.5">
+            <div className="h-12 flex-1 rounded-lg" style={{ background: `${color}1F` }} />
+            <div className="h-12 flex-1 rounded-lg" style={{ background: `${color}1F` }} />
+          </div>
         </div>
       </div>
     );
   }
   if (id === 'social') {
     return (
-      <div className="relative w-full h-40 flex items-center justify-center">
-        {[0, 1, 2].map((i) => (
-          <div
-            key={i}
-            className="absolute w-32 h-36 rounded-xl p-3"
-            style={{ background: '#0D0D10', border: '1px solid #27272A', transform: `rotate(${(i - 1) * 9}deg) translateX(${(i - 1) * 18}px)`, zIndex: i === 1 ? 2 : 1 }}
-          >
-            <div className="w-7 h-7 rounded-full mb-2" style={{ background: `${color}33` }} />
-            <div className="h-2 w-full rounded mb-1.5" style={{ background: '#27272A' }} />
-            <div className="h-2 w-2/3 rounded mb-3" style={{ background: '#27272A' }} />
-            <div className="h-14 w-full rounded-lg" style={{ background: `${color}1F` }} />
-          </div>
-        ))}
+      <div className="w-full max-w-[220px] mx-auto rounded-xl overflow-hidden" style={{ background: '#0D0D10', border: '1px solid #27272A' }}>
+        <div className="flex items-center gap-2 px-3 py-2.5">
+          <div className="w-7 h-7 rounded-full shrink-0" style={{ background: `linear-gradient(135deg, ${color}, #FBBF24)` }} />
+          <div className="h-2 w-16 rounded" style={{ background: '#3F3F46' }} />
+        </div>
+        <div className="w-full aspect-square" style={{ background: `linear-gradient(135deg, ${color}55, #18181B 70%)` }} />
+        <div className="flex items-center gap-3 px-3 py-2 text-sm" style={{ color }}>
+          <span>♥</span><span>💬</span><span>↗</span>
+        </div>
+        <div className="px-3 pb-3 flex flex-col gap-1.5">
+          <div className="h-2 w-3/4 rounded" style={{ background: '#27272A' }} />
+          <div className="h-2 w-1/2 rounded" style={{ background: '#27272A' }} />
+        </div>
       </div>
     );
   }
   if (id === 'booking') {
     return (
       <div className="rounded-xl p-4 w-full" style={{ background: '#0D0D10', border: '1px solid #27272A' }}>
-        <div className="grid grid-cols-7 gap-1.5">
+        <div className="grid grid-cols-7 gap-1.5 mb-3">
           {[...Array(21)].map((_, i) => (
             <div
               key={i}
@@ -715,14 +773,45 @@ function ActionMockup({ id, color }: { id: string; color: string }) {
             />
           ))}
         </div>
+        <div className="flex flex-col gap-1.5">
+          {['09:30 — Client A', '14:00 — Client B'].map((slot) => (
+            <div key={slot} className="flex items-center justify-between rounded-lg px-2.5 py-1.5" style={{ background: '#15151A' }}>
+              <span className="text-[10px] text-gray-400">{slot}</span>
+              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: `${color}26`, color }}>Confirmé</span>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
   return (
-    <div className="rounded-xl p-4 w-full flex items-end gap-2 h-40" style={{ background: '#0D0D10', border: '1px solid #27272A' }}>
-      {[40, 65, 50, 80, 60, 90, 70].map((h, i) => (
-        <div key={i} className="flex-1 rounded-t-md" style={{ height: `${h}%`, background: `${color}${i === 5 ? 'FF' : '55'}` }} />
-      ))}
+    <div className="rounded-xl p-4 w-full flex flex-col gap-3" style={{ background: '#0D0D10', border: '1px solid #27272A' }}>
+      <div className="flex gap-2">
+        {[
+          { label: 'Visites', value: '2 480' },
+          { label: 'Conversions', value: '186' },
+        ].map((kpi) => (
+          <div key={kpi.label} className="flex-1 rounded-lg p-2.5" style={{ background: '#15151A' }}>
+            <p className="text-sm font-bold text-white">{kpi.value}</p>
+            <p className="text-[10px] text-gray-500">{kpi.label}</p>
+          </div>
+        ))}
+      </div>
+      <div className="flex items-end gap-2 h-20">
+        {[40, 65, 50, 80, 60, 90, 70].map((h, i) => (
+          <div key={i} className="flex-1 rounded-t-md" style={{ height: `${h}%`, background: `${color}${i === 5 ? 'FF' : '55'}` }} />
+        ))}
+      </div>
+      <svg viewBox="0 0 200 36" className="w-full h-9" preserveAspectRatio="none">
+        <polyline
+          points="0,28 25,20 50,24 75,12 100,16 125,6 150,10 175,2 200,8"
+          fill="none"
+          stroke={color}
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
     </div>
   );
 }
@@ -730,6 +819,12 @@ function ActionMockup({ id, color }: { id: string; color: string }) {
 function ActionTabs() {
   const [active, setActive] = useState(0);
   const tab = ACTION_TABS[active];
+
+  const handleDragEnd = (_e: unknown, info: { offset: { x: number } }) => {
+    if (info.offset.x < -60 && active < ACTION_TABS.length - 1) setActive(active + 1);
+    else if (info.offset.x > 60 && active > 0) setActive(active - 1);
+  };
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap gap-2">
@@ -739,9 +834,9 @@ function ActionTabs() {
             onClick={() => setActive(i)}
             className="px-4 py-2 rounded-xl text-sm font-semibold transition-colors relative"
             style={{
-              background: active === i ? t.color : '#18181B',
+              background: active === i ? ACCENT_GRADIENT : '#18181B',
               color: active === i ? '#fff' : '#A1A1AA',
-              border: active === i ? `1px solid ${t.color}` : '1px solid #27272A',
+              border: active === i ? '1px solid #6366F1' : '1px solid #27272A',
             }}
           >
             {t.label}
@@ -751,11 +846,15 @@ function ActionTabs() {
       <AnimatePresence mode="wait">
         <motion.div
           key={tab.id}
-          initial={{ opacity: 0, x: 16 }}
+          initial={{ opacity: 0, x: 24 }}
           animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -16 }}
-          transition={{ duration: 0.35, ease: 'easeOut' }}
-          className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center"
+          exit={{ opacity: 0, x: -24 }}
+          transition={{ duration: 0.4, ease: 'easeOut' }}
+          drag="x"
+          dragConstraints={{ left: 0, right: 0 }}
+          dragElastic={0.3}
+          onDragEnd={handleDragEnd}
+          className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center touch-pan-y cursor-grab active:cursor-grabbing"
         >
           <div className="flex items-center justify-center rounded-2xl p-6" style={{ background: '#18181B', border: '1px solid #27272A' }}>
             <ActionMockup id={tab.id} color={tab.color} />
@@ -771,7 +870,7 @@ function ActionTabs() {
                   transition={{ delay: 0.1 + i * 0.08, duration: 0.3 }}
                   className="flex items-start gap-2.5 text-sm text-gray-300"
                 >
-                  <span className="mt-0.5 shrink-0 w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold" style={{ background: `${tab.color}33`, color: tab.color }}>✓</span>
+                  <span className="mt-0.5 shrink-0 w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold text-white" style={{ background: ACCENT_GRADIENT }}>✓</span>
                   {b}
                 </motion.li>
               ))}
@@ -779,13 +878,15 @@ function ActionTabs() {
             <Link
               href={tab.href}
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-transform hover:-translate-y-0.5"
-              style={{ background: tab.color }}
+              style={{ background: ACCENT_GRADIENT }}
             >
               Essayer cet outil →
             </Link>
           </div>
         </motion.div>
       </AnimatePresence>
+      {/* Mobile swipe hint */}
+      <p className="sm:hidden text-center text-[11px] text-gray-600">← Glissez pour changer d&apos;outil →</p>
     </div>
   );
 }
