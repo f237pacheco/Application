@@ -435,59 +435,360 @@ function useCountUpValue(target: number, decimals = 0, duration = 1500) {
   return { ref, value };
 }
 
-const SOCIAL_PROOF_STATS = [
-  { value: 12400, suffix: '+', label: 'sites générés' },
-  { value: 98, suffix: '%', label: 'de satisfaction client' },
-  { value: 3200, suffix: '+', label: 'entreprises actives' },
-  { value: 45000, suffix: 'h', label: 'économisées ce mois' },
+const KEY_STATS = [
+  { value: 12400, suffix: '+', label: 'créations IA', color: '#6366F1', spark: [30, 45, 38, 52, 48, 60, 55, 68] },
+  { value: 98, suffix: '%', label: 'de satisfaction', color: '#10B981', spark: [70, 75, 72, 80, 78, 85, 82, 90] },
+  { value: 3200, suffix: '+', label: 'entreprises', color: '#F59E0B', spark: [20, 28, 25, 35, 32, 42, 38, 48] },
+  { value: 45000, suffix: 'h', label: 'économisées', color: '#EC4899', spark: [40, 48, 44, 55, 50, 62, 58, 70] },
 ];
 
-function SocialProofStat({ stat }: { stat: typeof SOCIAL_PROOF_STATS[number] }) {
+function KeyStat({ stat }: { stat: typeof KEY_STATS[number] }) {
   const { ref, value } = useCountUpValue(stat.value);
+  const max = Math.max(...stat.spark);
   return (
-    <div ref={ref} className="flex-1 text-center px-4 py-3">
+    <div ref={ref} className="flex-1 text-center px-4 py-4">
       <p className="text-3xl sm:text-4xl font-extrabold text-white tabular-nums">
         {value.toLocaleString('fr-FR')}{stat.suffix}
       </p>
-      <p className="text-xs text-gray-500 mt-1.5">{stat.label}</p>
+      <p className="text-xs text-gray-500 mt-1.5 mb-3">{stat.label}</p>
+      <div className="flex items-end justify-center gap-1 h-7">
+        {stat.spark.map((v, i) => (
+          <motion.div
+            key={i}
+            initial={{ height: 0 }}
+            whileInView={{ height: `${(v / max) * 100}%` }}
+            viewport={{ once: true }}
+            transition={{ delay: i * 0.05, duration: 0.5, ease: 'easeOut' }}
+            className="w-1.5 rounded-full"
+            style={{ background: stat.color, opacity: 0.3 + (v / max) * 0.7 }}
+          />
+        ))}
+      </div>
     </div>
   );
 }
 
-const BENEFITS = [
-  { icon: '⏱️', title: 'Gagnez 15h par semaine', desc: 'Automatisez les tâches répétitives et concentrez-vous sur ce qui compte vraiment pour votre activité.', color: '#10B981' },
-  { icon: '🪄', title: 'Aucune compétence technique requise', desc: "Une interface simple, pensée pour les entrepreneurs — pas pour les développeurs.", color: '#6366F1' },
-  { icon: '📈', title: 'Rentabilisé dès le premier mois', desc: "Le temps et l'argent économisés couvrent largement votre abonnement, dès les premières semaines.", color: '#F59E0B' },
-];
-
-function BenefitCard({ b, index }: { b: typeof BENEFITS[number]; index: number }) {
+function BentoCard({ color, className = '', delay = 0, children }: { color: string; className?: string; delay?: number; children: React.ReactNode }) {
   const [hovered, setHovered] = useState(false);
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
-      transition={{ delay: index * 0.1, duration: 0.45 }}
+      transition={{ delay, duration: 0.45 }}
       onHoverStart={() => setHovered(true)}
       onHoverEnd={() => setHovered(false)}
       animate={{ y: hovered ? -4 : 0 }}
-      className="rounded-2xl p-6"
-      style={{ background: '#18181B', border: hovered ? '1px solid #3F3F46' : '1px solid #27272A', transition: 'border-color 0.2s' }}
+      className={`relative rounded-2xl p-5 overflow-hidden flex flex-col ${className}`}
+      style={{
+        background: '#18181B',
+        border: hovered ? `1px solid ${color}` : '1px solid #27272A',
+        boxShadow: hovered ? `0 16px 40px ${color}26` : 'none',
+        transition: 'border-color 0.25s, box-shadow 0.25s',
+      }}
     >
-      <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl mb-4" style={{ background: `${b.color}1F` }}>
-        {b.icon}
-      </div>
-      <h3 className="text-base font-bold text-white mb-2">{b.title}</h3>
-      <p className="text-sm text-gray-400 leading-relaxed">{b.desc}</p>
+      {children}
     </motion.div>
   );
 }
 
+const TIME_SAVED_CHART = [22, 35, 28, 48, 40, 60, 52, 70, 64, 80];
+
+function TimeSavedBlock() {
+  const width = 220;
+  const height = 70;
+  const max = Math.max(...TIME_SAVED_CHART);
+  const points = TIME_SAVED_CHART.map((v, i) => {
+    const x = (i / (TIME_SAVED_CHART.length - 1)) * width;
+    const y = height - (v / max) * height;
+    return `${x},${y}`;
+  }).join(' ');
+  return (
+    <BentoCard color="#10B981" delay={0} className="sm:col-span-2 lg:col-span-2 lg:row-span-2">
+      <div className="w-11 h-11 rounded-xl flex items-center justify-center text-xl mb-3" style={{ background: 'rgba(16,185,129,0.15)' }}>⏱️</div>
+      <h3 className="text-lg font-bold text-white mb-1">15h économisées par semaine</h3>
+      <p className="text-sm text-gray-400 leading-relaxed mb-4">Automatisez les tâches répétitives et concentrez-vous sur ce qui compte vraiment pour votre activité.</p>
+      <div className="mt-auto -mx-1">
+        <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-20" preserveAspectRatio="none">
+          <motion.polyline
+            points={points}
+            fill="none"
+            stroke="#10B981"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            initial={{ pathLength: 0 }}
+            whileInView={{ pathLength: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 1.2, ease: 'easeOut' }}
+          />
+        </svg>
+      </div>
+    </BentoCard>
+  );
+}
+
+function NoSkillBlock() {
+  return (
+    <BentoCard color="#6366F1" delay={0.08}>
+      <motion.div
+        className="w-11 h-11 rounded-xl flex items-center justify-center text-xl mb-3 relative"
+        style={{ background: 'rgba(99,102,241,0.15)' }}
+        animate={{ rotate: [0, -8, 8, 0] }}
+        transition={{ duration: 3, repeat: Infinity, repeatDelay: 1.5, ease: 'easeInOut' }}
+      >
+        🪄
+        {[0, 1, 2].map((i) => (
+          <motion.span
+            key={i}
+            className="absolute text-xs"
+            style={{ top: -4 - i * 4, right: -4 - i * 3 }}
+            animate={{ opacity: [0, 1, 0], scale: [0.5, 1, 0.5] }}
+            transition={{ duration: 1.5, repeat: Infinity, delay: i * 0.4 }}
+          >
+            ✨
+          </motion.span>
+        ))}
+      </motion.div>
+      <h3 className="text-sm font-bold text-white mb-1.5">Aucune compétence technique</h3>
+      <p className="text-xs text-gray-500 leading-relaxed">Une interface simple, pensée pour les entrepreneurs.</p>
+    </BentoCard>
+  );
+}
+
+function RoiBlock() {
+  const { ref, value } = useCountUpValue(1850, 0, 1500);
+  return (
+    <BentoCard color="#F59E0B" delay={0.16}>
+      <div className="w-11 h-11 rounded-xl flex items-center justify-center text-xl mb-3" style={{ background: 'rgba(245,158,11,0.15)' }}>📈</div>
+      <h3 className="text-sm font-bold text-white mb-1.5">Rentabilisé dès le 1er mois</h3>
+      <p ref={ref} className="text-2xl font-extrabold tabular-nums mb-1" style={{ color: '#FBBF24' }}>
+        +{value.toLocaleString('fr-FR')}€
+      </p>
+      <p className="text-xs text-gray-500 leading-relaxed">économisés en moyenne le 1er mois</p>
+    </BentoCard>
+  );
+}
+
+function SixToolsBlock() {
+  return (
+    <BentoCard color="#8B5CF6" delay={0.24}>
+      <div className="w-11 h-11 rounded-xl flex items-center justify-center text-xl mb-3" style={{ background: 'rgba(139,92,246,0.15)' }}>🧰</div>
+      <h3 className="text-sm font-bold text-white mb-2.5">6 outils en 1</h3>
+      <div className="flex flex-wrap gap-1.5 mb-1.5">
+        {SERVICES.map((s) => (
+          <div
+            key={s.id}
+            className="w-7 h-7 rounded-lg flex items-center justify-center text-[13px]"
+            style={{ background: `${(SERVICE_META[s.id]?.color ?? s.color)}1F`, color: SERVICE_META[s.id]?.color ?? s.color }}
+          >
+            {s.icon}
+          </div>
+        ))}
+      </div>
+      <p className="text-xs text-gray-500 leading-relaxed">Tout votre business piloté par l&apos;IA, au même endroit.</p>
+    </BentoCard>
+  );
+}
+
+function SupportBlock() {
+  return (
+    <BentoCard color="#06B6D4" delay={0.32}>
+      <div className="flex items-center gap-2 mb-3">
+        <div className="w-11 h-11 rounded-xl flex items-center justify-center text-xl" style={{ background: 'rgba(6,182,212,0.15)' }}>💬</div>
+        <motion.span
+          className="w-2 h-2 rounded-full"
+          style={{ background: '#22D3EE' }}
+          animate={{ opacity: [1, 0.3, 1] }}
+          transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
+        />
+      </div>
+      <h3 className="text-sm font-bold text-white mb-1.5">Support français 7j/7</h3>
+      <p className="text-xs text-gray-500 leading-relaxed">Une équipe basée en France, disponible tous les jours.</p>
+    </BentoCard>
+  );
+}
+
+function ResultsTimerBlock() {
+  const radius = 26;
+  const circumference = 2 * Math.PI * radius;
+  return (
+    <BentoCard color="#EC4899" delay={0.4} className="sm:col-span-2 lg:col-span-4">
+      <div className="flex items-center gap-5">
+        <div className="relative w-16 h-16 shrink-0">
+          <svg viewBox="0 0 64 64" className="w-16 h-16 -rotate-90">
+            <circle cx="32" cy="32" r={radius} fill="none" stroke="#27272A" strokeWidth="5" />
+            <motion.circle
+              cx="32" cy="32" r={radius} fill="none" stroke="#EC4899" strokeWidth="5" strokeLinecap="round"
+              strokeDasharray={circumference}
+              initial={{ strokeDashoffset: circumference }}
+              whileInView={{ strokeDashoffset: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 1.8, repeat: Infinity, repeatType: 'loop', ease: 'easeInOut' }}
+            />
+          </svg>
+          <span className="absolute inset-0 flex items-center justify-center text-lg">⚡</span>
+        </div>
+        <div>
+          <h3 className="text-sm font-bold text-white mb-1">Résultats en minutes</h3>
+          <p className="text-xs text-gray-500 leading-relaxed">Pas de longues semaines d&apos;attente : votre création est prête en quelques minutes, prête à être utilisée immédiatement.</p>
+        </div>
+      </div>
+    </BentoCard>
+  );
+}
+
 const HOW_STEPS = [
-  { num: '1', icon: '🧩', title: 'Choisissez un outil IA', desc: 'Sélectionnez le service adapté à votre besoin parmi nos 6 outils.' },
-  { num: '2', icon: '✍️', title: 'Décrivez votre besoin', desc: "Quelques informations suffisent, l'IA s'occupe du reste." },
-  { num: '3', icon: '🚀', title: 'Récupérez votre résultat en minutes', desc: "Site, vidéo, agent vocal ou rapport — prêt à l'emploi." },
+  { num: '1', icon: '🧩', title: 'Choisissez un outil IA', desc: 'Sélectionnez le service adapté à votre besoin parmi nos 6 outils : site, vidéo, agent vocal, RDV, réseaux ou analytics.' },
+  { num: '2', icon: '✍️', title: 'Décrivez votre besoin', desc: "Quelques informations suffisent — votre activité, votre style, vos objectifs. L'IA s'occupe du reste, sans jargon technique." },
+  { num: '3', icon: '🚀', title: 'Récupérez votre résultat en minutes', desc: "Site, vidéo, agent vocal ou rapport — généré, prêt à l'emploi et personnalisable en quelques clics." },
 ];
+
+const ACTION_TABS = [
+  {
+    id: 'website', label: 'Sites web', color: '#6C5CE7', href: '/dashboard/services/website',
+    title: 'Un site professionnel en quelques minutes',
+    benefits: ['Design moderne généré sur mesure', 'Hébergement inclus, en ligne immédiatement', 'Optimisé mobile et SEO dès le départ', 'Modifiable à tout moment sans code'],
+  },
+  {
+    id: 'social', label: 'Réseaux sociaux', color: '#f97316', href: '/dashboard/services/social',
+    title: "Vos réseaux sociaux gérés par l'IA",
+    benefits: ['Visuels et légendes générés automatiquement', 'Planification multi-plateformes en un clic', 'Ton et style adaptés à votre marque', 'Suggestions de publication aux meilleurs horaires'],
+  },
+  {
+    id: 'booking', label: 'Rendez-vous', color: '#10b981', href: '/dashboard/services/booking',
+    title: 'Votre agenda, en pilote automatique',
+    benefits: ['Réservation en ligne 24h/24', 'Rappels automatiques par SMS et email', 'Réduction drastique des absences', 'Synchronisation avec votre calendrier existant'],
+  },
+  {
+    id: 'analytics', label: 'Analytics', color: '#6366f1', href: '/dashboard/services/analytics',
+    title: 'Pilotez votre business avec des données claires',
+    benefits: ['Tableaux de bord générés automatiquement', 'Rapports IA actionnables chaque semaine', 'Suivi des performances en temps réel', 'Recommandations personnalisées pour progresser'],
+  },
+];
+
+function ActionMockup({ id, color }: { id: string; color: string }) {
+  if (id === 'website') {
+    return (
+      <div className="rounded-xl overflow-hidden w-full" style={{ border: '1px solid #27272A' }}>
+        <div className="flex items-center gap-1.5 px-3 py-2" style={{ background: '#0D0D10' }}>
+          <span className="w-2.5 h-2.5 rounded-full" style={{ background: '#EF4444' }} />
+          <span className="w-2.5 h-2.5 rounded-full" style={{ background: '#F59E0B' }} />
+          <span className="w-2.5 h-2.5 rounded-full" style={{ background: '#10B981' }} />
+        </div>
+        <div className="p-5 flex flex-col gap-2.5" style={{ background: '#0D0D10' }}>
+          <div className="h-4 w-2/3 rounded" style={{ background: `${color}33` }} />
+          <div className="h-2.5 w-full rounded" style={{ background: '#27272A' }} />
+          <div className="h-2.5 w-5/6 rounded" style={{ background: '#27272A' }} />
+          <div className="h-16 w-full rounded-lg mt-1" style={{ background: `${color}1F` }} />
+        </div>
+      </div>
+    );
+  }
+  if (id === 'social') {
+    return (
+      <div className="relative w-full h-40 flex items-center justify-center">
+        {[0, 1, 2].map((i) => (
+          <div
+            key={i}
+            className="absolute w-32 h-36 rounded-xl p-3"
+            style={{ background: '#0D0D10', border: '1px solid #27272A', transform: `rotate(${(i - 1) * 9}deg) translateX(${(i - 1) * 18}px)`, zIndex: i === 1 ? 2 : 1 }}
+          >
+            <div className="w-7 h-7 rounded-full mb-2" style={{ background: `${color}33` }} />
+            <div className="h-2 w-full rounded mb-1.5" style={{ background: '#27272A' }} />
+            <div className="h-2 w-2/3 rounded mb-3" style={{ background: '#27272A' }} />
+            <div className="h-14 w-full rounded-lg" style={{ background: `${color}1F` }} />
+          </div>
+        ))}
+      </div>
+    );
+  }
+  if (id === 'booking') {
+    return (
+      <div className="rounded-xl p-4 w-full" style={{ background: '#0D0D10', border: '1px solid #27272A' }}>
+        <div className="grid grid-cols-7 gap-1.5">
+          {[...Array(21)].map((_, i) => (
+            <div
+              key={i}
+              className="aspect-square rounded-md"
+              style={{ background: [4, 9, 13, 17].includes(i) ? color : '#27272A', opacity: [4, 9, 13, 17].includes(i) ? 1 : 0.5 }}
+            />
+          ))}
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="rounded-xl p-4 w-full flex items-end gap-2 h-40" style={{ background: '#0D0D10', border: '1px solid #27272A' }}>
+      {[40, 65, 50, 80, 60, 90, 70].map((h, i) => (
+        <div key={i} className="flex-1 rounded-t-md" style={{ height: `${h}%`, background: `${color}${i === 5 ? 'FF' : '55'}` }} />
+      ))}
+    </div>
+  );
+}
+
+function ActionTabs() {
+  const [active, setActive] = useState(0);
+  const tab = ACTION_TABS[active];
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-wrap gap-2">
+        {ACTION_TABS.map((t, i) => (
+          <button
+            key={t.id}
+            onClick={() => setActive(i)}
+            className="px-4 py-2 rounded-xl text-sm font-semibold transition-colors relative"
+            style={{
+              background: active === i ? t.color : '#18181B',
+              color: active === i ? '#fff' : '#A1A1AA',
+              border: active === i ? `1px solid ${t.color}` : '1px solid #27272A',
+            }}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={tab.id}
+          initial={{ opacity: 0, x: 16 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -16 }}
+          transition={{ duration: 0.35, ease: 'easeOut' }}
+          className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center"
+        >
+          <div className="flex items-center justify-center rounded-2xl p-6" style={{ background: '#18181B', border: '1px solid #27272A' }}>
+            <ActionMockup id={tab.id} color={tab.color} />
+          </div>
+          <div>
+            <h3 className="text-lg font-bold text-white mb-4">{tab.title}</h3>
+            <ul className="flex flex-col gap-3 mb-6">
+              {tab.benefits.map((b, i) => (
+                <motion.li
+                  key={b}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.1 + i * 0.08, duration: 0.3 }}
+                  className="flex items-start gap-2.5 text-sm text-gray-300"
+                >
+                  <span className="mt-0.5 shrink-0 w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold" style={{ background: `${tab.color}33`, color: tab.color }}>✓</span>
+                  {b}
+                </motion.li>
+              ))}
+            </ul>
+            <Link
+              href={tab.href}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-transform hover:-translate-y-0.5"
+              style={{ background: tab.color }}
+            >
+              Essayer cet outil →
+            </Link>
+          </div>
+        </motion.div>
+      </AnimatePresence>
+    </div>
+  );
+}
 
 const TESTIMONIALS = [
   {
@@ -507,27 +808,56 @@ const TESTIMONIALS = [
   },
 ];
 
+const TRUSTED_LOGOS = [
+  'Atelier Lumière', 'NovaFit Coaching', 'Le Petit Cèdre', 'Studio Marchand', 'Belkacem Conseil',
+  'Dubreuil & Co', 'Maison Verte', 'Cabinet Horizon', 'Salon Éclat', 'Artisans Réunis',
+];
+
 function TestimonialCard({ tst, index }: { tst: typeof TESTIMONIALS[number]; index: number }) {
+  const [hovered, setHovered] = useState(false);
+  const [hoverStar, setHoverStar] = useState<number | null>(null);
+  const activeStars = hoverStar ?? 5;
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
       transition={{ delay: index * 0.1, duration: 0.45 }}
+      onHoverStart={() => setHovered(true)}
+      onHoverEnd={() => setHovered(false)}
+      animate={{ y: hovered ? -4 : 0 }}
       className="rounded-2xl p-6 flex flex-col"
-      style={{ background: '#18181B', border: '1px solid #27272A' }}
+      style={{
+        background: '#18181B',
+        border: hovered ? `1px solid ${tst.avatarBg}` : '1px solid #27272A',
+        boxShadow: hovered ? `0 16px 40px ${tst.avatarBg}26` : 'none',
+        transition: 'border-color 0.25s, box-shadow 0.25s',
+      }}
     >
       <div className="flex items-center gap-3 mb-3">
         <div className="w-11 h-11 rounded-full flex items-center justify-center text-base font-bold text-white shrink-0" style={{ background: tst.avatarBg }}>
           {tst.initial}
         </div>
-        <div>
-          <p className="text-sm font-semibold text-white">{tst.name}</p>
+        <div className="min-w-0">
+          <div className="flex items-center gap-1.5">
+            <p className="text-sm font-semibold text-white truncate">{tst.name}</p>
+            <span className="inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0" style={{ background: 'rgba(16,185,129,0.12)', color: '#6EE7B7' }}>
+              Vérifié ✓
+            </span>
+          </div>
           <p className="text-xs text-gray-500">{tst.role}</p>
         </div>
       </div>
-      <div className="flex gap-0.5 mb-3">
-        {[...Array(5)].map((_, i) => <span key={i} style={{ color: '#FBBF24' }}>★</span>)}
+      <div className="flex gap-0.5 mb-3" onMouseLeave={() => setHoverStar(null)}>
+        {[...Array(5)].map((_, i) => (
+          <span
+            key={i}
+            onMouseEnter={() => setHoverStar(i + 1)}
+            style={{ color: i < activeStars ? '#FBBF24' : '#3F3F46', cursor: 'pointer', transition: 'color 0.15s' }}
+          >
+            ★
+          </span>
+        ))}
       </div>
       <p className="text-sm text-gray-400 leading-relaxed flex-1 mb-4">&quot;{tst.quote}&quot;</p>
       <span className="inline-flex self-start items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full" style={{ background: 'rgba(16,185,129,0.12)', color: '#6EE7B7' }}>
@@ -853,26 +1183,7 @@ export default function DashboardPage() {
           )}
         </motion.section>
 
-        {/* ── SOCIAL PROOF STATS ────────────────────────────────────────────── */}
-        <motion.section
-          initial={{ opacity: 0, y: 24 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5, ease: 'easeOut' }}
-          className="rounded-2xl"
-          style={{ background: '#0D0D10', border: '1px solid #27272A' }}
-        >
-          <div className="flex flex-col sm:flex-row items-stretch">
-            {SOCIAL_PROOF_STATS.map((s, i) => (
-              <div key={s.label} className="flex-1 flex items-center">
-                {i > 0 && <div className="hidden sm:block w-px self-stretch my-3" style={{ background: '#27272A' }} />}
-                <SocialProofStat stat={s} />
-              </div>
-            ))}
-          </div>
-        </motion.section>
-
-        {/* ── POURQUOI VELONA ───────────────────────────────────────────────── */}
+        {/* ── POURQUOI VELONA (BENTO) ───────────────────────────────────────── */}
         <motion.section
           initial={{ opacity: 0, y: 24 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -884,9 +1195,29 @@ export default function DashboardPage() {
             <div className="w-1 h-5 rounded-full" style={{ background: 'linear-gradient(180deg, #10B981, #F59E0B)' }} />
             <h2 className="text-xl font-bold text-white">Pourquoi Velona</h2>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-            {BENEFITS.map((b, i) => <BenefitCard key={b.title} b={b} index={i} />)}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:auto-rows-[150px]">
+            <TimeSavedBlock />
+            <NoSkillBlock />
+            <RoiBlock />
+            <SixToolsBlock />
+            <SupportBlock />
+            <ResultsTimerBlock />
           </div>
+        </motion.section>
+
+        {/* ── DÉCOUVREZ VELONA EN ACTION ────────────────────────────────────── */}
+        <motion.section
+          initial={{ opacity: 0, y: 24 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.45, ease: 'easeOut' }}
+          className="flex flex-col gap-5"
+        >
+          <div className="flex items-center gap-2">
+            <div className="w-1 h-5 rounded-full" style={{ background: 'linear-gradient(180deg, #6C5CE7, #EC4899)' }} />
+            <h2 className="text-xl font-bold text-white">Découvrez Velona en action</h2>
+          </div>
+          <ActionTabs />
         </motion.section>
 
         {/* ── COMMENT ÇA MARCHE ─────────────────────────────────────────────── */}
@@ -901,7 +1232,17 @@ export default function DashboardPage() {
             <div className="w-1 h-5 rounded-full" style={{ background: 'linear-gradient(180deg, #6366F1, #818CF8)' }} />
             <h2 className="text-xl font-bold text-white">Comment ça marche</h2>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="relative grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="hidden sm:block absolute top-9 left-[16.66%] right-[16.66%] h-px" style={{ background: '#27272A' }}>
+              <motion.div
+                className="h-px"
+                style={{ background: 'linear-gradient(90deg, #6366F1, #818CF8)', transformOrigin: 'left' }}
+                initial={{ scaleX: 0 }}
+                whileInView={{ scaleX: 1 }}
+                viewport={{ once: true }}
+                transition={{ duration: 1, ease: 'easeOut', delay: 0.2 }}
+              />
+            </div>
             {HOW_STEPS.map((s, i) => (
               <motion.div
                 key={s.num}
@@ -913,20 +1254,68 @@ export default function DashboardPage() {
                 style={{ background: '#18181B', border: '1px solid #27272A' }}
               >
                 <span className="absolute top-3 right-4 text-3xl font-black" style={{ color: 'rgba(99,102,241,0.15)' }}>{s.num}</span>
-                <div className="w-12 h-12 rounded-full flex items-center justify-center text-xl mx-auto mb-3" style={{ background: 'rgba(99,102,241,0.12)' }}>
+                <motion.div
+                  className="relative z-10 w-12 h-12 rounded-full flex items-center justify-center text-xl mx-auto mb-3"
+                  style={{ background: 'rgba(99,102,241,0.12)' }}
+                  animate={{ scale: [1, 1.08, 1] }}
+                  transition={{ duration: 2, repeat: Infinity, delay: i * 0.3, ease: 'easeInOut' }}
+                >
                   {s.icon}
-                </div>
+                </motion.div>
                 <h3 className="text-sm font-bold text-white mb-1.5">{s.title}</h3>
-                <p className="text-xs text-gray-500 leading-relaxed">{s.desc}</p>
-                {i < HOW_STEPS.length - 1 && (
-                  <div className="hidden sm:flex absolute top-1/2 -right-2.5 -translate-y-1/2 items-center justify-center text-gray-600 z-10 text-sm">→</div>
+                <p className="text-xs text-gray-500 leading-relaxed mb-4">{s.desc}</p>
+                {i === 0 && (
+                  <div className="flex justify-center gap-1.5">
+                    {SERVICES.slice(0, 6).map((sv) => (
+                      <span key={sv.id} className="w-6 h-6 rounded-md flex items-center justify-center text-[11px]" style={{ background: `${(SERVICE_META[sv.id]?.color ?? sv.color)}1F` }}>
+                        {sv.icon}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {i === 1 && (
+                  <div className="flex items-center gap-1.5 mx-auto max-w-[160px] rounded-lg px-3 py-2" style={{ background: '#0D0D10', border: '1px solid #27272A' }}>
+                    <span className="text-xs text-gray-500">Votre besoin...</span>
+                    <motion.span
+                      className="w-px h-3.5"
+                      style={{ background: '#818CF8' }}
+                      animate={{ opacity: [1, 0, 1] }}
+                      transition={{ duration: 0.9, repeat: Infinity }}
+                    />
+                  </div>
+                )}
+                {i === 2 && (
+                  <div className="flex items-center justify-center gap-2">
+                    <span className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold" style={{ background: 'rgba(16,185,129,0.15)', color: '#6EE7B7' }}>✓</span>
+                    <span className="text-xs text-gray-500">Prêt en ~3 min</span>
+                  </div>
                 )}
               </motion.div>
             ))}
           </div>
+          <p className="text-center text-xs text-gray-500 mt-1">Aucune installation · Aucun engagement · Résultats immédiats</p>
         </motion.section>
 
-        {/* ── TÉMOIGNAGES DÉTAILLÉS ─────────────────────────────────────────── */}
+        {/* ── CHIFFRES-CLÉS ──────────────────────────────────────────────────── */}
+        <motion.section
+          initial={{ opacity: 0, y: 24 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5, ease: 'easeOut' }}
+          className="rounded-2xl"
+          style={{ background: '#0D0D10', border: '1px solid #27272A' }}
+        >
+          <div className="flex flex-col sm:flex-row items-stretch">
+            {KEY_STATS.map((s, i) => (
+              <div key={s.label} className="flex-1 flex items-center">
+                {i > 0 && <div className="hidden sm:block w-px self-stretch my-3" style={{ background: '#27272A' }} />}
+                <KeyStat stat={s} />
+              </div>
+            ))}
+          </div>
+        </motion.section>
+
+        {/* ── ILS NOUS FONT CONFIANCE ────────────────────────────────────────── */}
         <motion.section
           initial={{ opacity: 0, y: 24 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -936,7 +1325,14 @@ export default function DashboardPage() {
         >
           <div className="flex items-center gap-2">
             <div className="w-1 h-5 rounded-full" style={{ background: 'linear-gradient(180deg, #F59E0B, #FBBF24)' }} />
-            <h2 className="text-xl font-bold text-white">Ce qu&apos;ils en disent</h2>
+            <h2 className="text-xl font-bold text-white">Ils nous font confiance</h2>
+          </div>
+          <div className="marquee-pause overflow-hidden">
+            <div className="flex gap-8 marquee-left" style={{ animationDuration: '38s' }}>
+              {[...TRUSTED_LOGOS, ...TRUSTED_LOGOS].map((name, i) => (
+                <span key={i} className="text-sm font-semibold text-gray-600 whitespace-nowrap shrink-0">{name}</span>
+              ))}
+            </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
             {TESTIMONIALS.map((t, i) => <TestimonialCard key={t.name} tst={t} index={i} />)}
