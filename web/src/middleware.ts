@@ -9,6 +9,8 @@ const PUBLIC_ROUTES = [
   '/auth/callback',
   '/checkout',
   '/plans',
+  '/rdv',
+  '/api/bookings',
 ];
 
 export async function middleware(request: NextRequest) {
