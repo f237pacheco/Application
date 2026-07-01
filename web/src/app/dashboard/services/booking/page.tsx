@@ -21,7 +21,7 @@ const MONTH_NAMES = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'jui
 
 type Range = { start: string; end: string; enabled: boolean }
 type DayState = { dayActive: boolean; morning: Range; afternoon: Range }
-type SlugStatus = 'idle' | 'invalid' | 'checking' | 'available' | 'taken' | 'current'
+type SlugStatus = 'idle' | 'invalid' | 'checking' | 'available' | 'taken' | 'current' | 'check-failed'
 
 function defaultDay(active: boolean): DayState {
   return {
@@ -67,6 +67,7 @@ function SlugBadge({ status }: { status: SlugStatus }) {
     available: { label: '✓ Disponible', color: '#6EE7B7', bg: 'rgba(16,185,129,0.12)' },
     taken: { label: 'Déjà pris', color: '#FCA5A5', bg: 'rgba(239,68,68,0.1)' },
     current: { label: '✓ Votre lien actuel', color: '#6EE7B7', bg: 'rgba(16,185,129,0.12)' },
+    'check-failed': { label: '⚠ Vérification impossible', color: '#FCD34D', bg: 'rgba(245,158,11,0.1)' },
   }
   const cfg = map[status]
   if (!cfg) return null
@@ -89,10 +90,12 @@ export default function BookingSettingsPage() {
   const [advanceDays, setAdvanceDays] = useState(30)
 
   const [slugStatus, setSlugStatus] = useState<SlugStatus>('idle')
-  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved'>('idle')
+  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  const [saveError, setSaveError] = useState('')
   const [copied, setCopied] = useState(false)
 
   const [week, setWeek] = useState<Record<number, DayState>>(defaultWeek())
+  const [dayErrors, setDayErrors] = useState<Record<number, boolean>>({})
   const [blockedDates, setBlockedDates] = useState<Set<string>>(new Set())
   const [calendarMonthOffset, setCalendarMonthOffset] = useState(0)
 
@@ -166,65 +169,67 @@ export default function BookingSettingsPage() {
     const handle = setTimeout(async () => {
       try {
         const res = await fetch(`/api/bookings/check-slug?slug=${encodeURIComponent(slug)}`)
+        if (!res.ok) {
+          console.error('[booking-settings] check-slug returned', res.status)
+          setSlugStatus('check-failed')
+          return
+        }
         const data = await res.json() as { available: boolean }
         setSlugStatus(data.available ? 'available' : 'taken')
-      } catch {
-        setSlugStatus('idle')
+      } catch (err) {
+        console.error('[booking-settings] check-slug network error', err)
+        setSlugStatus('check-failed')
       }
     }, 500)
     return () => clearTimeout(handle)
   }, [slug, savedSlug, loaded])
 
-  // ── Autosave settings (name, slug, description, duration, buffer, advance) ─
-  useEffect(() => {
-    if (!loaded || !user?.id) return
-    const canSaveSlug = slugStatus === 'available' || slugStatus === 'current'
-    if (businessName.trim().length === 0 || !canSaveSlug) return
-
-    setSaveState('saving')
-    const handle = setTimeout(async () => {
-      const supabase = createClient()
-      const { error } = await supabase.from('booking_settings').upsert(
-        {
-          user_id: user.id,
-          business_name: businessName.trim(),
-          slug,
-          description: description.trim() || null,
-          slot_duration: slotDuration,
-          buffer_time: bufferTime,
-          advance_booking_days: advanceDays,
-        },
-        { onConflict: 'user_id' }
-      )
-      if (!error) {
-        setSavedSlug(slug)
-        setSaveState('saved')
-        setTimeout(() => setSaveState('idle'), 1800)
-      } else {
-        setSaveState('idle')
+  function buildAvailabilityRows(userId: string, dayOfWeek: number, day: DayState) {
+    const rows: { user_id: string; day_of_week: number; start_time: string; end_time: string; is_active: boolean }[] = []
+    if (day.dayActive) {
+      if (day.morning.enabled && day.morning.start < day.morning.end) {
+        rows.push({ user_id: userId, day_of_week: dayOfWeek, start_time: day.morning.start, end_time: day.morning.end, is_active: true })
       }
-    }, 600)
-    return () => clearTimeout(handle)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [businessName, slug, description, slotDuration, bufferTime, advanceDays, loaded, user?.id, slugStatus])
+      if (day.afternoon.enabled && day.afternoon.start < day.afternoon.end) {
+        rows.push({ user_id: userId, day_of_week: dayOfWeek, start_time: day.afternoon.start, end_time: day.afternoon.end, is_active: true })
+      }
+    }
+    return rows
+  }
 
-  // ── Persist one day's availability ranges ──────────────────────────────────
+  // Replaces all of a day's rows with the current UI state. Returns an error, if any.
+  async function writeDayAvailability(
+    supabase: ReturnType<typeof createClient>,
+    userId: string,
+    dayOfWeek: number,
+    day: DayState
+  ) {
+    const { error: deleteError } = await supabase.from('availability').delete().eq('user_id', userId).eq('day_of_week', dayOfWeek)
+    if (deleteError) return deleteError
+    const rows = buildAvailabilityRows(userId, dayOfWeek, day)
+    if (rows.length === 0) return null
+    const { error: insertError } = await supabase.from('availability').insert(rows)
+    return insertError
+  }
+
+  // ── Persist one day's availability ranges (debounced, on toggle/range edit) ─
   const persistDay = useCallback((dayOfWeek: number, day: DayState) => {
     if (!user?.id) return
     clearTimeout(dayDebounce.current[dayOfWeek])
     dayDebounce.current[dayOfWeek] = setTimeout(async () => {
       const supabase = createClient()
-      await supabase.from('availability').delete().eq('user_id', user.id).eq('day_of_week', dayOfWeek)
-      const rows: { user_id: string; day_of_week: number; start_time: string; end_time: string; is_active: boolean }[] = []
-      if (day.dayActive) {
-        if (day.morning.enabled && day.morning.start < day.morning.end) {
-          rows.push({ user_id: user.id, day_of_week: dayOfWeek, start_time: day.morning.start, end_time: day.morning.end, is_active: true })
-        }
-        if (day.afternoon.enabled && day.afternoon.start < day.afternoon.end) {
-          rows.push({ user_id: user.id, day_of_week: dayOfWeek, start_time: day.afternoon.start, end_time: day.afternoon.end, is_active: true })
-        }
+      const error = await writeDayAvailability(supabase, user.id, dayOfWeek, day)
+      if (error) {
+        console.error(`[booking-settings] availability save failed for day ${dayOfWeek}`, error)
+        setDayErrors((prev) => ({ ...prev, [dayOfWeek]: true }))
+      } else {
+        setDayErrors((prev) => {
+          if (!prev[dayOfWeek]) return prev
+          const next = { ...prev }
+          delete next[dayOfWeek]
+          return next
+        })
       }
-      if (rows.length > 0) await supabase.from('availability').insert(rows)
     }, 500)
   }, [user?.id])
 
@@ -244,6 +249,62 @@ export default function BookingSettingsPage() {
       return next
     })
   }, [persistDay])
+
+  // ── Explicit save (business info + slot config + full week availability) ──
+  const canSave = businessName.trim().length > 0 && slug.length >= 3 && SLUG_REGEX.test(slug)
+
+  const handleSave = useCallback(async () => {
+    if (!user?.id || !canSave) return
+    setSaveState('saving')
+    setSaveError('')
+    const supabase = createClient()
+
+    const { error: settingsError } = await supabase.from('booking_settings').upsert(
+      {
+        user_id: user.id,
+        business_name: businessName.trim(),
+        slug,
+        description: description.trim() || null,
+        slot_duration: slotDuration,
+        buffer_time: bufferTime,
+        advance_booking_days: advanceDays,
+      },
+      { onConflict: 'user_id' }
+    )
+
+    if (settingsError) {
+      console.error('[booking-settings] booking_settings save failed', settingsError)
+      const message = settingsError.code === '23505'
+        ? 'Ce lien de réservation est déjà utilisé — choisissez-en un autre.'
+        : `Erreur : ${settingsError.message}`
+      setSaveError(message)
+      setSaveState('error')
+      return
+    }
+
+    // Flush any pending per-day debounces and persist the full week now, so a
+    // save click always reflects exactly what's on screen (no race with a reload).
+    Object.values(dayDebounce.current).forEach(clearTimeout)
+    const dayResults = await Promise.all(
+      WEEK_ORDER.map(async (dayOfWeek) => ({
+        dayOfWeek,
+        error: await writeDayAvailability(supabase, user.id, dayOfWeek, week[dayOfWeek]),
+      }))
+    )
+    const failedDays = dayResults.filter((r) => r.error)
+    setDayErrors(Object.fromEntries(failedDays.map((r) => [r.dayOfWeek, true])))
+
+    if (failedDays.length > 0) {
+      failedDays.forEach((r) => console.error(`[booking-settings] availability save failed for day ${r.dayOfWeek}`, r.error))
+      setSaveError(`Vos informations sont enregistrées, mais ${failedDays.length} jour(s) de disponibilité n'ont pas pu être sauvegardés.`)
+      setSaveState('error')
+      return
+    }
+
+    setSavedSlug(slug)
+    setSaveState('saved')
+    setTimeout(() => setSaveState('idle'), 2500)
+  }, [user?.id, canSave, businessName, slug, description, slotDuration, bufferTime, advanceDays, week])
 
   // ── Blocked dates calendar (current + next month) ──────────────────────────
   const calendarMonth = useMemo(() => {
@@ -275,10 +336,18 @@ export default function BookingSettingsPage() {
       else next.add(key)
       return next
     })
-    if (isBlocked) {
-      await supabase.from('blocked_dates').delete().eq('user_id', user.id).eq('date', key)
-    } else {
-      await supabase.from('blocked_dates').insert({ user_id: user.id, date: key })
+    const { error } = isBlocked
+      ? await supabase.from('blocked_dates').delete().eq('user_id', user.id).eq('date', key)
+      : await supabase.from('blocked_dates').insert({ user_id: user.id, date: key })
+    if (error) {
+      console.error('[booking-settings] blocked_dates save failed', error)
+      // Revert the optimistic UI update since the write didn't actually persist
+      setBlockedDates((prev) => {
+        const next = new Set(prev)
+        if (isBlocked) next.add(key)
+        else next.delete(key)
+        return next
+      })
     }
   }, [user?.id, blockedDates])
 
@@ -373,11 +442,6 @@ export default function BookingSettingsPage() {
                 style={{ background: '#09090B', border: '1px solid #27272A' }}
               />
             </div>
-
-            <div className="flex items-center gap-2 text-xs h-4">
-              {saveState === 'saving' && <span className="text-gray-500">Enregistrement…</span>}
-              {saveState === 'saved' && <span style={{ color: '#6EE7B7' }}>✓ Enregistré</span>}
-            </div>
           </div>
         </SectionCard>
 
@@ -461,11 +525,32 @@ export default function BookingSettingsPage() {
                       </div>
                     )}
                   </div>
+                  {dayErrors[dayKey] && (
+                    <p className="text-[11px] mt-1" style={{ color: '#FCA5A5' }}>⚠ Erreur d&apos;enregistrement pour ce jour — réessayez.</p>
+                  )}
                 </div>
               )
             })}
           </div>
         </SectionCard>
+
+        {/* ── Save bar ─────────────────────────────────────────────────────── */}
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="rounded-2xl p-5 mb-6 flex flex-col sm:flex-row sm:items-center gap-3" style={{ background: '#18181B', border: '1px solid #27272A' }}>
+          <div className="flex-1 min-w-0">
+            {saveState === 'saving' && <span className="text-xs text-gray-500">Enregistrement…</span>}
+            {saveState === 'saved' && <span className="text-xs font-semibold" style={{ color: '#6EE7B7' }}>✓ Enregistré — vos informations et disponibilités sont à jour.</span>}
+            {saveState === 'error' && <span className="text-xs font-semibold" style={{ color: '#FCA5A5' }}>✗ {saveError}</span>}
+            {saveState === 'idle' && !canSave && <span className="text-xs text-gray-600">Renseignez un nom d&apos;activité et un lien valide pour enregistrer.</span>}
+          </div>
+          <button
+            onClick={handleSave}
+            disabled={!canSave || saveState === 'saving'}
+            className="shrink-0 px-5 py-2.5 rounded-xl text-xs font-bold transition-all"
+            style={{ background: canSave ? '#10B981' : '#27272A', color: canSave ? '#fff' : '#52525B', cursor: canSave && saveState !== 'saving' ? 'pointer' : 'not-allowed', opacity: saveState === 'saving' ? 0.7 : 1 }}
+          >
+            {saveState === 'saving' ? 'Enregistrement…' : 'Enregistrer'}
+          </button>
+        </motion.div>
 
         {/* ── Blocked dates ────────────────────────────────────────────────── */}
         <SectionCard title="Jours bloqués" subtitle="Cliquez sur une date pour la bloquer (congés, indisponibilité ponctuelle).">
