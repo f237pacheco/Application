@@ -38,7 +38,7 @@ export async function POST(request: Request) {
     const supabase = createAdminClient();
     const { data: settings, error: settingsError } = await supabase
       .from('booking_settings')
-      .select('user_id, business_name, slot_duration, buffer_time, advance_booking_days')
+      .select('user_id, business_name, address, phone, slot_duration, buffer_time, advance_booking_days')
       .eq('slug', slug)
       .maybeSingle();
 
@@ -90,6 +90,8 @@ export async function POST(request: Request) {
       clientPhone: clientPhone || undefined,
       serviceNote: serviceNote || undefined,
       businessName: settings.business_name,
+      businessAddress: settings.address ?? undefined,
+      businessPhone: settings.phone ?? undefined,
       date,
       time,
       proEmail: proProfile?.email ?? undefined,

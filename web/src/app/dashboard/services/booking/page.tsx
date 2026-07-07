@@ -85,6 +85,9 @@ export default function BookingSettingsPage() {
   const [savedSlug, setSavedSlug] = useState('')
   const [slugTouched, setSlugTouched] = useState(false)
   const [description, setDescription] = useState('')
+  const [address, setAddress] = useState('')
+  const [phone, setPhone] = useState('')
+  const [emailContact, setEmailContact] = useState('')
   const [slotDuration, setSlotDuration] = useState(30)
   const [bufferTime, setBufferTime] = useState(5)
   const [advanceDays, setAdvanceDays] = useState(30)
@@ -120,6 +123,9 @@ export default function BookingSettingsPage() {
         setSavedSlug(settingsRow.slug ?? '')
         setSlugTouched(true)
         setDescription(settingsRow.description ?? '')
+        setAddress(settingsRow.address ?? '')
+        setPhone(settingsRow.phone ?? '')
+        setEmailContact(settingsRow.email_contact ?? '')
         setSlotDuration(settingsRow.slot_duration ?? 30)
         setBufferTime(settingsRow.buffer_time ?? 5)
         setAdvanceDays(settingsRow.advance_booking_days ?? 30)
@@ -265,6 +271,9 @@ export default function BookingSettingsPage() {
         business_name: businessName.trim(),
         slug,
         description: description.trim() || null,
+        address: address.trim() || null,
+        phone: phone.trim() || null,
+        email_contact: emailContact.trim() || null,
         slot_duration: slotDuration,
         buffer_time: bufferTime,
         advance_booking_days: advanceDays,
@@ -304,7 +313,7 @@ export default function BookingSettingsPage() {
     setSavedSlug(slug)
     setSaveState('saved')
     setTimeout(() => setSaveState('idle'), 2500)
-  }, [user?.id, canSave, businessName, slug, description, slotDuration, bufferTime, advanceDays, week])
+  }, [user?.id, canSave, businessName, slug, description, address, phone, emailContact, slotDuration, bufferTime, advanceDays, week])
 
   // ── Blocked dates calendar (current + next month) ──────────────────────────
   const calendarMonth = useMemo(() => {
@@ -442,6 +451,43 @@ export default function BookingSettingsPage() {
                 style={{ background: '#09090B', border: '1px solid #27272A' }}
               />
             </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-400 mb-2">Adresse</label>
+              <input
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                placeholder="Ex : 12 rue de la Paix, 49000 Angers"
+                className="w-full px-3.5 py-2.5 rounded-xl text-sm text-white placeholder-gray-600 outline-none"
+                style={{ background: '#09090B', border: '1px solid #27272A' }}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-400 mb-2">Téléphone</label>
+                <input
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="Ex : 02 41 00 00 00"
+                  className="w-full px-3.5 py-2.5 rounded-xl text-sm text-white placeholder-gray-600 outline-none"
+                  style={{ background: '#09090B', border: '1px solid #27272A' }}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-400 mb-2">Email de contact</label>
+                <input
+                  type="email"
+                  value={emailContact}
+                  onChange={(e) => setEmailContact(e.target.value)}
+                  placeholder="contact@votre-activite.fr"
+                  className="w-full px-3.5 py-2.5 rounded-xl text-sm text-white placeholder-gray-600 outline-none"
+                  style={{ background: '#09090B', border: '1px solid #27272A' }}
+                />
+              </div>
+            </div>
+
+            <p className="text-xs text-gray-600">Ces informations apparaissent dans les emails de confirmation envoyés à vos clients. Si elles sont vides, des valeurs par défaut génériques sont utilisées.</p>
           </div>
         </SectionCard>
 

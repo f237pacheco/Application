@@ -35,6 +35,12 @@ export function formatTimeFR(timeStr: string): string {
   return timeStr.slice(0, 5);
 }
 
+// "10:00" -> "10h00", "14:30" -> "14h30" — French spoken-hour convention, used in emails.
+export function formatHourFR(timeStr: string): string {
+  const [h, m] = timeStr.slice(0, 5).split(':');
+  return `${h}h${m}`;
+}
+
 export const SLUG_REGEX = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 
 const DIACRITICS_REGEX = new RegExp('[̀-ͯ]', 'g');

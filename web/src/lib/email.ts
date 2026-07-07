@@ -1,8 +1,15 @@
 import { Resend } from 'resend';
-import { formatDateFR, formatTimeFR } from '@/lib/booking';
+import { formatDateFR, formatHourFR } from '@/lib/booking';
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
-const FROM = 'Velona <reservations@velona.app>';
+
+// Without a verified domain, Resend only allows sending from onboarding@resend.dev,
+// and only to the email address of the Resend account itself. Set RESEND_FROM_EMAIL
+// once a domain is verified (see the deployment notes) to send to real clients.
+const FROM = process.env.RESEND_FROM_EMAIL || 'Velona <onboarding@resend.dev>';
+
+const DEFAULT_ADDRESS = '12 rue de la Paix, 49000 Angers';
+const DEFAULT_PHONE = '02 41 00 00 00';
 
 type BookingEmailData = {
   clientName: string;
@@ -10,6 +17,8 @@ type BookingEmailData = {
   clientPhone?: string;
   serviceNote?: string;
   businessName: string;
+  businessAddress?: string;
+  businessPhone?: string;
   date: string; // YYYY-MM-DD
   time: string; // HH:MM[:SS]
   proEmail?: string;
@@ -20,100 +29,246 @@ function escapeHtml(str: string): string {
   return str.replace(/[&<>"']/g, (c) => map[c]);
 }
 
-function layout(title: string, accentColor: string, body: string): string {
+// Table-based layout (not flexbox/grid) for compatibility across Gmail/Outlook/Apple Mail.
+function emailShell(businessName: string, headerBg: string, bodyHtml: string, footerText: string): string {
+  return `<!doctype html>
+<html lang="fr">
+<head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /></head>
+<body style="margin:0;padding:0;background:#F4F4F5;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F4F4F5;padding:32px 12px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#FFFFFF;border-radius:16px;overflow:hidden;border:1px solid #E4E4E7;">
+          <tr>
+            <td style="background:${headerBg};padding:22px 32px;">
+              <span style="color:#FFFFFF;font-size:17px;font-weight:700;">${escapeHtml(businessName)}</span>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:32px;">
+              ${bodyHtml}
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:18px 32px;background:#FAFAFA;border-top:1px solid #E4E4E7;">
+              <p style="margin:0;color:#A1A1AA;font-size:12px;line-height:1.5;">${footerText}</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
+
+function contactBlock(businessName: string, address: string, phone: string): string {
   return `
-    <div style="font-family: -apple-system, Helvetica, Arial, sans-serif; max-width: 480px; margin: 0 auto; color: #18181B;">
-      <h2 style="color: ${accentColor}; margin-bottom: 4px;">${title}</h2>
-      ${body}
-      <p style="color: #A1A1AA; font-size: 12px; margin-top: 24px;">Cet email a été envoyé automatiquement par Velona.</p>
-    </div>
-  `;
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid #E4E4E7;margin-top:8px;">
+      <tr>
+        <td style="padding-top:20px;">
+          <div style="color:#18181B;font-size:14px;font-weight:700;margin-bottom:6px;">${escapeHtml(businessName)}</div>
+          <div style="color:#71717A;font-size:13px;line-height:1.7;">
+            📍 ${escapeHtml(address)}<br />
+            📞 ${escapeHtml(phone)}
+          </div>
+        </td>
+      </tr>
+    </table>`;
+}
+
+async function send(
+  payload: { to: string; subject: string; html: string; text: string; replyTo?: string },
+  context: string
+): Promise<void> {
+  if (!resend) {
+    console.warn(`[email] RESEND_API_KEY missing — skipping "${context}" (would have gone to ${payload.to})`);
+    return;
+  }
+  console.log(`[email] sending "${context}" → to=${payload.to} subject="${payload.subject}"`);
+  try {
+    const { data, error } = await resend.emails.send({
+      from: FROM,
+      to: payload.to,
+      subject: payload.subject,
+      html: payload.html,
+      text: payload.text,
+      ...(payload.replyTo ? { replyTo: payload.replyTo } : {}),
+    });
+    if (error) {
+      console.error(`[email] "${context}" FAILED → to=${payload.to}`, JSON.stringify(error));
+      return;
+    }
+    console.log(`[email] "${context}" sent OK → to=${payload.to} id=${data?.id}`);
+  } catch (err) {
+    console.error(`[email] "${context}" threw an exception → to=${payload.to}`, err);
+  }
 }
 
 export async function sendBookingConfirmationToClient(data: BookingEmailData): Promise<void> {
-  if (!resend) {
-    console.warn('[email] RESEND_API_KEY missing — skipping client confirmation email');
-    return;
-  }
   const dateLabel = formatDateFR(data.date);
-  const timeLabel = formatTimeFR(data.time);
-  try {
-    await resend.emails.send({
-      from: FROM,
+  const hourLabel = formatHourFR(data.time);
+  const address = data.businessAddress?.trim() || DEFAULT_ADDRESS;
+  const phone = data.businessPhone?.trim() || DEFAULT_PHONE;
+
+  const html = emailShell(
+    data.businessName,
+    '#09090B',
+    `
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#ECFDF5;border:1px solid #A7F3D0;border-radius:12px;margin-bottom:24px;">
+        <tr>
+          <td style="padding:20px 24px;text-align:center;">
+            <div style="font-size:26px;line-height:1;margin-bottom:8px;">✅</div>
+            <div style="color:#065F46;font-size:16px;font-weight:700;">Votre rendez-vous est confirmé</div>
+          </td>
+        </tr>
+      </table>
+
+      <p style="margin:0 0 4px;color:#3F3F46;font-size:14px;">Bonjour ${escapeHtml(data.clientName)},</p>
+      <p style="margin:0 0 20px;color:#3F3F46;font-size:14px;line-height:1.6;">Nous confirmons votre rendez-vous avec <strong>${escapeHtml(data.businessName)}</strong> :</p>
+
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#FAFAFA;border-radius:12px;margin-bottom:24px;">
+        <tr>
+          <td style="padding:20px 24px;text-align:center;">
+            <div style="color:#18181B;font-size:17px;font-weight:700;text-transform:capitalize;">Le ${dateLabel}</div>
+            <div style="color:#10B981;font-size:26px;font-weight:800;margin-top:6px;">à ${hourLabel}</div>
+          </td>
+        </tr>
+      </table>
+
+      ${data.serviceNote ? `<p style="margin:0 0 20px;color:#3F3F46;font-size:14px;"><strong style="color:#18181B;">Motif :</strong> ${escapeHtml(data.serviceNote)}</p>` : ''}
+
+      ${contactBlock(data.businessName, address, phone)}
+    `,
+    `Confirmation envoyée automatiquement suite à votre réservation sur la page de ${escapeHtml(data.businessName)}. Pour annuler ou modifier ce rendez-vous, contactez directement ${escapeHtml(data.businessName)}.`
+  );
+
+  const text = [
+    `Rendez-vous confirmé`,
+    ``,
+    `Bonjour ${data.clientName},`,
+    ``,
+    `Votre rendez-vous avec ${data.businessName} est confirmé :`,
+    `Le ${dateLabel} à ${hourLabel}`,
+    ``,
+    data.serviceNote ? `Motif : ${data.serviceNote}` : '',
+    ``,
+    `${data.businessName}`,
+    `${address}`,
+    `${phone}`,
+  ].filter(Boolean).join('\n');
+
+  await send(
+    {
       to: data.clientEmail,
-      subject: `Confirmation de votre RDV — ${data.businessName}`,
-      html: layout(
-        '✓ Rendez-vous confirmé',
-        '#10B981',
-        `
-          <p>Bonjour ${escapeHtml(data.clientName)},</p>
-          <p>Votre rendez-vous avec <strong>${escapeHtml(data.businessName)}</strong> est confirmé :</p>
-          <p style="font-size: 17px; font-weight: 700; text-transform: capitalize;">${dateLabel} à ${timeLabel}</p>
-          ${data.serviceNote ? `<p><strong>Note :</strong> ${escapeHtml(data.serviceNote)}</p>` : ''}
-          <p style="color: #71717A; font-size: 13px;">Pour annuler ou modifier ce rendez-vous, contactez directement ${escapeHtml(data.businessName)}.</p>
-        `
-      ),
-    });
-  } catch (err) {
-    console.error('[email] failed to send client confirmation', err);
-  }
+      subject: `Confirmation de votre RDV du ${dateLabel}`,
+      html,
+      text,
+      replyTo: data.proEmail,
+    },
+    'client confirmation'
+  );
 }
 
 export async function sendBookingNotificationToPro(data: BookingEmailData): Promise<void> {
-  if (!resend) {
-    console.warn('[email] RESEND_API_KEY missing — skipping pro notification email');
+  if (!data.proEmail) {
+    console.warn('[email] no pro email on file — skipping pro notification');
     return;
   }
-  if (!data.proEmail) return;
   const dateLabel = formatDateFR(data.date);
-  const timeLabel = formatTimeFR(data.time);
-  try {
-    await resend.emails.send({
-      from: FROM,
+  const hourLabel = formatHourFR(data.time);
+
+  const html = emailShell(
+    data.businessName,
+    '#10B981',
+    `
+      <p style="margin:0 0 4px;color:#18181B;font-size:15px;font-weight:700;">📅 Nouveau rendez-vous</p>
+      <p style="margin:0 0 20px;color:#71717A;font-size:13px;">Un client vient de réserver un créneau.</p>
+
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#FAFAFA;border-radius:12px;margin-bottom:20px;">
+        <tr>
+          <td style="padding:18px 22px;text-align:center;">
+            <div style="color:#18181B;font-size:16px;font-weight:700;text-transform:capitalize;">Le ${dateLabel}</div>
+            <div style="color:#10B981;font-size:22px;font-weight:800;margin-top:4px;">à ${hourLabel}</div>
+          </td>
+        </tr>
+      </table>
+
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;">
+        <tr><td style="padding:6px 0;color:#71717A;width:110px;">Client</td><td style="padding:6px 0;color:#18181B;font-weight:600;">${escapeHtml(data.clientName)}</td></tr>
+        <tr><td style="padding:6px 0;color:#71717A;">Email</td><td style="padding:6px 0;color:#18181B;">${escapeHtml(data.clientEmail)}</td></tr>
+        ${data.clientPhone ? `<tr><td style="padding:6px 0;color:#71717A;">Téléphone</td><td style="padding:6px 0;color:#18181B;">${escapeHtml(data.clientPhone)}</td></tr>` : ''}
+        ${data.serviceNote ? `<tr><td style="padding:6px 0;color:#71717A;vertical-align:top;">Motif</td><td style="padding:6px 0;color:#18181B;">${escapeHtml(data.serviceNote)}</td></tr>` : ''}
+      </table>
+    `,
+    `Notification automatique de votre système de réservation ${escapeHtml(data.businessName)}.`
+  );
+
+  const text = [
+    `Nouveau rendez-vous`,
+    ``,
+    `Le ${dateLabel} à ${hourLabel}`,
+    ``,
+    `Client : ${data.clientName}`,
+    `Email : ${data.clientEmail}`,
+    data.clientPhone ? `Téléphone : ${data.clientPhone}` : '',
+    data.serviceNote ? `Motif : ${data.serviceNote}` : '',
+  ].filter(Boolean).join('\n');
+
+  await send(
+    {
       to: data.proEmail,
-      subject: `Nouveau RDV — ${data.clientName} le ${dateLabel}`,
-      html: layout(
-        '📅 Nouveau rendez-vous',
-        '#10B981',
-        `
-          <p style="font-size: 17px; font-weight: 700; text-transform: capitalize;">${dateLabel} à ${timeLabel}</p>
-          <table style="width: 100%; font-size: 14px; border-collapse: collapse;">
-            <tr><td style="padding: 4px 0; color: #71717A;">Client</td><td style="padding: 4px 0; font-weight: 600;">${escapeHtml(data.clientName)}</td></tr>
-            <tr><td style="padding: 4px 0; color: #71717A;">Email</td><td style="padding: 4px 0;">${escapeHtml(data.clientEmail)}</td></tr>
-            ${data.clientPhone ? `<tr><td style="padding: 4px 0; color: #71717A;">Téléphone</td><td style="padding: 4px 0;">${escapeHtml(data.clientPhone)}</td></tr>` : ''}
-            ${data.serviceNote ? `<tr><td style="padding: 4px 0; color: #71717A;">Note</td><td style="padding: 4px 0;">${escapeHtml(data.serviceNote)}</td></tr>` : ''}
-          </table>
-        `
-      ),
-    });
-  } catch (err) {
-    console.error('[email] failed to send pro notification', err);
-  }
+      subject: `Nouveau RDV le ${dateLabel} — ${data.clientName}`,
+      html,
+      text,
+      replyTo: data.clientEmail,
+    },
+    'pro notification'
+  );
 }
 
 export async function sendBookingCancellationToClient(data: BookingEmailData): Promise<void> {
-  if (!resend) {
-    console.warn('[email] RESEND_API_KEY missing — skipping cancellation email');
-    return;
-  }
   const dateLabel = formatDateFR(data.date);
-  const timeLabel = formatTimeFR(data.time);
-  try {
-    await resend.emails.send({
-      from: FROM,
+  const hourLabel = formatHourFR(data.time);
+
+  const html = emailShell(
+    data.businessName,
+    '#09090B',
+    `
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#FEF2F2;border:1px solid #FECACA;border-radius:12px;margin-bottom:24px;">
+        <tr>
+          <td style="padding:20px 24px;text-align:center;">
+            <div style="color:#991B1B;font-size:16px;font-weight:700;">Rendez-vous annulé</div>
+          </td>
+        </tr>
+      </table>
+
+      <p style="margin:0 0 4px;color:#3F3F46;font-size:14px;">Bonjour ${escapeHtml(data.clientName)},</p>
+      <p style="margin:0 0 20px;color:#3F3F46;font-size:14px;line-height:1.6;">
+        Votre rendez-vous du <strong style="text-transform:capitalize;">${dateLabel} à ${hourLabel}</strong> avec ${escapeHtml(data.businessName)} a été annulé.
+      </p>
+      <p style="margin:0;color:#71717A;font-size:13px;">Vous pouvez reprendre un nouveau créneau à tout moment via leur lien de réservation.</p>
+    `,
+    `Notification automatique envoyée suite à l'annulation de votre rendez-vous avec ${escapeHtml(data.businessName)}.`
+  );
+
+  const text = [
+    `Rendez-vous annulé`,
+    ``,
+    `Bonjour ${data.clientName},`,
+    ``,
+    `Votre rendez-vous du ${dateLabel} à ${hourLabel} avec ${data.businessName} a été annulé.`,
+    `Vous pouvez reprendre un nouveau créneau à tout moment via leur lien de réservation.`,
+  ].join('\n');
+
+  await send(
+    {
       to: data.clientEmail,
-      subject: `Annulation de votre RDV — ${data.businessName}`,
-      html: layout(
-        'Rendez-vous annulé',
-        '#EF4444',
-        `
-          <p>Bonjour ${escapeHtml(data.clientName)},</p>
-          <p>Votre rendez-vous du <strong style="text-transform: capitalize;">${dateLabel} à ${timeLabel}</strong> avec ${escapeHtml(data.businessName)} a été annulé.</p>
-          <p style="color: #71717A; font-size: 13px;">Vous pouvez reprendre un nouveau créneau à tout moment via leur lien de réservation.</p>
-        `
-      ),
-    });
-  } catch (err) {
-    console.error('[email] failed to send cancellation email', err);
-  }
+      subject: `Annulation de votre RDV du ${dateLabel}`,
+      html,
+      text,
+      replyTo: data.proEmail,
+    },
+    'cancellation'
+  );
 }

@@ -38,7 +38,7 @@ export async function POST(request: Request) {
     if (updateError) throw updateError;
 
     const [{ data: settings }, { data: profile }] = await Promise.all([
-      supabase.from('booking_settings').select('business_name').eq('user_id', user.id).maybeSingle(),
+      supabase.from('booking_settings').select('business_name, address, phone').eq('user_id', user.id).maybeSingle(),
       supabase.from('profiles').select('email').eq('id', user.id).maybeSingle(),
     ]);
 
@@ -46,6 +46,8 @@ export async function POST(request: Request) {
       clientName: booking.client_name,
       clientEmail: booking.client_email,
       businessName: settings?.business_name ?? 'votre prestataire',
+      businessAddress: settings?.address ?? undefined,
+      businessPhone: settings?.phone ?? undefined,
       date: booking.booking_date,
       time: booking.booking_time,
       proEmail: profile?.email ?? undefined,
