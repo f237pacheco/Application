@@ -13,7 +13,7 @@ export async function GET(request: Request) {
     const supabase = createAdminClient();
     const { data: settings, error } = await supabase
       .from('booking_settings')
-      .select('business_name, description, slot_duration, advance_booking_days')
+      .select('business_name, description, address, phone, logo_url, services, instructions, payment_methods, slot_duration, advance_booking_days')
       .eq('slug', slug)
       .maybeSingle();
 
@@ -25,6 +25,12 @@ export async function GET(request: Request) {
     return NextResponse.json({
       businessName: settings.business_name,
       description: settings.description,
+      address: settings.address,
+      phone: settings.phone,
+      logoUrl: settings.logo_url,
+      services: settings.services,
+      instructions: settings.instructions,
+      paymentMethods: settings.payment_methods,
       slotDuration: settings.slot_duration,
       advanceBookingDays: settings.advance_booking_days,
     });

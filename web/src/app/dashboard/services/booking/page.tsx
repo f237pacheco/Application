@@ -88,6 +88,12 @@ export default function BookingSettingsPage() {
   const [address, setAddress] = useState('')
   const [phone, setPhone] = useState('')
   const [emailContact, setEmailContact] = useState('')
+  const [logoUrl, setLogoUrl] = useState('')
+  const [logoUploading, setLogoUploading] = useState(false)
+  const [logoError, setLogoError] = useState('')
+  const [services, setServices] = useState('')
+  const [instructions, setInstructions] = useState('')
+  const [paymentMethods, setPaymentMethods] = useState('')
   const [slotDuration, setSlotDuration] = useState(30)
   const [bufferTime, setBufferTime] = useState(5)
   const [advanceDays, setAdvanceDays] = useState(30)
@@ -126,6 +132,10 @@ export default function BookingSettingsPage() {
         setAddress(settingsRow.address ?? '')
         setPhone(settingsRow.phone ?? '')
         setEmailContact(settingsRow.email_contact ?? '')
+        setLogoUrl(settingsRow.logo_url ?? '')
+        setServices(settingsRow.services ?? '')
+        setInstructions(settingsRow.instructions ?? '')
+        setPaymentMethods(settingsRow.payment_methods ?? '')
         setSlotDuration(settingsRow.slot_duration ?? 30)
         setBufferTime(settingsRow.buffer_time ?? 5)
         setAdvanceDays(settingsRow.advance_booking_days ?? 30)
@@ -256,6 +266,46 @@ export default function BookingSettingsPage() {
     })
   }, [persistDay])
 
+  // ── Logo upload (uploads + persists immediately, independent of "Enregistrer") ─
+  const handleLogoUpload = useCallback(async (file: File) => {
+    if (!user?.id) return
+    if (!file.type.startsWith('image/')) {
+      setLogoError('Le fichier doit être une image.')
+      return
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setLogoError('Image trop lourde (2 Mo maximum).')
+      return
+    }
+    setLogoError('')
+    setLogoUploading(true)
+    try {
+      const supabase = createClient()
+      const ext = file.name.split('.').pop() || 'png'
+      const path = `${user.id}/logo.${ext}`
+      const { error: uploadError } = await supabase.storage.from('booking-logos').upload(path, file, { upsert: true })
+      if (uploadError) {
+        console.error('[booking-settings] logo upload failed', uploadError)
+        setLogoError("Échec de l'envoi de l'image.")
+        return
+      }
+      const { data: publicUrlData } = supabase.storage.from('booking-logos').getPublicUrl(path)
+      const url = `${publicUrlData.publicUrl}?t=${Date.now()}`
+      const { error: saveError } = await supabase.from('booking_settings').upsert(
+        { user_id: user.id, logo_url: url },
+        { onConflict: 'user_id' }
+      )
+      if (saveError) {
+        console.error('[booking-settings] logo_url save failed', saveError)
+        setLogoError("Image envoyée mais impossible de l'enregistrer — réessayez.")
+        return
+      }
+      setLogoUrl(url)
+    } finally {
+      setLogoUploading(false)
+    }
+  }, [user?.id])
+
   // ── Explicit save (business info + slot config + full week availability) ──
   const canSave = businessName.trim().length > 0 && slug.length >= 3 && SLUG_REGEX.test(slug)
 
@@ -274,6 +324,9 @@ export default function BookingSettingsPage() {
         address: address.trim() || null,
         phone: phone.trim() || null,
         email_contact: emailContact.trim() || null,
+        services: services.trim() || null,
+        instructions: instructions.trim() || null,
+        payment_methods: paymentMethods.trim() || null,
         slot_duration: slotDuration,
         buffer_time: bufferTime,
         advance_booking_days: advanceDays,
@@ -313,7 +366,7 @@ export default function BookingSettingsPage() {
     setSavedSlug(slug)
     setSaveState('saved')
     setTimeout(() => setSaveState('idle'), 2500)
-  }, [user?.id, canSave, businessName, slug, description, address, phone, emailContact, slotDuration, bufferTime, advanceDays, week])
+  }, [user?.id, canSave, businessName, slug, description, address, phone, emailContact, services, instructions, paymentMethods, slotDuration, bufferTime, advanceDays, week])
 
   // ── Blocked dates calendar (current + next month) ──────────────────────────
   const calendarMonth = useMemo(() => {
@@ -416,6 +469,45 @@ export default function BookingSettingsPage() {
         <SectionCard title="Informations" subtitle="Le nom et la description visibles par vos clients sur la page de réservation.">
           <div className="flex flex-col gap-4">
             <div>
+              <label className="block text-xs font-semibold text-gray-400 mb-2">Logo</label>
+              <div className="flex items-center gap-4">
+                {logoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={logoUrl} alt="Logo" className="w-16 h-16 rounded-2xl object-cover" style={{ border: '1px solid #27272A' }} />
+                ) : (
+                  <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-xl font-bold" style={{ background: 'rgba(16,185,129,0.1)', color: '#6EE7B7', border: '1px solid #27272A' }}>
+                    {businessName.charAt(0).toUpperCase() || '?'}
+                  </div>
+                )}
+                <div className="flex-1">
+                  <label
+                    className="inline-block px-3.5 py-2 rounded-xl text-xs font-semibold cursor-pointer"
+                    style={{
+                      background: !savedSlug ? '#27272A' : '#09090B',
+                      color: !savedSlug ? '#52525B' : '#A1A1AA',
+                      border: '1px solid #27272A',
+                      opacity: logoUploading ? 0.6 : 1,
+                      pointerEvents: !savedSlug || logoUploading ? 'none' : 'auto',
+                    }}
+                  >
+                    {logoUploading ? 'Envoi…' : logoUrl ? 'Changer le logo' : 'Ajouter un logo'}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      disabled={!savedSlug || logoUploading}
+                      onChange={(e) => { const f = e.target.files?.[0]; if (f) handleLogoUpload(f); e.target.value = '' }}
+                    />
+                  </label>
+                  <p className="text-[11px] text-gray-600 mt-1.5">
+                    {!savedSlug ? 'Enregistrez vos informations une première fois pour activer l\'upload.' : 'PNG ou JPG, 2 Mo maximum.'}
+                  </p>
+                  {logoError && <p className="text-[11px] mt-1" style={{ color: '#FCA5A5' }}>{logoError}</p>}
+                </div>
+              </div>
+            </div>
+
+            <div>
               <label className="block text-xs font-semibold text-gray-400 mb-2">Nom de votre activité *</label>
               <input
                 value={businessName}
@@ -488,6 +580,44 @@ export default function BookingSettingsPage() {
             </div>
 
             <p className="text-xs text-gray-600">Ces informations apparaissent dans les emails de confirmation envoyés à vos clients. Si elles sont vides, des valeurs par défaut génériques sont utilisées.</p>
+          </div>
+        </SectionCard>
+
+        {/* ── Practical details ────────────────────────────────────────────── */}
+        <SectionCard title="Détails pratiques" subtitle="Ces informations sont affichées à vos clients sur la page de réservation publique.">
+          <div className="flex flex-col gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-gray-400 mb-2">Prestations proposées</label>
+              <textarea
+                value={services}
+                onChange={(e) => setServices(e.target.value)}
+                placeholder="Ex : Coupe, coloration, brushing, soins…"
+                rows={2}
+                className="w-full px-3.5 py-2.5 rounded-xl text-sm text-white placeholder-gray-600 outline-none resize-none"
+                style={{ background: '#09090B', border: '1px solid #27272A' }}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-400 mb-2">Consignes avant le RDV</label>
+              <textarea
+                value={instructions}
+                onChange={(e) => setInstructions(e.target.value)}
+                placeholder="Ex : Merci d'arriver 5 minutes en avance, cheveux propres et secs."
+                rows={2}
+                className="w-full px-3.5 py-2.5 rounded-xl text-sm text-white placeholder-gray-600 outline-none resize-none"
+                style={{ background: '#09090B', border: '1px solid #27272A' }}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-400 mb-2">Moyens de paiement acceptés</label>
+              <input
+                value={paymentMethods}
+                onChange={(e) => setPaymentMethods(e.target.value)}
+                placeholder="Ex : Carte bancaire, espèces, chèque"
+                className="w-full px-3.5 py-2.5 rounded-xl text-sm text-white placeholder-gray-600 outline-none"
+                style={{ background: '#09090B', border: '1px solid #27272A' }}
+              />
+            </div>
           </div>
         </SectionCard>
 
