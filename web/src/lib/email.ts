@@ -8,6 +8,12 @@ const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KE
 // once a domain is verified (see the deployment notes) to send to real clients.
 const FROM = process.env.RESEND_FROM_EMAIL || 'Velona <onboarding@resend.dev>';
 
+// Runs once when this module is first loaded by the server (dev server start
+// or first request in prod) — confirms the config actually in effect, without
+// ever printing the key itself.
+console.log(`[email] RESEND_API_KEY : ${process.env.RESEND_API_KEY ? 'clé présente' : 'CLÉ MANQUANTE — aucun email ne sera envoyé'}`);
+console.log(`[email] expéditeur (FROM) : ${FROM}`);
+
 const DEFAULT_ADDRESS = '12 rue de la Paix, 49000 Angers';
 const DEFAULT_PHONE = '02 41 00 00 00';
 
@@ -82,12 +88,14 @@ async function send(
   context: string
 ): Promise<void> {
   if (!resend) {
-    console.warn(`[email] RESEND_API_KEY missing — skipping "${context}" (would have gone to ${payload.to})`);
+    console.warn(`[email] CLÉ MANQUANTE — "${context}" NON envoyé (aurait été envoyé vers ${payload.to})`);
     return;
   }
-  console.log(`[email] sending "${context}" → to=${payload.to} subject="${payload.subject}"`);
+
+  console.log(`[email] TENTATIVE ENVOI EMAIL (${context}) vers ${payload.to} | from=${FROM} | sujet="${payload.subject}"`);
+
   try {
-    const { data, error } = await resend.emails.send({
+    const result = await resend.emails.send({
       from: FROM,
       to: payload.to,
       subject: payload.subject,
@@ -95,13 +103,19 @@ async function send(
       text: payload.text,
       ...(payload.replyTo ? { replyTo: payload.replyTo } : {}),
     });
+    const { data, error } = result;
+
+    // Full Resend response, logged unconditionally — this is what tells us
+    // definitively whether Resend accepted or rejected the send, and why.
+    console.log(`[email] RÉPONSE RESEND COMPLÈTE (${context}):`, JSON.stringify({ data, error }));
+
     if (error) {
-      console.error(`[email] "${context}" FAILED → to=${payload.to}`, JSON.stringify(error));
+      console.error(`[email] ÉCHEC EMAIL (${context}) vers ${payload.to}: ${JSON.stringify(error)}`);
       return;
     }
-    console.log(`[email] "${context}" sent OK → to=${payload.to} id=${data?.id}`);
+    console.log(`[email] EMAIL ENVOYÉ (${context}) id=${data?.id} vers ${payload.to}`);
   } catch (err) {
-    console.error(`[email] "${context}" threw an exception → to=${payload.to}`, err);
+    console.error(`[email] EXCEPTION lors de l'envoi (${context}) vers ${payload.to}:`, err);
   }
 }
 

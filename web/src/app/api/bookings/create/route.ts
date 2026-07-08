@@ -78,11 +78,15 @@ export async function POST(request: Request) {
       throw insertError;
     }
 
+    console.log(`[bookings/create] Réservation créée en base pour ${clientEmail} le ${date} à ${time}`);
+
     const { data: proProfile } = await supabase
       .from('profiles')
       .select('email')
       .eq('id', settings.user_id)
       .maybeSingle();
+
+    console.log(`[bookings/create] Email du pro trouvé: ${proProfile?.email ?? 'AUCUN — la notification pro sera sautée'}`);
 
     const emailData = {
       clientName,
@@ -97,10 +101,12 @@ export async function POST(request: Request) {
       proEmail: proProfile?.email ?? undefined,
     };
 
+    console.log('[bookings/create] Appel des fonctions d\'envoi d\'email (confirmation client + notification pro)...');
     await Promise.all([
       sendBookingConfirmationToClient(emailData),
       sendBookingNotificationToPro(emailData),
     ]);
+    console.log('[bookings/create] Envoi des emails terminé (voir logs [email] ci-dessus pour le résultat de chacun).');
 
     return NextResponse.json({ success: true, date, time });
   } catch (err) {
