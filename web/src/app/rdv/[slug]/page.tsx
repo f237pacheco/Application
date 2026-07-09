@@ -96,11 +96,19 @@ export default function PublicBookingPage() {
       try {
         const res = await fetch(`/api/bookings/info?slug=${encodeURIComponent(slug)}`)
         if (cancelled) return
-        if (!res.ok) { setStep('not-found'); return }
+        if (!res.ok) {
+          // Distinguish "this page truly doesn't exist" (404) from "the
+          // server failed" (anything else, e.g. a Supabase/config error) —
+          // see server logs tagged [bookings/info] for the exact cause.
+          console.error(`[rdv/${slug}] /api/bookings/info a répondu ${res.status}`)
+          setStep(res.status === 404 ? 'not-found' : 'error')
+          return
+        }
         const data = await res.json() as Info
         setInfo(data)
         setStep('calendar')
-      } catch {
+      } catch (err) {
+        console.error(`[rdv/${slug}] erreur réseau en chargeant /api/bookings/info`, err)
         if (!cancelled) setStep('error')
       }
     })()

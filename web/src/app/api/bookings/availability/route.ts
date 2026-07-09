@@ -7,6 +7,8 @@ export async function GET(request: Request) {
   const slug = (searchParams.get('slug') ?? '').trim().toLowerCase();
   const date = (searchParams.get('date') ?? '').trim();
 
+  console.log(`[bookings/availability] slug="${slug}" date="${date}"`);
+
   if (!slug || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
     return NextResponse.json({ error: 'Paramètres invalides' }, { status: 400 });
   }
@@ -19,8 +21,11 @@ export async function GET(request: Request) {
       .eq('slug', slug)
       .maybeSingle();
 
+    console.log(`[bookings/availability] réponse Supabase complète:`, JSON.stringify({ data: settings, error }));
+
     if (error) throw error;
     if (!settings) {
+      console.warn(`[bookings/availability] AUCUNE ligne booking_settings pour slug="${slug}" — 404`);
       return NextResponse.json({ error: 'Page de réservation introuvable' }, { status: 404 });
     }
 
@@ -35,7 +40,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ slots });
   } catch (err) {
-    console.error('[bookings/availability]', err);
+    console.error(`[bookings/availability] EXCEPTION pour slug="${slug}":`, JSON.stringify(err), err);
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
   }
 }
