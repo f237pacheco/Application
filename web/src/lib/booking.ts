@@ -61,3 +61,21 @@ export function toDateKey(date: Date): string {
   const d = date.getDate().toString().padStart(2, '0');
   return `${y}-${m}-${d}`;
 }
+
+// Server-only: "now", but as Europe/Paris wall-clock time regardless of the
+// server process's own timezone (typically UTC on Vercel/most hosts). Without
+// this, "today"/"is this slot in the past" boundary checks silently drift by
+// up to 2 hours (CEST) around midnight/day boundaries — a booking made just
+// after midnight in France could be evaluated against the server's still-
+// "yesterday" UTC clock. booking_settings defaults every pro to Europe/Paris,
+// so that's the single timezone this whole server-side day/time math assumes.
+export function getParisNow(): Date {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Europe/Paris',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
+  }).formatToParts(new Date());
+  const get = (type: string) => Number(parts.find((p) => p.type === type)?.value ?? 0);
+  const hour = get('hour') % 24; // Intl can report midnight as "24" in some environments
+  return new Date(get('year'), get('month') - 1, get('day'), hour, get('minute'), get('second'));
+}

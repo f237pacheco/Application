@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { generateSlots, timeToMinutes, toDateKey } from '@/lib/booking';
+import { generateSlots, timeToMinutes, toDateKey, getParisNow } from '@/lib/booking';
 
 // Server-only: computes free slots for a given pro/date, accounting for
 // blocked days, recurring weekly availability and already-taken bookings.
@@ -15,7 +15,7 @@ export async function getAvailableSlotsForDate(
   const date = new Date(y, (m ?? 1) - 1, d ?? 1);
   if (Number.isNaN(date.getTime())) return [];
 
-  const now = new Date();
+  const now = getParisNow();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   if (date < today) return [];
 

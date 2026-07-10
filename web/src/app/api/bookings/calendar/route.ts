@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getAvailableSlotsForDate } from '@/lib/availability';
-import { toDateKey } from '@/lib/booking';
+import { toDateKey, getParisNow } from '@/lib/booking';
 
 // Returns which days of a given month have at least one free slot, so the
 // public booking page can grey out empty/blocked days without one request per day.
@@ -33,7 +33,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Page de réservation introuvable' }, { status: 404 });
     }
 
-    const today = new Date();
+    const today = getParisNow();
     today.setHours(0, 0, 0, 0);
     const maxDate = new Date(today);
     maxDate.setDate(maxDate.getDate() + settings.advance_booking_days);

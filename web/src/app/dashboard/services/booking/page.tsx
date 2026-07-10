@@ -1,11 +1,15 @@
 'use client'
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
 import { createClient } from '@/lib/supabase/client'
 import { slugify, SLUG_REGEX } from '@/lib/booking'
+import { compressImage, extensionForMimeType } from '@/lib/image'
+
+const MAX_LOGO_SIZE = 10 * 1024 * 1024 // 10 MB
+const ACCEPTED_LOGO_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -90,7 +94,10 @@ export default function BookingSettingsPage() {
   const [emailContact, setEmailContact] = useState('')
   const [logoUrl, setLogoUrl] = useState('')
   const [logoUploading, setLogoUploading] = useState(false)
+  const [logoProgress, setLogoProgress] = useState(0)
   const [logoError, setLogoError] = useState('')
+  const [logoPendingFile, setLogoPendingFile] = useState<File | null>(null)
+  const [logoPreview, setLogoPreview] = useState('')
   const [services, setServices] = useState('')
   const [instructions, setInstructions] = useState('')
   const [paymentMethods, setPaymentMethods] = useState('')
@@ -266,27 +273,45 @@ export default function BookingSettingsPage() {
     })
   }, [persistDay])
 
-  // ── Logo upload (uploads + persists immediately, independent of "Enregistrer") ─
-  const handleLogoUpload = useCallback(async (file: File) => {
-    if (!user?.id) return
-    if (!file.type.startsWith('image/')) {
-      setLogoError('Le fichier doit être une image.')
+  // ── Logo upload: pick → preview → confirm → compress client-side → upload ──
+  const handleLogoSelect = useCallback((file: File) => {
+    setLogoError('')
+    if (!ACCEPTED_LOGO_TYPES.includes(file.type)) {
+      setLogoError('Formats acceptés : JPG, PNG, WebP.')
       return
     }
-    if (file.size > 2 * 1024 * 1024) {
-      setLogoError('Image trop lourde (2 Mo maximum).')
+    if (file.size > MAX_LOGO_SIZE) {
+      setLogoError('Image trop lourde (10 Mo maximum).')
       return
     }
+    setLogoPendingFile(file)
+    const reader = new FileReader()
+    reader.onload = () => setLogoPreview(reader.result as string)
+    reader.readAsDataURL(file)
+  }, [])
+
+  const handleCancelLogoSelect = useCallback(() => {
+    setLogoPendingFile(null)
+    setLogoPreview('')
+    setLogoError('')
+  }, [])
+
+  const handleConfirmLogoUpload = useCallback(async () => {
+    if (!user?.id || !logoPendingFile) return
     setLogoError('')
     setLogoUploading(true)
+    setLogoProgress(15)
     try {
+      const compressed = await compressImage(logoPendingFile, 800, 0.85)
+      setLogoProgress(50)
       const supabase = createClient()
-      const ext = file.name.split('.').pop() || 'png'
+      const ext = extensionForMimeType(compressed.type || logoPendingFile.type)
       const path = `${user.id}/logo.${ext}`
-      const { error: uploadError } = await supabase.storage.from('booking-logos').upload(path, file, { upsert: true })
+      const { error: uploadError } = await supabase.storage.from('booking-logos').upload(path, compressed, { upsert: true, contentType: compressed.type })
+      setLogoProgress(80)
       if (uploadError) {
         console.error('[booking-settings] logo upload failed', uploadError)
-        setLogoError("Échec de l'envoi de l'image.")
+        setLogoError("Échec de l'envoi de l'image — réessayez.")
         return
       }
       const { data: publicUrlData } = supabase.storage.from('booking-logos').getPublicUrl(path)
@@ -300,10 +325,30 @@ export default function BookingSettingsPage() {
         setLogoError("Image envoyée mais impossible de l'enregistrer — réessayez.")
         return
       }
+      setLogoProgress(100)
       setLogoUrl(url)
+      setLogoPendingFile(null)
+      setLogoPreview('')
+    } catch (err) {
+      console.error('[booking-settings] logo compression/upload error', err)
+      setLogoError("Échec du traitement de l'image — réessayez avec un autre fichier.")
     } finally {
       setLogoUploading(false)
+      setTimeout(() => setLogoProgress(0), 600)
     }
+  }, [user?.id, logoPendingFile])
+
+  const handleRemoveLogo = useCallback(async () => {
+    if (!user?.id) return
+    setLogoError('')
+    const supabase = createClient()
+    const { error } = await supabase.from('booking_settings').update({ logo_url: null }).eq('user_id', user.id)
+    if (error) {
+      console.error('[booking-settings] logo removal failed', error)
+      setLogoError('Impossible de supprimer le logo — réessayez.')
+      return
+    }
+    setLogoUrl('')
   }, [user?.id])
 
   // ── Explicit save (business info + slot config + full week availability) ──
@@ -455,14 +500,39 @@ export default function BookingSettingsPage() {
             <p className="text-xs font-semibold text-gray-500 mb-1">Votre lien de réservation public</p>
             <p className="text-sm font-mono truncate" style={{ color: savedSlug ? '#6EE7B7' : '#52525B' }}>{publicUrl}</p>
           </div>
-          <button
-            disabled={!savedSlug}
-            onClick={handleCopyLink}
-            className="shrink-0 px-4 py-2 rounded-xl text-xs font-bold transition-all"
-            style={{ background: savedSlug ? '#10B981' : '#27272A', color: savedSlug ? '#fff' : '#52525B', cursor: savedSlug ? 'pointer' : 'not-allowed' }}
-          >
-            {copied ? '✓ Copié' : '🔗 Copier le lien'}
-          </button>
+          <div className="flex gap-2 shrink-0">
+            {savedSlug && (
+              <a
+                href={publicUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-4 py-2 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1.5"
+                style={{ background: '#27272A', color: '#E4E4E7' }}
+              >
+                👁️ Prévisualiser
+              </a>
+            )}
+            <motion.button
+              disabled={!savedSlug}
+              onClick={handleCopyLink}
+              whileTap={savedSlug ? { scale: 0.96 } : undefined}
+              className="px-4 py-2 rounded-xl text-xs font-bold"
+              style={{ background: savedSlug ? '#10B981' : '#27272A', color: savedSlug ? '#fff' : '#52525B', cursor: savedSlug ? 'pointer' : 'not-allowed' }}
+            >
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.span
+                  key={copied ? 'copied' : 'copy'}
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  transition={{ duration: 0.15 }}
+                  className="inline-block"
+                >
+                  {copied ? '✓ Copié !' : '🔗 Copier le lien'}
+                </motion.span>
+              </AnimatePresence>
+            </motion.button>
+          </div>
         </motion.div>
 
         {/* ── Business info ────────────────────────────────────────────────── */}
@@ -470,41 +540,82 @@ export default function BookingSettingsPage() {
           <div className="flex flex-col gap-4">
             <div>
               <label className="block text-xs font-semibold text-gray-400 mb-2">Logo</label>
-              <div className="flex items-center gap-4">
-                {logoUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={logoUrl} alt="Logo" className="w-16 h-16 rounded-2xl object-cover" style={{ border: '1px solid #27272A' }} />
-                ) : (
-                  <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-xl font-bold" style={{ background: 'rgba(16,185,129,0.1)', color: '#6EE7B7', border: '1px solid #27272A' }}>
-                    {businessName.charAt(0).toUpperCase() || '?'}
+
+              {logoPreview ? (
+                <div className="flex items-center gap-4">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={logoPreview} alt="Aperçu" className="w-16 h-16 rounded-2xl object-cover" style={{ border: '1px solid #27272A' }} />
+                  <div className="flex-1">
+                    <p className="text-xs text-gray-400 mb-2">Aperçu — confirmez pour envoyer.</p>
+                    {logoUploading && (
+                      <div className="w-full h-1.5 rounded-full mb-2 overflow-hidden" style={{ background: '#27272A' }}>
+                        <motion.div className="h-full" style={{ background: '#10B981' }} animate={{ width: `${logoProgress}%` }} transition={{ duration: 0.3 }} />
+                      </div>
+                    )}
+                    <div className="flex gap-2">
+                      <button
+                        onClick={handleConfirmLogoUpload}
+                        disabled={logoUploading}
+                        className="px-3.5 py-1.5 rounded-lg text-xs font-bold disabled:opacity-60"
+                        style={{ background: '#10B981', color: '#fff' }}
+                      >
+                        {logoUploading ? 'Envoi…' : 'Confirmer'}
+                      </button>
+                      <button
+                        onClick={handleCancelLogoSelect}
+                        disabled={logoUploading}
+                        className="px-3.5 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-60"
+                        style={{ background: '#27272A', color: '#A1A1AA' }}
+                      >
+                        Annuler
+                      </button>
+                    </div>
+                    {logoError && <p className="text-[11px] mt-1.5" style={{ color: '#FCA5A5' }}>{logoError}</p>}
                   </div>
-                )}
-                <div className="flex-1">
-                  <label
-                    className="inline-block px-3.5 py-2 rounded-xl text-xs font-semibold cursor-pointer"
-                    style={{
-                      background: !savedSlug ? '#27272A' : '#09090B',
-                      color: !savedSlug ? '#52525B' : '#A1A1AA',
-                      border: '1px solid #27272A',
-                      opacity: logoUploading ? 0.6 : 1,
-                      pointerEvents: !savedSlug || logoUploading ? 'none' : 'auto',
-                    }}
-                  >
-                    {logoUploading ? 'Envoi…' : logoUrl ? 'Changer le logo' : 'Ajouter un logo'}
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      disabled={!savedSlug || logoUploading}
-                      onChange={(e) => { const f = e.target.files?.[0]; if (f) handleLogoUpload(f); e.target.value = '' }}
-                    />
-                  </label>
-                  <p className="text-[11px] text-gray-600 mt-1.5">
-                    {!savedSlug ? 'Enregistrez vos informations une première fois pour activer l\'upload.' : 'PNG ou JPG, 2 Mo maximum.'}
-                  </p>
-                  {logoError && <p className="text-[11px] mt-1" style={{ color: '#FCA5A5' }}>{logoError}</p>}
                 </div>
-              </div>
+              ) : (
+                <div className="flex items-center gap-4">
+                  {logoUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={logoUrl} alt="Logo" className="w-16 h-16 rounded-2xl object-cover" style={{ border: '1px solid #27272A' }} />
+                  ) : (
+                    <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-xl font-bold" style={{ background: 'rgba(16,185,129,0.1)', color: '#6EE7B7', border: '1px solid #27272A' }}>
+                      {businessName.charAt(0).toUpperCase() || '?'}
+                    </div>
+                  )}
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <label
+                        className="inline-block px-3.5 py-2 rounded-xl text-xs font-semibold cursor-pointer"
+                        style={{
+                          background: !savedSlug ? '#27272A' : '#09090B',
+                          color: !savedSlug ? '#52525B' : '#A1A1AA',
+                          border: '1px solid #27272A',
+                          pointerEvents: !savedSlug ? 'none' : 'auto',
+                        }}
+                      >
+                        {logoUrl ? 'Changer le logo' : 'Ajouter un logo'}
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp"
+                          className="hidden"
+                          disabled={!savedSlug}
+                          onChange={(e) => { const f = e.target.files?.[0]; if (f) handleLogoSelect(f); e.target.value = '' }}
+                        />
+                      </label>
+                      {logoUrl && (
+                        <button onClick={handleRemoveLogo} className="px-3.5 py-2 rounded-xl text-xs font-semibold" style={{ background: 'rgba(239,68,68,0.08)', color: '#FCA5A5', border: '1px solid rgba(239,68,68,0.2)' }}>
+                          Supprimer
+                        </button>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-gray-600 mt-1.5">
+                      {!savedSlug ? 'Enregistrez vos informations une première fois pour activer l\'upload.' : 'JPG, PNG ou WebP, 10 Mo maximum — redimensionné automatiquement.'}
+                    </p>
+                    {logoError && <p className="text-[11px] mt-1" style={{ color: '#FCA5A5' }}>{logoError}</p>}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div>
@@ -660,16 +771,23 @@ export default function BookingSettingsPage() {
         {/* ── Weekly availability ──────────────────────────────────────────── */}
         <SectionCard title="Disponibilités hebdomadaires" subtitle="Activez les jours ouverts et définissez vos plages horaires (matin / après-midi).">
           <div className="flex flex-col gap-2.5">
-            {WEEK_ORDER.map((dayKey) => {
+            {WEEK_ORDER.map((dayKey, idx) => {
               const day = week[dayKey]
               return (
-                <div key={dayKey} className="rounded-xl p-3.5" style={{ background: '#09090B', border: '1px solid #27272A' }}>
+                <motion.div
+                  key={dayKey}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0, borderColor: day.dayActive ? 'rgba(16,185,129,0.25)' : '#27272A' }}
+                  transition={{ duration: 0.3, delay: idx * 0.03 }}
+                  className="rounded-xl p-3.5"
+                  style={{ background: '#09090B', border: '1px solid #27272A' }}
+                >
                   <div className="flex items-center gap-3 mb-2.5">
                     <Toggle on={day.dayActive} onToggle={() => updateDay(dayKey, { dayActive: !day.dayActive })} />
                     <span className="text-sm font-semibold w-24 shrink-0" style={{ color: day.dayActive ? '#FAFAFA' : '#52525B' }}>{WEEK_LABELS[dayKey]}</span>
 
                     {day.dayActive && (
-                      <div className="flex flex-wrap items-center gap-3 flex-1">
+                      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }} className="flex flex-wrap items-center gap-3 flex-1">
                         {(['morning', 'afternoon'] as const).map((period) => (
                           <div key={period} className="flex items-center gap-1.5">
                             <button
@@ -698,13 +816,13 @@ export default function BookingSettingsPage() {
                             />
                           </div>
                         ))}
-                      </div>
+                      </motion.div>
                     )}
                   </div>
                   {dayErrors[dayKey] && (
                     <p className="text-[11px] mt-1" style={{ color: '#FCA5A5' }}>⚠ Erreur d&apos;enregistrement pour ce jour — réessayez.</p>
                   )}
-                </div>
+                </motion.div>
               )
             })}
           </div>
@@ -731,37 +849,49 @@ export default function BookingSettingsPage() {
         {/* ── Blocked dates ────────────────────────────────────────────────── */}
         <SectionCard title="Jours bloqués" subtitle="Cliquez sur une date pour la bloquer (congés, indisponibilité ponctuelle).">
           <div className="flex items-center justify-between mb-4">
-            <button onClick={() => setCalendarMonthOffset((o) => Math.max(0, o - 1))} disabled={calendarMonthOffset === 0} className="text-gray-500 disabled:opacity-30 px-2 py-1">←</button>
+            <motion.button whileTap={{ scale: 0.9 }} onClick={() => setCalendarMonthOffset((o) => Math.max(0, o - 1))} disabled={calendarMonthOffset === 0} className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-500 disabled:opacity-30" style={{ border: '1px solid #27272A' }}>←</motion.button>
             <span className="text-sm font-bold text-white capitalize">{MONTH_NAMES[calendarMonth.getMonth()]} {calendarMonth.getFullYear()}</span>
-            <button onClick={() => setCalendarMonthOffset((o) => Math.min(2, o + 1))} disabled={calendarMonthOffset === 2} className="text-gray-500 disabled:opacity-30 px-2 py-1">→</button>
+            <motion.button whileTap={{ scale: 0.9 }} onClick={() => setCalendarMonthOffset((o) => Math.min(2, o + 1))} disabled={calendarMonthOffset === 2} className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-500 disabled:opacity-30" style={{ border: '1px solid #27272A' }}>→</motion.button>
           </div>
           <div className="grid grid-cols-7 gap-1.5 mb-2">
             {WEEK_ORDER.map((d) => <div key={d} className="text-center text-[10px] font-semibold text-gray-600">{WEEK_SHORT[d]}</div>)}
           </div>
-          <div className="grid grid-cols-7 gap-1.5">
-            {calendarCells.map((date, i) => {
-              if (!date) return <div key={i} />
-              const key = toDateKey(date)
-              const isPast = date < today
-              const isBlocked = blockedDates.has(key)
-              return (
-                <button
-                  key={i}
-                  disabled={isPast}
-                  onClick={() => toggleBlockedDate(date)}
-                  className="aspect-square rounded-lg text-xs font-semibold transition-all"
-                  style={{
-                    background: isBlocked ? 'rgba(239,68,68,0.15)' : isPast ? 'transparent' : 'rgba(16,185,129,0.05)',
-                    color: isPast ? '#3F3F46' : isBlocked ? '#FCA5A5' : '#A1A1AA',
-                    border: isBlocked ? '1px solid rgba(239,68,68,0.3)' : '1px solid transparent',
-                    cursor: isPast ? 'default' : 'pointer',
-                  }}
-                >
-                  {date.getDate()}
-                </button>
-              )
-            })}
-          </div>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={calendarMonthOffset}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="grid grid-cols-7 gap-1.5"
+            >
+              {calendarCells.map((date, i) => {
+                if (!date) return <div key={i} />
+                const key = toDateKey(date)
+                const isPast = date < today
+                const isBlocked = blockedDates.has(key)
+                return (
+                  <motion.button
+                    key={i}
+                    whileHover={!isPast ? { scale: 1.06 } : undefined}
+                    whileTap={!isPast ? { scale: 0.92 } : undefined}
+                    disabled={isPast}
+                    onClick={() => toggleBlockedDate(date)}
+                    className="aspect-square rounded-lg text-xs font-semibold"
+                    style={{
+                      background: isBlocked ? 'rgba(239,68,68,0.15)' : isPast ? 'transparent' : 'rgba(16,185,129,0.05)',
+                      color: isPast ? '#3F3F46' : isBlocked ? '#FCA5A5' : '#A1A1AA',
+                      border: isBlocked ? '1px solid rgba(239,68,68,0.3)' : '1px solid transparent',
+                      cursor: isPast ? 'default' : 'pointer',
+                      transition: 'background 0.15s, color 0.15s, border-color 0.15s',
+                    }}
+                  >
+                    {date.getDate()}
+                  </motion.button>
+                )
+              })}
+            </motion.div>
+          </AnimatePresence>
           {blockedDates.size > 0 && (
             <p className="text-xs text-gray-500 mt-4">{blockedDates.size} jour{blockedDates.size > 1 ? 's' : ''} bloqué{blockedDates.size > 1 ? 's' : ''}.</p>
           )}

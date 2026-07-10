@@ -1,5 +1,6 @@
 import { Resend } from 'resend';
 import { formatDateFR, formatHourFR } from '@/lib/booking';
+import { generateICS } from '@/lib/ics';
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
@@ -16,8 +17,10 @@ console.log(`[email] expéditeur (FROM) : ${FROM}`);
 
 const DEFAULT_ADDRESS = '12 rue de la Paix, 49000 Angers';
 const DEFAULT_PHONE = '02 41 00 00 00';
+const DEFAULT_DURATION = 30;
 
 type BookingEmailData = {
+  bookingId?: string;
   clientName: string;
   clientEmail: string;
   clientPhone?: string;
@@ -25,6 +28,8 @@ type BookingEmailData = {
   businessName: string;
   businessAddress?: string;
   businessPhone?: string;
+  businessLogoUrl?: string;
+  slotDuration?: number;
   date: string; // YYYY-MM-DD
   time: string; // HH:MM[:SS]
   proEmail?: string;
@@ -36,27 +41,43 @@ function escapeHtml(str: string): string {
 }
 
 // Table-based layout (not flexbox/grid) for compatibility across Gmail/Outlook/Apple Mail.
-function emailShell(businessName: string, headerBg: string, bodyHtml: string, footerText: string): string {
+function emailShell(businessName: string, logoUrl: string | undefined, headerBg: string, bodyHtml: string, footerText: string): string {
+  const headerContent = logoUrl
+    ? `<table role="presentation" cellpadding="0" cellspacing="0"><tr>
+         <td style="padding-right:10px;"><img src="${escapeHtml(logoUrl)}" width="32" height="32" alt="" style="display:block;border-radius:8px;object-fit:cover;" /></td>
+         <td style="vertical-align:middle;"><span style="color:#FFFFFF;font-size:17px;font-weight:700;">${escapeHtml(businessName)}</span></td>
+       </tr></table>`
+    : `<span style="color:#FFFFFF;font-size:17px;font-weight:700;">${escapeHtml(businessName)}</span>`;
+
   return `<!doctype html>
 <html lang="fr">
-<head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /></head>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    @media (max-width: 480px) {
+      .velona-card { border-radius: 0 !important; }
+      .velona-pad { padding: 24px 20px !important; }
+    }
+  </style>
+</head>
 <body style="margin:0;padding:0;background:#F4F4F5;">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F4F4F5;padding:32px 12px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
     <tr>
       <td align="center">
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#FFFFFF;border-radius:16px;overflow:hidden;border:1px solid #E4E4E7;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="velona-card" style="max-width:560px;background:#FFFFFF;border-radius:16px;overflow:hidden;border:1px solid #E4E4E7;">
           <tr>
-            <td style="background:${headerBg};padding:22px 32px;">
-              <span style="color:#FFFFFF;font-size:17px;font-weight:700;">${escapeHtml(businessName)}</span>
+            <td class="velona-pad" style="background:${headerBg};padding:22px 32px;">
+              ${headerContent}
             </td>
           </tr>
           <tr>
-            <td style="padding:32px;">
+            <td class="velona-pad" style="padding:32px;">
               ${bodyHtml}
             </td>
           </tr>
           <tr>
-            <td style="padding:18px 32px;background:#FAFAFA;border-top:1px solid #E4E4E7;">
+            <td class="velona-pad" style="padding:18px 32px;background:#FAFAFA;border-top:1px solid #E4E4E7;">
               <p style="margin:0;color:#A1A1AA;font-size:12px;line-height:1.5;">${footerText}</p>
             </td>
           </tr>
@@ -83,8 +104,44 @@ function contactBlock(businessName: string, address: string, phone: string): str
     </table>`;
 }
 
+function calendarNoticeBlock(): string {
+  return `
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:16px;">
+      <tr>
+        <td style="padding:12px 16px;background:#F4F4F5;border-radius:10px;text-align:center;">
+          <span style="color:#3F3F46;font-size:13px;">📅 Un fichier <strong>.ics</strong> est joint à cet email — ouvrez-le pour ajouter ce RDV à votre agenda.</span>
+        </td>
+      </tr>
+    </table>`;
+}
+
+function buildICSAttachment(data: BookingEmailData): { filename: string; content: string; contentType: string } | null {
+  if (!data.bookingId) return null;
+  const ics = generateICS({
+    uid: `${data.bookingId}@velona.app`,
+    businessName: data.businessName,
+    date: data.date,
+    time: data.time,
+    durationMinutes: data.slotDuration || DEFAULT_DURATION,
+    address: data.businessAddress,
+    description: data.serviceNote,
+  });
+  return {
+    filename: 'rendez-vous.ics',
+    content: Buffer.from(ics, 'utf-8').toString('base64'),
+    contentType: 'text/calendar',
+  };
+}
+
 async function send(
-  payload: { to: string; subject: string; html: string; text: string; replyTo?: string },
+  payload: {
+    to: string;
+    subject: string;
+    html: string;
+    text: string;
+    replyTo?: string;
+    attachments?: { filename: string; content: string; contentType: string }[];
+  },
   context: string
 ): Promise<void> {
   if (!resend) {
@@ -102,6 +159,7 @@ async function send(
       html: payload.html,
       text: payload.text,
       ...(payload.replyTo ? { replyTo: payload.replyTo } : {}),
+      ...(payload.attachments ? { attachments: payload.attachments } : {}),
     });
     const { data, error } = result;
 
@@ -124,9 +182,11 @@ export async function sendBookingConfirmationToClient(data: BookingEmailData): P
   const hourLabel = formatHourFR(data.time);
   const address = data.businessAddress?.trim() || DEFAULT_ADDRESS;
   const phone = data.businessPhone?.trim() || DEFAULT_PHONE;
+  const ics = buildICSAttachment(data);
 
   const html = emailShell(
     data.businessName,
+    data.businessLogoUrl,
     '#09090B',
     `
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#ECFDF5;border:1px solid #A7F3D0;border-radius:12px;margin-bottom:24px;">
@@ -146,6 +206,7 @@ export async function sendBookingConfirmationToClient(data: BookingEmailData): P
           <td style="padding:20px 24px;text-align:center;">
             <div style="color:#18181B;font-size:17px;font-weight:700;text-transform:capitalize;">Le ${dateLabel}</div>
             <div style="color:#10B981;font-size:26px;font-weight:800;margin-top:6px;">à ${hourLabel}</div>
+            ${data.slotDuration ? `<div style="color:#71717A;font-size:12px;margin-top:4px;">Durée : ${data.slotDuration} min</div>` : ''}
           </td>
         </tr>
       </table>
@@ -153,6 +214,7 @@ export async function sendBookingConfirmationToClient(data: BookingEmailData): P
       ${data.serviceNote ? `<p style="margin:0 0 20px;color:#3F3F46;font-size:14px;"><strong style="color:#18181B;">Motif :</strong> ${escapeHtml(data.serviceNote)}</p>` : ''}
 
       ${contactBlock(data.businessName, address, phone)}
+      ${ics ? calendarNoticeBlock() : ''}
     `,
     `Confirmation envoyée automatiquement suite à votre réservation sur la page de ${escapeHtml(data.businessName)}. Pour annuler ou modifier ce rendez-vous, contactez directement ${escapeHtml(data.businessName)}.`
   );
@@ -179,6 +241,7 @@ export async function sendBookingConfirmationToClient(data: BookingEmailData): P
       html,
       text,
       replyTo: data.proEmail,
+      attachments: ics ? [ics] : undefined,
     },
     'client confirmation'
   );
@@ -191,9 +254,11 @@ export async function sendBookingNotificationToPro(data: BookingEmailData): Prom
   }
   const dateLabel = formatDateFR(data.date);
   const hourLabel = formatHourFR(data.time);
+  const ics = buildICSAttachment(data);
 
   const html = emailShell(
     data.businessName,
+    data.businessLogoUrl,
     '#10B981',
     `
       <p style="margin:0 0 4px;color:#18181B;font-size:15px;font-weight:700;">📅 Nouveau rendez-vous</p>
@@ -214,6 +279,7 @@ export async function sendBookingNotificationToPro(data: BookingEmailData): Prom
         ${data.clientPhone ? `<tr><td style="padding:6px 0;color:#71717A;">Téléphone</td><td style="padding:6px 0;color:#18181B;">${escapeHtml(data.clientPhone)}</td></tr>` : ''}
         ${data.serviceNote ? `<tr><td style="padding:6px 0;color:#71717A;vertical-align:top;">Motif</td><td style="padding:6px 0;color:#18181B;">${escapeHtml(data.serviceNote)}</td></tr>` : ''}
       </table>
+      ${ics ? calendarNoticeBlock() : ''}
     `,
     `Notification automatique de votre système de réservation ${escapeHtml(data.businessName)}.`
   );
@@ -236,6 +302,7 @@ export async function sendBookingNotificationToPro(data: BookingEmailData): Prom
       html,
       text,
       replyTo: data.clientEmail,
+      attachments: ics ? [ics] : undefined,
     },
     'pro notification'
   );
@@ -247,6 +314,7 @@ export async function sendBookingCancellationToClient(data: BookingEmailData): P
 
   const html = emailShell(
     data.businessName,
+    data.businessLogoUrl,
     '#09090B',
     `
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#FEF2F2;border:1px solid #FECACA;border-radius:12px;margin-bottom:24px;">

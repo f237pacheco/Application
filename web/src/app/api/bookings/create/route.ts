@@ -38,7 +38,7 @@ export async function POST(request: Request) {
     const supabase = createAdminClient();
     const { data: settings, error: settingsError } = await supabase
       .from('booking_settings')
-      .select('user_id, business_name, address, phone, slot_duration, buffer_time, advance_booking_days')
+      .select('user_id, business_name, address, phone, logo_url, slot_duration, buffer_time, advance_booking_days')
       .eq('slug', slug)
       .maybeSingle();
 
@@ -60,7 +60,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Ce créneau n'est plus disponible" }, { status: 409 });
     }
 
-    const { error: insertError } = await supabase.from('bookings').insert({
+    const { data: newBooking, error: insertError } = await supabase.from('bookings').insert({
       user_id: settings.user_id,
       client_name: clientName,
       client_email: clientEmail,
@@ -69,7 +69,7 @@ export async function POST(request: Request) {
       booking_date: date,
       booking_time: time,
       status: 'confirmed',
-    });
+    }).select('id').single();
 
     if (insertError) {
       if (insertError.code === '23505') {
@@ -89,6 +89,7 @@ export async function POST(request: Request) {
     console.log(`[bookings/create] Email du pro trouvé: ${proProfile?.email ?? 'AUCUN — la notification pro sera sautée'}`);
 
     const emailData = {
+      bookingId: newBooking.id as string,
       clientName,
       clientEmail,
       clientPhone: clientPhone || undefined,
@@ -96,6 +97,8 @@ export async function POST(request: Request) {
       businessName: settings.business_name,
       businessAddress: settings.address ?? undefined,
       businessPhone: settings.phone ?? undefined,
+      businessLogoUrl: settings.logo_url ?? undefined,
+      slotDuration: settings.slot_duration,
       date,
       time,
       proEmail: proProfile?.email ?? undefined,
@@ -108,7 +111,7 @@ export async function POST(request: Request) {
     ]);
     console.log('[bookings/create] Envoi des emails terminé (voir logs [email] ci-dessus pour le résultat de chacun).');
 
-    return NextResponse.json({ success: true, date, time });
+    return NextResponse.json({ success: true, date, time, bookingId: newBooking.id });
   } catch (err) {
     console.error('[bookings/create]', err);
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });

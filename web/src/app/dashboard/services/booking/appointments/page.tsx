@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
 import { createClient } from '@/lib/supabase/client'
-import { formatDateFR, formatTimeFR } from '@/lib/booking'
+import { formatDateFR, formatTimeFR, toDateKey } from '@/lib/booking'
 
 type Status = 'confirmed' | 'cancelled' | 'completed'
 type Booking = {
@@ -29,15 +29,10 @@ const FILTERS: { key: FilterKey; label: string }[] = [
   { key: 'all', label: 'Tous' },
 ]
 
-const STATUS_BADGE: Record<Status, { label: string; color: string; bg: string }> = {
-  confirmed: { label: 'Confirmé', color: '#6EE7B7', bg: 'rgba(16,185,129,0.12)' },
-  cancelled: { label: 'Annulé', color: '#FCA5A5', bg: 'rgba(239,68,68,0.1)' },
-  completed: { label: 'Terminé', color: '#A1A1AA', bg: '#27272A' },
-}
-
-function todayKey(): string {
-  const d = new Date()
-  return `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}-${d.getDate().toString().padStart(2, '0')}`
+const STATUS_BADGE: Record<Status, { label: string; color: string; bg: string; border: string }> = {
+  confirmed: { label: 'Confirmé', color: '#6EE7B7', bg: 'rgba(16,185,129,0.12)', border: '#10B981' },
+  cancelled: { label: 'Annulé', color: '#FCA5A5', bg: 'rgba(239,68,68,0.1)', border: '#EF4444' },
+  completed: { label: 'Terminé', color: '#A1A1AA', bg: '#27272A', border: '#52525B' },
 }
 
 export default function AppointmentsPage() {
@@ -49,6 +44,7 @@ export default function AppointmentsPage() {
   const [view, setView] = useState<ViewMode>('list')
   const [cancellingId, setCancellingId] = useState<string | null>(null)
   const [confirmCancelId, setConfirmCancelId] = useState<string | null>(null)
+  const [justUpdated, setJustUpdated] = useState(false)
 
   const loadBookings = useCallback(async () => {
     if (!user?.id) return
@@ -65,7 +61,26 @@ export default function AppointmentsPage() {
 
   useEffect(() => { loadBookings() }, [loadBookings])
 
-  const today = todayKey()
+  // ── Realtime: new/updated/cancelled bookings appear without a manual refresh ─
+  useEffect(() => {
+    if (!user?.id) return
+    const supabase = createClient()
+    const channel = supabase
+      .channel(`bookings-${user.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'bookings', filter: `user_id=eq.${user.id}` },
+        () => {
+          loadBookings()
+          setJustUpdated(true)
+          setTimeout(() => setJustUpdated(false), 2000)
+        }
+      )
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [user?.id, loadBookings])
+
+  const today = useMemo(() => toDateKey(new Date()), [])
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -129,13 +144,29 @@ export default function AppointmentsPage() {
 
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="mb-7 flex items-center justify-between flex-wrap gap-3">
           <div>
-            <h1 className="text-3xl font-extrabold text-white mb-1">Vos rendez-vous</h1>
-            <p className="text-gray-500 text-sm">Suivez et gérez les réservations de vos clients.</p>
+            <h1 className="text-3xl font-extrabold text-white mb-1 flex items-center gap-2.5">
+              Vos rendez-vous
+              <AnimatePresence>
+                {justUpdated && (
+                  <motion.span
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    className="text-[11px] font-semibold px-2 py-1 rounded-full"
+                    style={{ background: 'rgba(16,185,129,0.15)', color: '#6EE7B7' }}
+                  >
+                    ● Mis à jour
+                  </motion.span>
+                )}
+              </AnimatePresence>
+            </h1>
+            <p className="text-gray-500 text-sm">Suivez et gérez les réservations de vos clients — mis à jour en direct.</p>
           </div>
           <div className="flex gap-1.5 p-1 rounded-xl" style={{ background: '#18181B', border: '1px solid #27272A' }}>
             {(['list', 'calendar'] as ViewMode[]).map((v) => (
-              <button key={v} onClick={() => setView(v)} className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all" style={{ background: view === v ? '#10B981' : 'transparent', color: view === v ? '#fff' : '#71717A' }}>
-                {v === 'list' ? '📋 Liste' : '📅 Calendrier'}
+              <button key={v} onClick={() => setView(v)} className="relative px-3 py-1.5 rounded-lg text-xs font-semibold" style={{ color: view === v ? '#fff' : '#71717A' }}>
+                {view === v && <motion.div layoutId="view-pill" className="absolute inset-0 rounded-lg" style={{ background: '#10B981' }} transition={{ type: 'spring', stiffness: 400, damping: 30 }} />}
+                <span className="relative">{v === 'list' ? '📋 Liste' : '📅 Calendrier'}</span>
               </button>
             ))}
           </div>
@@ -146,14 +177,11 @@ export default function AppointmentsPage() {
             <button
               key={f.key}
               onClick={() => setFilter(f.key)}
-              className="px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all"
-              style={{
-                background: filter === f.key ? '#10B981' : '#18181B',
-                color: filter === f.key ? '#fff' : '#A1A1AA',
-                border: filter === f.key ? 'none' : '1px solid #27272A',
-              }}
+              className="relative px-3.5 py-1.5 rounded-full text-xs font-semibold"
+              style={{ color: filter === f.key ? '#fff' : '#A1A1AA', border: filter === f.key ? 'none' : '1px solid #27272A' }}
             >
-              {f.label} <span style={{ opacity: 0.7 }}>({counts[f.key]})</span>
+              {filter === f.key && <motion.div layoutId="filter-pill" className="absolute inset-0 rounded-full" style={{ background: '#10B981' }} transition={{ type: 'spring', stiffness: 400, damping: 30 }} />}
+              <span className="relative">{f.label} <span style={{ opacity: 0.7 }}>({counts[f.key]})</span></span>
             </button>
           ))}
           <input
@@ -166,14 +194,16 @@ export default function AppointmentsPage() {
         </motion.div>
 
         {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="w-8 h-8 rounded-full border-2 animate-spin" style={{ borderColor: '#10B981', borderTopColor: 'transparent' }} />
+          <div className="flex flex-col gap-2">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="h-16 rounded-xl animate-pulse" style={{ background: '#18181B', border: '1px solid #27272A' }} />
+            ))}
           </div>
         ) : filtered.length === 0 ? (
-          <div className="rounded-2xl p-10 text-center" style={{ background: '#18181B', border: '1px solid #27272A' }}>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="rounded-2xl p-10 text-center" style={{ background: '#18181B', border: '1px solid #27272A' }}>
             <p className="text-3xl mb-3">📭</p>
             <p className="text-gray-500 text-sm">Aucun rendez-vous dans cette catégorie.</p>
-          </div>
+          </motion.div>
         ) : view === 'list' ? (
           <div className="flex flex-col gap-5">
             {grouped.map(([date, items]) => (
@@ -186,11 +216,12 @@ export default function AppointmentsPage() {
                       return (
                         <motion.div
                           key={b.id}
+                          layout
                           initial={{ opacity: 0, y: 8 }}
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0 }}
                           className="rounded-xl p-4 flex items-center gap-4 flex-wrap"
-                          style={{ background: '#18181B', border: '1px solid #27272A' }}
+                          style={{ background: '#18181B', border: '1px solid #27272A', borderLeft: `3px solid ${badge.border}` }}
                         >
                           <div className="text-sm font-bold text-white w-14 shrink-0">{formatTimeFR(b.booking_time)}</div>
                           <div className="flex-1 min-w-[160px]">
@@ -267,27 +298,34 @@ function CalendarView({ bookings }: { bookings: Booking[] }) {
   }, [month])
 
   return (
-    <div className="rounded-2xl p-6" style={{ background: '#18181B', border: '1px solid #27272A' }}>
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="rounded-2xl p-6" style={{ background: '#18181B', border: '1px solid #27272A' }}>
       <div className="flex items-center justify-between mb-5">
-        <button onClick={() => setMonthOffset((o) => o - 1)} className="text-gray-500 px-2 py-1">←</button>
+        <motion.button whileTap={{ scale: 0.9 }} onClick={() => setMonthOffset((o) => o - 1)} className="w-7 h-7 rounded-lg text-gray-500" style={{ border: '1px solid #27272A' }}>←</motion.button>
         <span className="text-sm font-bold text-white capitalize">{MONTH_NAMES[month.getMonth()]} {month.getFullYear()}</span>
-        <button onClick={() => setMonthOffset((o) => o + 1)} className="text-gray-500 px-2 py-1">→</button>
+        <motion.button whileTap={{ scale: 0.9 }} onClick={() => setMonthOffset((o) => o + 1)} className="w-7 h-7 rounded-lg text-gray-500" style={{ border: '1px solid #27272A' }}>→</motion.button>
       </div>
       <div className="grid grid-cols-7 gap-1.5 mb-2">
         {WEEK_SHORT.map((d) => <div key={d} className="text-center text-[10px] font-semibold text-gray-600">{d}</div>)}
       </div>
-      <div className="grid grid-cols-7 gap-1.5">
-        {cells.map((date, i) => {
-          if (!date) return <div key={i} />
-          const items = byDate.get(date) ?? []
-          return (
-            <div key={i} className="aspect-square rounded-lg p-1 flex flex-col items-center justify-start" style={{ background: items.length > 0 ? 'rgba(16,185,129,0.08)' : 'transparent', border: items.length > 0 ? '1px solid rgba(16,185,129,0.2)' : '1px solid transparent' }}>
-              <span className="text-[10px] font-semibold" style={{ color: items.length > 0 ? '#6EE7B7' : '#52525B' }}>{Number(date.slice(-2))}</span>
-              {items.length > 0 && <span className="text-[9px] font-bold mt-0.5" style={{ color: '#34D399' }}>{items.length}</span>}
-            </div>
-          )
-        })}
-      </div>
-    </div>
+      <AnimatePresence mode="wait">
+        <motion.div key={monthOffset} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }} className="grid grid-cols-7 gap-1.5">
+          {cells.map((date, i) => {
+            if (!date) return <div key={i} />
+            const items = byDate.get(date) ?? []
+            return (
+              <motion.div
+                key={i}
+                whileHover={items.length > 0 ? { scale: 1.05 } : undefined}
+                className="aspect-square rounded-lg p-1 flex flex-col items-center justify-start"
+                style={{ background: items.length > 0 ? 'rgba(16,185,129,0.08)' : 'transparent', border: items.length > 0 ? '1px solid rgba(16,185,129,0.2)' : '1px solid transparent' }}
+              >
+                <span className="text-[10px] font-semibold" style={{ color: items.length > 0 ? '#6EE7B7' : '#52525B' }}>{Number(date.slice(-2))}</span>
+                {items.length > 0 && <span className="text-[9px] font-bold mt-0.5" style={{ color: '#34D399' }}>{items.length}</span>}
+              </motion.div>
+            )
+          })}
+        </motion.div>
+      </AnimatePresence>
+    </motion.div>
   )
 }
