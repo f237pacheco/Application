@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
 import { createClient } from '@/lib/supabase/client'
-import { slugify, SLUG_REGEX } from '@/lib/booking'
+import { slugify, SLUG_REGEX, getParisNow } from '@/lib/booking'
 import { compressImage, extensionForMimeType } from '@/lib/image'
 
 const MAX_LOGO_SIZE = 50 * 1024 * 1024 // 50 MB — image is compressed to ~800x800 client-side before upload anyway
@@ -86,7 +86,15 @@ function InfoTooltip({ text }: { text: string }) {
 
 function SectionCard({ title, subtitle, tooltip, children }: { title: string; subtitle?: string; tooltip?: string; children: React.ReactNode }) {
   return (
-    <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} whileHover={{ borderColor: '#3F3F46' }} className="rounded-2xl p-6 sm:p-7 mb-6" style={{ background: '#18181B', border: '1px solid #27272A' }}>
+    <motion.div
+      initial={{ opacity: 0, y: 24 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: '-80px' }}
+      transition={{ duration: 0.45, ease: 'easeOut' }}
+      whileHover={{ borderColor: '#3F3F46' }}
+      className="rounded-2xl p-6 sm:p-7 mb-6"
+      style={{ background: '#18181B', border: '1px solid #27272A' }}
+    >
       <div className="flex items-center gap-2 mb-1">
         <h2 className="text-lg font-bold text-white">{title}</h2>
         {tooltip && <InfoTooltip text={tooltip} />}
@@ -237,6 +245,7 @@ export default function BookingSettingsPage() {
   const [saveError, setSaveError] = useState('')
   const [copied, setCopied] = useState(false)
   const [showMessageModal, setShowMessageModal] = useState(false)
+  const [showRemoveLogoConfirm, setShowRemoveLogoConfirm] = useState(false)
 
   const [week, setWeek] = useState<Record<number, DayState>>(defaultWeek())
   const [dayErrors, setDayErrors] = useState<Record<number, boolean>>({})
@@ -504,6 +513,7 @@ export default function BookingSettingsPage() {
   const handleRemoveLogo = useCallback(async () => {
     if (!user?.id) return
     setLogoError('')
+    setShowRemoveLogoConfirm(false)
     const supabase = createClient()
     const { error } = await supabase.from('booking_settings').update({ logo_url: null }).eq('user_id', user.id)
     if (error) {
@@ -578,7 +588,7 @@ export default function BookingSettingsPage() {
 
   // ── Blocked dates calendar (current + next month) ──────────────────────────
   const calendarMonth = useMemo(() => {
-    const base = new Date()
+    const base = getParisNow()
     base.setDate(1)
     base.setMonth(base.getMonth() + calendarMonthOffset)
     return base
@@ -634,7 +644,8 @@ export default function BookingSettingsPage() {
     })
   }
 
-  const today = useMemo(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d }, [])
+  // Europe/Paris wall-clock date, regardless of the pro's device timezone.
+  const today = useMemo(() => { const d = getParisNow(); d.setHours(0, 0, 0, 0); return d }, [])
 
   return (
     <div className="relative min-h-screen" style={{ background: '#09090B' }}>
@@ -715,6 +726,18 @@ export default function BookingSettingsPage() {
 
         <ClientMessageModal open={showMessageModal} onClose={() => setShowMessageModal(false)} businessName={businessName} url={publicUrl} />
 
+        <Modal open={showRemoveLogoConfirm} onClose={() => setShowRemoveLogoConfirm(false)}>
+          <div className="text-center">
+            <div className="w-12 h-12 mx-auto mb-4 rounded-full flex items-center justify-center text-xl" style={{ background: 'rgba(239,68,68,0.1)' }}>🗑️</div>
+            <p className="text-sm font-bold text-white mb-1.5">Supprimer le logo ?</p>
+            <p className="text-xs text-gray-500 mb-5">Il disparaîtra de votre page de réservation publique. Vous pourrez en ajouter un nouveau à tout moment.</p>
+            <div className="flex gap-2">
+              <button onClick={() => setShowRemoveLogoConfirm(false)} className="flex-1 py-2.5 rounded-xl text-sm font-semibold" style={{ background: '#27272A', color: '#A1A1AA' }}>Annuler</button>
+              <motion.button whileTap={{ scale: 0.97 }} onClick={handleRemoveLogo} className="flex-1 py-2.5 rounded-xl text-sm font-bold" style={{ background: '#EF4444', color: '#fff' }}>Supprimer</motion.button>
+            </div>
+          </div>
+        </Modal>
+
         {/* ── Business info ────────────────────────────────────────────────── */}
         <SectionCard title="Informations" subtitle="Le nom et la description visibles par vos clients sur la page de réservation." tooltip="Ces informations apparaissent en haut de votre page publique et dans les emails envoyés à vos clients. Le logo remplace le rond avec vos initiales.">
           <div className="flex flex-col gap-4">
@@ -784,7 +807,7 @@ export default function BookingSettingsPage() {
                         />
                       </label>
                       {logoUrl && (
-                        <button onClick={handleRemoveLogo} className="px-3.5 py-2 rounded-xl text-xs font-semibold" style={{ background: 'rgba(239,68,68,0.08)', color: '#FCA5A5', border: '1px solid rgba(239,68,68,0.2)' }}>
+                        <button onClick={() => setShowRemoveLogoConfirm(true)} className="px-3.5 py-2 rounded-xl text-xs font-semibold" style={{ background: 'rgba(239,68,68,0.08)', color: '#FCA5A5', border: '1px solid rgba(239,68,68,0.2)' }}>
                           Supprimer
                         </button>
                       )}
@@ -950,6 +973,11 @@ export default function BookingSettingsPage() {
 
         {/* ── Weekly availability ──────────────────────────────────────────── */}
         <SectionCard title="Disponibilités hebdomadaires" subtitle="Activez les jours ouverts et définissez vos plages horaires (matin / après-midi)." tooltip="Ce sont vos horaires récurrents, toutes les semaines. Pour bloquer une date ponctuelle (congé, jour férié) sans toucher à ces réglages, utilisez la section « Jours bloqués » plus bas.">
+          <div className="flex items-center justify-between mb-3.5">
+            <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full" style={{ background: 'rgba(16,185,129,0.1)', color: '#6EE7B7' }}>
+              {Object.values(week).filter((d) => d.dayActive).length} jour{Object.values(week).filter((d) => d.dayActive).length > 1 ? 's' : ''} actif{Object.values(week).filter((d) => d.dayActive).length > 1 ? 's' : ''} sur 7
+            </span>
+          </div>
           <div className="flex flex-col gap-2.5">
             {WEEK_ORDER.map((dayKey, idx) => {
               const day = week[dayKey]
@@ -957,10 +985,11 @@ export default function BookingSettingsPage() {
                 <motion.div
                   key={dayKey}
                   initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0, borderColor: day.dayActive ? 'rgba(16,185,129,0.25)' : '#27272A' }}
+                  animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3, delay: idx * 0.03 }}
+                  whileHover={{ borderColor: day.dayActive ? 'rgba(16,185,129,0.4)' : '#3F3F46' }}
                   className="rounded-xl p-3.5"
-                  style={{ background: '#09090B', border: '1px solid #27272A' }}
+                  style={{ background: '#09090B', border: '1px solid #27272A', borderLeft: `3px solid ${day.dayActive ? '#10B981' : '#27272A'}`, transition: 'border-color 0.2s' }}
                 >
                   <div className="flex items-center gap-3 mb-2.5">
                     <Toggle on={day.dayActive} onToggle={() => updateDay(dayKey, { dayActive: !day.dayActive })} />
@@ -1032,6 +1061,11 @@ export default function BookingSettingsPage() {
             <motion.button whileTap={{ scale: 0.9 }} onClick={() => setCalendarMonthOffset((o) => Math.max(0, o - 1))} disabled={calendarMonthOffset === 0} className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-500 disabled:opacity-30" style={{ border: '1px solid #27272A' }}>←</motion.button>
             <span className="text-sm font-bold text-white capitalize">{MONTH_NAMES[calendarMonth.getMonth()]} {calendarMonth.getFullYear()}</span>
             <motion.button whileTap={{ scale: 0.9 }} onClick={() => setCalendarMonthOffset((o) => Math.min(2, o + 1))} disabled={calendarMonthOffset === 2} className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-500 disabled:opacity-30" style={{ border: '1px solid #27272A' }}>→</motion.button>
+          </div>
+          <div className="flex items-center gap-3 mb-3.5">
+            <span className="flex items-center gap-1.5 text-[10px] text-gray-500"><span className="w-2 h-2 rounded-full" style={{ background: 'rgba(16,185,129,0.4)' }} />Disponible</span>
+            <span className="flex items-center gap-1.5 text-[10px] text-gray-500"><span className="w-2 h-2 rounded-full" style={{ background: 'rgba(239,68,68,0.6)' }} />Bloqué</span>
+            <span className="flex items-center gap-1.5 text-[10px] text-gray-500"><span className="w-2 h-2 rounded-full" style={{ background: '#3F3F46' }} />Passé</span>
           </div>
           <div className="grid grid-cols-7 gap-1.5 mb-2">
             {WEEK_ORDER.map((d) => <div key={d} className="text-center text-[10px] font-semibold text-gray-600">{WEEK_SHORT[d]}</div>)}

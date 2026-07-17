@@ -41,6 +41,11 @@ export function formatHourFR(timeStr: string): string {
   return `${h}h${m}`;
 }
 
+// "2026-07-10", "14:00" -> "jeudi 10 juillet 2026 à 14h00"
+export function formatDateTimeFR(dateStr: string, timeStr: string): string {
+  return `${formatDateFR(dateStr)} à ${formatHourFR(timeStr)}`;
+}
+
 export const SLUG_REGEX = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 
 const DIACRITICS_REGEX = new RegExp('[̀-ͯ]', 'g');

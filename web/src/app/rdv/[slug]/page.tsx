@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { formatDateFR, formatHourFR } from '@/lib/booking'
+import { formatDateFR, formatHourFR, getParisNow } from '@/lib/booking'
 import { downloadICS } from '@/lib/ics'
 
 const MONTH_NAMES = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre']
@@ -265,7 +265,7 @@ export default function PublicBookingPage() {
 
   // ── Load calendar availability for the displayed month ─────────────────
   const calendarMonth = useMemo(() => {
-    const base = new Date()
+    const base = getParisNow()
     base.setDate(1)
     base.setMonth(base.getMonth() + monthOffset)
     return base
@@ -303,7 +303,8 @@ export default function PublicBookingPage() {
     return cells
   }, [calendarMonth])
 
-  const today = useMemo(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d }, [])
+  // Europe/Paris wall-clock date, regardless of the client's device timezone.
+  const today = useMemo(() => { const d = getParisNow(); d.setHours(0, 0, 0, 0); return d }, [])
 
   const goMonth = (dir: 1 | -1) => {
     setMonthDirection(dir)
