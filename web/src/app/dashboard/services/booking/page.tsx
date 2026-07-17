@@ -8,7 +8,7 @@ import { createClient } from '@/lib/supabase/client'
 import { slugify, SLUG_REGEX } from '@/lib/booking'
 import { compressImage, extensionForMimeType } from '@/lib/image'
 
-const MAX_LOGO_SIZE = 10 * 1024 * 1024 // 10 MB
+const MAX_LOGO_SIZE = 50 * 1024 * 1024 // 50 MB — image is compressed to ~800x800 client-side before upload anyway
 const ACCEPTED_LOGO_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -53,13 +53,140 @@ function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
   )
 }
 
-function SectionCard({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
+function InfoTooltip({ text }: { text: string }) {
+  const [open, setOpen] = useState(false)
   return (
-    <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="rounded-2xl p-6 sm:p-7 mb-6" style={{ background: '#18181B', border: '1px solid #27272A' }}>
-      <h2 className="text-lg font-bold text-white mb-1">{title}</h2>
+    <span className="relative inline-flex" onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)}>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0"
+        style={{ background: '#27272A', color: '#71717A' }}
+        aria-label="Aide"
+      >
+        i
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: 4, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 4, scale: 0.96 }}
+            transition={{ duration: 0.15 }}
+            className="absolute z-20 top-6 left-0 w-64 rounded-xl p-3 text-xs leading-relaxed"
+            style={{ background: '#27272A', color: '#D4D4D8', boxShadow: '0 12px 32px rgba(0,0,0,0.4)', border: '1px solid #3F3F46' }}
+          >
+            {text}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </span>
+  )
+}
+
+function SectionCard({ title, subtitle, tooltip, children }: { title: string; subtitle?: string; tooltip?: string; children: React.ReactNode }) {
+  return (
+    <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} whileHover={{ borderColor: '#3F3F46' }} className="rounded-2xl p-6 sm:p-7 mb-6" style={{ background: '#18181B', border: '1px solid #27272A' }}>
+      <div className="flex items-center gap-2 mb-1">
+        <h2 className="text-lg font-bold text-white">{title}</h2>
+        {tooltip && <InfoTooltip text={tooltip} />}
+      </div>
       {subtitle && <p className="text-gray-500 text-sm mb-5">{subtitle}</p>}
       {children}
     </motion.div>
+  )
+}
+
+function Modal({ open, onClose, children }: { open: boolean; onClose: () => void; children: React.ReactNode }) {
+  return (
+    <AnimatePresence>
+      {open && (
+        <motion.div className="fixed inset-0 z-50 flex items-center justify-center px-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
+          <motion.div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(2px)' }} onClick={onClose} />
+          <motion.div
+            className="relative w-full max-w-lg max-h-[85vh] overflow-y-auto rounded-2xl p-6"
+            style={{ background: '#18181B', border: '1px solid #27272A', boxShadow: '0 24px 64px rgba(0,0,0,0.5)' }}
+            initial={{ opacity: 0, scale: 0.94, y: 16 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: 8 }}
+            transition={{ type: 'spring', stiffness: 320, damping: 28 }}
+          >
+            {children}
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  )
+}
+
+type MessageTemplate = { icon: string; label: string; text: string }
+
+function buildMessageTemplates(businessName: string, url: string): MessageTemplate[] {
+  const name = businessName || 'Votre activité'
+  return [
+    {
+      icon: '💬',
+      label: 'SMS court',
+      text: `Bonjour ! Vous pouvez désormais prendre rendez-vous en ligne en quelques secondes : ${url}`,
+    },
+    {
+      icon: '✉️',
+      label: 'Email formel',
+      text: `Bonjour,\n\nVous pouvez désormais réserver votre rendez-vous directement en ligne, à l'heure qui vous convient le mieux :\n${url}\n\nLe processus prend moins d'une minute. N'hésitez pas à nous contacter si vous avez la moindre question.\n\nAu plaisir de vous accueillir,\n${name}`,
+    },
+    {
+      icon: '📱',
+      label: 'Réseaux sociaux',
+      text: `📅 Nouveau : réservez votre rendez-vous chez ${name} en ligne, en 30 secondes, où que vous soyez !\n${url}`,
+    },
+  ]
+}
+
+function ClientMessageModal({ open, onClose, businessName, url }: { open: boolean; onClose: () => void; businessName: string; url: string }) {
+  const [copiedIdx, setCopiedIdx] = useState<number | null>(null)
+  const templates = useMemo(() => buildMessageTemplates(businessName, url), [businessName, url])
+
+  const handleCopy = (idx: number, text: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopiedIdx(idx)
+      setTimeout(() => setCopiedIdx((c) => (c === idx ? null : c)), 2000)
+    })
+  }
+
+  return (
+    <Modal open={open} onClose={onClose}>
+      <div className="flex items-center justify-between mb-1">
+        <p className="text-lg font-bold text-white">Message à envoyer à vos clients</p>
+        <button onClick={onClose} className="text-gray-500 hover:text-white text-xl leading-none px-1">×</button>
+      </div>
+      <p className="text-xs text-gray-500 mb-5">Quelques exemples prêts à copier pour annoncer votre nouvelle prise de rendez-vous en ligne.</p>
+
+      <div className="flex flex-col gap-3">
+        {templates.map((t, idx) => (
+          <motion.div
+            key={t.label}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: idx * 0.06 }}
+            className="rounded-xl p-4"
+            style={{ background: '#09090B', border: '1px solid #27272A' }}
+          >
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-bold text-white flex items-center gap-1.5">{t.icon} {t.label}</span>
+              <motion.button
+                whileTap={{ scale: 0.94 }}
+                onClick={() => handleCopy(idx, t.text)}
+                className="text-[11px] font-bold px-2.5 py-1 rounded-lg"
+                style={{ background: copiedIdx === idx ? '#10B981' : '#27272A', color: copiedIdx === idx ? '#fff' : '#A1A1AA' }}
+              >
+                {copiedIdx === idx ? '✓ Copié !' : 'Copier ce message'}
+              </motion.button>
+            </div>
+            <p className="text-xs text-gray-400 leading-relaxed whitespace-pre-line">{t.text}</p>
+          </motion.div>
+        ))}
+      </div>
+    </Modal>
   )
 }
 
@@ -109,6 +236,7 @@ export default function BookingSettingsPage() {
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [saveError, setSaveError] = useState('')
   const [copied, setCopied] = useState(false)
+  const [showMessageModal, setShowMessageModal] = useState(false)
 
   const [week, setWeek] = useState<Record<number, DayState>>(defaultWeek())
   const [dayErrors, setDayErrors] = useState<Record<number, boolean>>({})
@@ -276,12 +404,15 @@ export default function BookingSettingsPage() {
   // ── Logo upload: pick → preview → confirm → compress client-side → upload ──
   const handleLogoSelect = useCallback((file: File) => {
     setLogoError('')
+    console.log(`[logo-upload] ÉTAPE 1/4 — sélection fichier : nom="${file.name}" type="${file.type}" taille=${(file.size / 1024).toFixed(0)}Ko`)
     if (!ACCEPTED_LOGO_TYPES.includes(file.type)) {
-      setLogoError('Formats acceptés : JPG, PNG, WebP.')
+      console.warn(`[logo-upload] rejeté — type MIME "${file.type}" non accepté (accepte: ${ACCEPTED_LOGO_TYPES.join(', ')})`)
+      setLogoError(`Formats acceptés : JPG, PNG, WebP (type reçu : "${file.type}").`)
       return
     }
     if (file.size > MAX_LOGO_SIZE) {
-      setLogoError('Image trop lourde (10 Mo maximum).')
+      console.warn(`[logo-upload] rejeté — fichier trop lourd (${(file.size / 1024 / 1024).toFixed(1)} Mo > 50 Mo max)`)
+      setLogoError('Image trop lourde (50 Mo maximum).')
       return
     }
     setLogoPendingFile(file)
@@ -303,35 +434,50 @@ export default function BookingSettingsPage() {
     setLogoProgress(15)
     try {
       const compressed = await compressImage(logoPendingFile, 800, 0.85)
+      console.log(`[logo-upload] ÉTAPE 2/4 — compression OK : ${(logoPendingFile.size / 1024).toFixed(0)}Ko → ${(compressed.size / 1024).toFixed(0)}Ko, type="${compressed.type}"`)
       setLogoProgress(50)
+
       const supabase = createClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      console.log(`[logo-upload] utilisateur authentifié : user.id="${user.id}" session présente=${!!session}`)
+
       const ext = extensionForMimeType(compressed.type || logoPendingFile.type)
       const path = `${user.id}/logo.${ext}`
-      const { error: uploadError } = await supabase.storage.from('booking-logos').upload(path, compressed, { upsert: true, contentType: compressed.type })
+      console.log(`[logo-upload] ÉTAPE 3/4 — envoi vers Supabase Storage bucket "booking-logos", chemin="${path}"`)
+
+      const uploadResult = await supabase.storage.from('booking-logos').upload(path, compressed, { upsert: true, contentType: compressed.type })
+      console.log(`[logo-upload] RÉPONSE SUPABASE STORAGE COMPLÈTE:`, JSON.stringify(uploadResult))
       setLogoProgress(80)
-      if (uploadError) {
-        console.error('[booking-settings] logo upload failed', uploadError)
-        setLogoError("Échec de l'envoi de l'image — réessayez.")
+
+      if (uploadResult.error) {
+        const err = uploadResult.error as { message?: string; statusCode?: string; error?: string; name?: string }
+        console.error(`[logo-upload] ÉCHEC UPLOAD — objet erreur complet:`, uploadResult.error)
+        setLogoError(`Échec de l'envoi (Supabase Storage) : ${err.message || err.error || JSON.stringify(uploadResult.error)}`)
         return
       }
+
       const { data: publicUrlData } = supabase.storage.from('booking-logos').getPublicUrl(path)
       const url = `${publicUrlData.publicUrl}?t=${Date.now()}`
+      console.log(`[logo-upload] ÉTAPE 4/4 — enregistrement de logo_url="${url}" dans booking_settings`)
+
       const { error: saveError } = await supabase.from('booking_settings').upsert(
         { user_id: user.id, logo_url: url },
         { onConflict: 'user_id' }
       )
       if (saveError) {
-        console.error('[booking-settings] logo_url save failed', saveError)
-        setLogoError("Image envoyée mais impossible de l'enregistrer — réessayez.")
+        console.error(`[logo-upload] ÉCHEC ENREGISTREMENT booking_settings:`, JSON.stringify(saveError))
+        setLogoError(`Image envoyée mais échec de l'enregistrement : ${saveError.message}`)
         return
       }
+      console.log(`[logo-upload] TERMINÉ — logo enregistré avec succès`)
       setLogoProgress(100)
       setLogoUrl(url)
       setLogoPendingFile(null)
       setLogoPreview('')
     } catch (err) {
-      console.error('[booking-settings] logo compression/upload error', err)
-      setLogoError("Échec du traitement de l'image — réessayez avec un autre fichier.")
+      console.error('[logo-upload] EXCEPTION (compression ou réseau):', err)
+      const message = err instanceof Error ? err.message : String(err)
+      setLogoError(`Échec du traitement de l'image : ${message}`)
     } finally {
       setLogoUploading(false)
       setTimeout(() => setLogoProgress(0), 600)
@@ -535,8 +681,25 @@ export default function BookingSettingsPage() {
           </div>
         </motion.div>
 
+        {savedSlug && (
+          <motion.button
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.05 }}
+            whileHover={{ borderColor: '#10B981', color: '#6EE7B7' }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => setShowMessageModal(true)}
+            className="w-full sm:w-auto mb-6 px-4 py-2.5 rounded-xl text-xs font-bold inline-flex items-center gap-2"
+            style={{ background: '#18181B', color: '#A1A1AA', border: '1px solid #27272A' }}
+          >
+            💬 Message à envoyer à vos clients
+          </motion.button>
+        )}
+
+        <ClientMessageModal open={showMessageModal} onClose={() => setShowMessageModal(false)} businessName={businessName} url={publicUrl} />
+
         {/* ── Business info ────────────────────────────────────────────────── */}
-        <SectionCard title="Informations" subtitle="Le nom et la description visibles par vos clients sur la page de réservation.">
+        <SectionCard title="Informations" subtitle="Le nom et la description visibles par vos clients sur la page de réservation." tooltip="Ces informations apparaissent en haut de votre page publique et dans les emails envoyés à vos clients. Le logo remplace le rond avec vos initiales.">
           <div className="flex flex-col gap-4">
             <div>
               <label className="block text-xs font-semibold text-gray-400 mb-2">Logo</label>
@@ -695,7 +858,7 @@ export default function BookingSettingsPage() {
         </SectionCard>
 
         {/* ── Practical details ────────────────────────────────────────────── */}
-        <SectionCard title="Détails pratiques" subtitle="Ces informations sont affichées à vos clients sur la page de réservation publique.">
+        <SectionCard title="Détails pratiques" subtitle="Ces informations sont affichées à vos clients sur la page de réservation publique." tooltip="Facultatif mais recommandé : plus vos clients savent à quoi s'attendre (prestations, paiement, consignes), moins vous recevrez de questions avant le RDV.">
           <div className="flex flex-col gap-4">
             <div>
               <label className="block text-xs font-semibold text-gray-400 mb-2">Prestations proposées</label>
@@ -733,7 +896,7 @@ export default function BookingSettingsPage() {
         </SectionCard>
 
         {/* ── Slot config ──────────────────────────────────────────────────── */}
-        <SectionCard title="Réglages des créneaux" subtitle="Durée de chaque rendez-vous, battement entre deux RDV, et fenêtre de réservation.">
+        <SectionCard title="Réglages des créneaux" subtitle="Durée de chaque rendez-vous, battement entre deux RDV, et fenêtre de réservation." tooltip="Durée : le temps réservé pour chaque créneau proposé. Battement : la pause automatique ajoutée entre deux RDV consécutifs. Réservable jusqu'à : le nombre de jours à l'avance où vos clients peuvent réserver.">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
             <div>
               <label className="block text-xs font-semibold text-gray-400 mb-2">Durée d&apos;un créneau</label>
@@ -769,7 +932,7 @@ export default function BookingSettingsPage() {
         </SectionCard>
 
         {/* ── Weekly availability ──────────────────────────────────────────── */}
-        <SectionCard title="Disponibilités hebdomadaires" subtitle="Activez les jours ouverts et définissez vos plages horaires (matin / après-midi).">
+        <SectionCard title="Disponibilités hebdomadaires" subtitle="Activez les jours ouverts et définissez vos plages horaires (matin / après-midi)." tooltip="Ce sont vos horaires récurrents, toutes les semaines. Pour bloquer une date ponctuelle (congé, jour férié) sans toucher à ces réglages, utilisez la section « Jours bloqués » plus bas.">
           <div className="flex flex-col gap-2.5">
             {WEEK_ORDER.map((dayKey, idx) => {
               const day = week[dayKey]
@@ -847,7 +1010,7 @@ export default function BookingSettingsPage() {
         </motion.div>
 
         {/* ── Blocked dates ────────────────────────────────────────────────── */}
-        <SectionCard title="Jours bloqués" subtitle="Cliquez sur une date pour la bloquer (congés, indisponibilité ponctuelle).">
+        <SectionCard title="Jours bloqués" subtitle="Cliquez sur une date pour la bloquer (congés, indisponibilité ponctuelle)." tooltip="Un jour bloqué n'apparaît plus comme disponible sur votre page publique, même s'il correspond à un jour normalement ouvert dans vos disponibilités hebdomadaires.">
           <div className="flex items-center justify-between mb-4">
             <motion.button whileTap={{ scale: 0.9 }} onClick={() => setCalendarMonthOffset((o) => Math.max(0, o - 1))} disabled={calendarMonthOffset === 0} className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-500 disabled:opacity-30" style={{ border: '1px solid #27272A' }}>←</motion.button>
             <span className="text-sm font-bold text-white capitalize">{MONTH_NAMES[calendarMonth.getMonth()]} {calendarMonth.getFullYear()}</span>

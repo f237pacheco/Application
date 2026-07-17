@@ -143,9 +143,19 @@ function BusinessCard({ info }: { info: Info }) {
         </div>
 
         {(info.address || info.phone) && (
-          <div className="flex flex-col gap-1.5 mt-4 pt-4 text-sm" style={{ borderTop: `1px solid ${BORDER}`, color: MUTED }}>
-            {info.address && <span className="flex items-start gap-2">📍 <span>{info.address}</span></span>}
-            {info.phone && <span className="flex items-center gap-2">📞 {info.phone}</span>}
+          <div className="flex flex-col gap-2.5 mt-4 pt-4 text-sm" style={{ borderTop: `1px solid ${BORDER}` }}>
+            {info.address && (
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-wide" style={{ color: '#94A3B8' }}>Adresse</p>
+                <p style={{ color: INK }}>{info.address}</p>
+              </div>
+            )}
+            {info.phone && (
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-wide" style={{ color: '#94A3B8' }}>Téléphone</p>
+                <p style={{ color: INK }}>{info.phone}</p>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -225,6 +235,7 @@ export default function PublicBookingPage() {
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState('')
   const [confirmedAt, setConfirmedAt] = useState<{ date: string; time: string; bookingUid: string } | null>(null)
+  const [toast, setToast] = useState('')
 
   const slotsRequestId = useRef(0)
 
@@ -375,8 +386,14 @@ export default function PublicBookingPage() {
     }
   }
 
+  const showToast = (message: string) => {
+    setToast(message)
+    setTimeout(() => setToast(''), 2500)
+  }
+
   const handleAddToCalendar = () => {
     if (!confirmedAt || !info) return
+    showToast('Fichier ajouté à vos téléchargements')
     downloadICS({
       uid: `${confirmedAt.bookingUid}@velona.app`,
       businessName: info.businessName,
@@ -430,7 +447,7 @@ export default function PublicBookingPage() {
 
             {/* ── Calendar + slots ─────────────────────────────────────────── */}
             {step === 'calendar' && (
-              <motion.div key="calendar" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }} className="rounded-2xl p-6" style={{ background: CARD, border: `1px solid ${BORDER}` }}>
+              <motion.div key="calendar" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.3, delay: 0.1 }} className="rounded-2xl p-6" style={{ background: CARD, border: `1px solid ${BORDER}` }}>
                 <p className="text-sm font-bold mb-4" style={{ color: INK }}>Choisissez une date</p>
 
                 <div className="flex items-center justify-between mb-5">
@@ -615,7 +632,7 @@ export default function PublicBookingPage() {
                     <span className="text-sm font-semibold capitalize" style={{ color: INK }}>{formatDateFR(confirmedAt.date)}</span>
                     <span className="text-base font-extrabold" style={{ color: ACCENT_DARK }}>{formatHourFR(confirmedAt.time)}</span>
                   </div>
-                  {info.phone && <p className="text-xs mt-2" style={{ color: MUTED }}>📞 {info.phone}</p>}
+                  {info.phone && <p className="text-xs mt-2" style={{ color: MUTED }}>{info.phone}</p>}
                 </div>
 
                 <motion.button whileTap={{ scale: 0.98 }} onClick={handleAddToCalendar} className="w-full py-3 rounded-xl text-sm font-bold mb-3" style={{ background: INK, color: '#fff' }}>
@@ -673,11 +690,34 @@ export default function PublicBookingPage() {
         {formError && <p className="text-xs mb-3 font-medium" style={{ color: '#DC2626' }}>{formError}</p>}
         <div className="flex gap-2">
           <button disabled={submitting} onClick={() => setShowRecapModal(false)} className="flex-1 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-40" style={{ background: '#F1F5F9', color: MUTED }}>Modifier</button>
-          <motion.button whileTap={{ scale: 0.97 }} disabled={submitting} onClick={handleConfirmBooking} className="flex-1 py-2.5 rounded-xl text-sm font-bold disabled:opacity-60" style={{ background: ACCENT, color: '#fff' }}>
+          <motion.button whileTap={{ scale: 0.97 }} disabled={submitting} onClick={handleConfirmBooking} className="flex-1 py-2.5 rounded-xl text-sm font-bold disabled:opacity-60 inline-flex items-center justify-center gap-2" style={{ background: ACCENT, color: '#fff' }}>
+            {submitting && (
+              <motion.span
+                className="w-3.5 h-3.5 rounded-full border-2 border-white/40 border-t-white inline-block"
+                animate={{ rotate: 360 }}
+                transition={{ repeat: Infinity, duration: 0.7, ease: 'linear' }}
+              />
+            )}
             {submitting ? 'Confirmation…' : 'Confirmer'}
           </motion.button>
         </div>
       </Modal>
+
+      {/* ── Toast ─────────────────────────────────────────────────────────── */}
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            initial={{ opacity: 0, y: 20, x: '-50%' }}
+            animate={{ opacity: 1, y: 0, x: '-50%' }}
+            exit={{ opacity: 0, y: 10, x: '-50%' }}
+            transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+            className="fixed bottom-6 left-1/2 z-[60] px-4 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-2"
+            style={{ background: INK, color: '#fff', boxShadow: '0 12px 32px rgba(0,0,0,0.3)' }}
+          >
+            ✓ {toast}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
