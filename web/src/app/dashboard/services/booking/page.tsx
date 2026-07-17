@@ -460,16 +460,33 @@ export default function BookingSettingsPage() {
       const url = `${publicUrlData.publicUrl}?t=${Date.now()}`
       console.log(`[logo-upload] ÉTAPE 4/4 — enregistrement de logo_url="${url}" dans booking_settings`)
 
-      const { error: saveError } = await supabase.from('booking_settings').upsert(
-        { user_id: user.id, logo_url: url },
-        { onConflict: 'user_id' }
-      )
+      // A targeted UPDATE on the existing row — never an upsert/insert here.
+      // An upsert with only { user_id, logo_url } would omit slug/business_name
+      // from the payload; if it ever took the INSERT branch (row not matched,
+      // e.g. after a stale client state) it would violate booking_settings'
+      // NOT NULL constraint on slug. This can only ever touch logo_url on the
+      // row the user already owns (gated on savedSlug being set beforehand).
+      const updatePayload = { logo_url: url }
+      console.log(`[logo-upload] UPDATE envoyé à booking_settings (user_id="${user.id}"):`, JSON.stringify(updatePayload))
+
+      const { data: updatedRows, error: saveError } = await supabase
+        .from('booking_settings')
+        .update(updatePayload)
+        .eq('user_id', user.id)
+        .select('id, slug')
+
       if (saveError) {
         console.error(`[logo-upload] ÉCHEC ENREGISTREMENT booking_settings:`, JSON.stringify(saveError))
         setLogoError(`Image envoyée mais échec de l'enregistrement : ${saveError.message}`)
         return
       }
-      console.log(`[logo-upload] TERMINÉ — logo enregistré avec succès`)
+      console.log(`[logo-upload] réponse UPDATE booking_settings:`, JSON.stringify(updatedRows))
+      if (!updatedRows || updatedRows.length === 0) {
+        console.error('[logo-upload] UPDATE n\'a touché aucune ligne — aucune config booking_settings existante pour cet utilisateur')
+        setLogoError("Image envoyée mais aucune configuration existante à mettre à jour — enregistrez d'abord vos informations.")
+        return
+      }
+      console.log(`[logo-upload] TERMINÉ — logo enregistré avec succès, slug conservé="${updatedRows[0].slug}"`)
       setLogoProgress(100)
       setLogoUrl(url)
       setLogoPendingFile(null)
