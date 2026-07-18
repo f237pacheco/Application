@@ -166,7 +166,7 @@ export default function AppointmentsPage() {
       <div className="absolute top-0 left-0 right-0 h-px pointer-events-none z-10" style={{ background: 'linear-gradient(90deg, transparent 5%, #10B981 35%, #34D399 65%, transparent 95%)' }} />
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] pointer-events-none" style={{ background: 'radial-gradient(ellipse at top, rgba(16,185,129,0.08), transparent 70%)' }} />
 
-      <div className="relative max-w-4xl mx-auto px-4 py-10">
+      <div className="relative max-w-7xl mx-auto px-4 py-10">
 
         <motion.div initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.3 }} className="mb-6">
           <Link href="/dashboard/services/booking" className="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors duration-150">
@@ -204,6 +204,9 @@ export default function AppointmentsPage() {
             ))}
           </div>
         </motion.div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6 items-start">
+        <div className="min-w-0">
 
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="flex flex-wrap items-center gap-2 mb-6">
           {FILTERS.map((f) => (
@@ -301,6 +304,12 @@ export default function AppointmentsPage() {
         ) : (
           <CalendarView bookings={filtered} />
         )}
+
+        </div>
+
+        <StatsSidebar bookings={bookings} today={today} />
+
+        </div>
 
       </div>
     </div>
@@ -410,5 +419,85 @@ function CalendarView({ bookings }: { bookings: Booking[] }) {
         )}
       </AnimatePresence>
     </motion.div>
+  )
+}
+
+// ─── Sidebar: next appointment + quick stats ───────────────────────────────────
+
+function StatsSidebar({ bookings, today }: { bookings: Booking[]; today: string }) {
+  const active = useMemo(() => bookings.filter((b) => b.status !== 'cancelled'), [bookings])
+
+  const next = useMemo(() => {
+    return active
+      .filter((b) => sortKey(b) >= `${today}T00:00:00`)
+      .sort((a, b) => (sortKey(a) < sortKey(b) ? -1 : 1))[0] ?? null
+  }, [active, today])
+
+  const in7Days = useMemo(() => {
+    const d = getParisNow()
+    d.setDate(d.getDate() + 7)
+    return toDateKey(d)
+  }, [])
+
+  const stats = useMemo(() => ({
+    upcoming: active.filter((b) => b.booking_date >= today).length,
+    thisWeek: active.filter((b) => b.booking_date >= today && b.booking_date <= in7Days).length,
+    uniqueClients: new Set(bookings.map((b) => b.client_email.toLowerCase())).size,
+  }), [active, bookings, today, in7Days])
+
+  const nextAvatar = next ? avatarStyle(next.client_email || next.client_name) : null
+
+  return (
+    <div className="flex flex-col gap-5 lg:sticky lg:top-6">
+
+      {/* ── Next appointment ──────────────────────────────────────────────── */}
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="rounded-2xl p-5" style={{ background: next ? 'rgba(16,185,129,0.06)' : '#18181B', border: next ? '1px solid rgba(16,185,129,0.25)' : '1px solid #27272A' }}>
+        <p className="text-xs font-bold mb-3" style={{ color: '#6EE7B7' }}>Prochain rendez-vous</p>
+        {next && nextAvatar ? (
+          <div>
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-extrabold shrink-0" style={{ background: nextAvatar.bg, color: nextAvatar.color }}>
+                {next.client_name.charAt(0).toUpperCase()}
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-white truncate">{next.client_name}</p>
+                <p className="text-xs text-gray-500 truncate">{next.client_email}</p>
+              </div>
+            </div>
+            <div className="rounded-xl p-3 text-center" style={{ background: '#09090B', border: '1px solid #27272A' }}>
+              <p className="text-xs font-semibold text-white capitalize">{formatDateFR(next.booking_date)}</p>
+              <p className="text-lg font-extrabold mt-0.5" style={{ color: '#10B981' }}>{formatHourFR(next.booking_time)}</p>
+            </div>
+          </div>
+        ) : (
+          <p className="text-xs text-gray-500">Aucun rendez-vous à venir pour le moment.</p>
+        )}
+      </motion.div>
+
+      {/* ── Quick stats ──────────────────────────────────────────────────── */}
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.05 }} className="rounded-2xl p-5" style={{ background: '#18181B', border: '1px solid #27272A' }}>
+        <p className="text-xs font-bold text-white mb-3.5">Aperçu rapide</p>
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-gray-500">À venir</span>
+            <span className="text-sm font-bold text-white">{stats.upcoming}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-gray-500">Dans les 7 prochains jours</span>
+            <span className="text-sm font-bold text-white">{stats.thisWeek}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-gray-500">Clients uniques</span>
+            <span className="text-sm font-bold text-white">{stats.uniqueClients}</span>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* ── Tips ──────────────────────────────────────────────────────────── */}
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.1 }} className="rounded-2xl p-5" style={{ background: 'rgba(16,185,129,0.05)', border: '1px solid rgba(16,185,129,0.15)' }}>
+        <p className="text-xs font-bold mb-3 flex items-center gap-1.5" style={{ color: '#6EE7B7' }}>💡 Conseil</p>
+        <p className="text-xs text-gray-400 leading-relaxed">Utilisez la recherche pour retrouver rapidement un client, ou la vue calendrier pour visualiser votre charge sur le mois.</p>
+      </motion.div>
+    </div>
   )
 }

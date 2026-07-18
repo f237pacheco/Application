@@ -87,10 +87,9 @@ function InfoTooltip({ text }: { text: string }) {
 function SectionCard({ title, subtitle, tooltip, children }: { title: string; subtitle?: string; tooltip?: string; children: React.ReactNode }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 24 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: '-80px' }}
-      transition={{ duration: 0.45, ease: 'easeOut' }}
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: 'easeOut' }}
       whileHover={{ borderColor: '#3F3F46' }}
       className="rounded-2xl p-6 sm:p-7 mb-6"
       style={{ background: '#18181B', border: '1px solid #27272A' }}
@@ -127,25 +126,34 @@ function Modal({ open, onClose, children }: { open: boolean; onClose: () => void
   )
 }
 
-type MessageTemplate = { icon: string; label: string; text: string }
+type MessageTemplate = { icon: string; label: string; tag: string; accent: string; accentSoft: string; text: string }
 
 function buildMessageTemplates(businessName: string, url: string): MessageTemplate[] {
   const name = businessName || 'Votre activité'
   return [
     {
       icon: '💬',
-      label: 'SMS court',
-      text: `Bonjour ! Vous pouvez désormais prendre rendez-vous en ligne en quelques secondes : ${url}`,
+      label: 'SMS',
+      tag: 'Court et direct',
+      accent: '#3B82F6',
+      accentSoft: 'rgba(59,130,246,0.1)',
+      text: `${name} : réservez votre prochain RDV en ligne en 30 secondes, où que vous soyez → ${url}`,
     },
     {
       icon: '✉️',
-      label: 'Email formel',
-      text: `Bonjour,\n\nVous pouvez désormais réserver votre rendez-vous directement en ligne, à l'heure qui vous convient le mieux :\n${url}\n\nLe processus prend moins d'une minute. N'hésitez pas à nous contacter si vous avez la moindre question.\n\nAu plaisir de vous accueillir,\n${name}`,
+      label: 'Email',
+      tag: 'Formel et complet',
+      accent: '#A855F7',
+      accentSoft: 'rgba(168,85,247,0.1)',
+      text: `Bonjour,\n\nPour vous simplifier la prise de rendez-vous, vous pouvez désormais réserver directement en ligne, à l'heure qui vous convient le mieux — sans appel ni attente :\n\n${url}\n\nLa réservation prend moins d'une minute et vous recevrez une confirmation immédiate par email. N'hésitez pas à nous contacter si vous avez la moindre question.\n\nAu plaisir de vous accueillir prochainement,\n${name}`,
     },
     {
       icon: '📱',
       label: 'Réseaux sociaux',
-      text: `📅 Nouveau : réservez votre rendez-vous chez ${name} en ligne, en 30 secondes, où que vous soyez !\n${url}`,
+      tag: 'Accrocheur',
+      accent: '#EC4899',
+      accentSoft: 'rgba(236,72,153,0.1)',
+      text: `✨ Nouveauté chez ${name} !\n\nFini le temps d'attente au téléphone : réservez votre rendez-vous en ligne, 24h/24, en quelques clics 👇\n${url}`,
     },
   ]
 }
@@ -163,24 +171,31 @@ function ClientMessageModal({ open, onClose, businessName, url }: { open: boolea
 
   return (
     <Modal open={open} onClose={onClose}>
-      <div className="flex items-center justify-between mb-1">
-        <p className="text-lg font-bold text-white">Message à envoyer à vos clients</p>
-        <button onClick={onClose} className="text-gray-500 hover:text-white text-xl leading-none px-1">×</button>
+      <div className="flex items-center justify-between mb-1.5">
+        <div>
+          <p className="text-lg font-bold text-white">Messages prêts à envoyer</p>
+          <p className="text-xs text-gray-500 mt-0.5">Trois formats pour annoncer votre nouvelle prise de rendez-vous en ligne.</p>
+        </div>
+        <button onClick={onClose} className="text-gray-500 hover:text-white text-xl leading-none px-1 shrink-0">×</button>
       </div>
-      <p className="text-xs text-gray-500 mb-5">Quelques exemples prêts à copier pour annoncer votre nouvelle prise de rendez-vous en ligne.</p>
 
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-3.5 mt-4">
         {templates.map((t, idx) => (
           <motion.div
             key={t.label}
-            initial={{ opacity: 0, y: 10 }}
+            initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: idx * 0.06 }}
-            className="rounded-xl p-4"
+            transition={{ duration: 0.35, delay: idx * 0.08 }}
+            whileHover={{ borderColor: t.accent + '55' }}
+            className="rounded-2xl overflow-hidden"
             style={{ background: '#09090B', border: '1px solid #27272A' }}
           >
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-bold text-white flex items-center gap-1.5">{t.icon} {t.label}</span>
+            <div className="flex items-center justify-between px-4 py-3" style={{ background: t.accentSoft, borderBottom: `1px solid ${t.accent}33` }}>
+              <span className="text-xs font-bold flex items-center gap-2" style={{ color: t.accent }}>
+                <span className="w-6 h-6 rounded-full flex items-center justify-center text-[11px]" style={{ background: t.accent + '22' }}>{t.icon}</span>
+                {t.label}
+                <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(255,255,255,0.06)', color: '#A1A1AA' }}>{t.tag}</span>
+              </span>
               <motion.button
                 whileTap={{ scale: 0.94 }}
                 onClick={() => handleCopy(idx, t.text)}
@@ -190,10 +205,19 @@ function ClientMessageModal({ open, onClose, businessName, url }: { open: boolea
                 {copiedIdx === idx ? '✓ Copié !' : 'Copier ce message'}
               </motion.button>
             </div>
-            <p className="text-xs text-gray-400 leading-relaxed whitespace-pre-line">{t.text}</p>
+            <div className="px-4 py-3.5">
+              <p className="text-[13px] text-gray-300 leading-relaxed whitespace-pre-line">{t.text}</p>
+              {t.label === 'SMS' && (
+                <p className="text-[10px] mt-2.5 pt-2.5" style={{ color: t.text.length > 160 ? '#FCA5A5' : '#52525B', borderTop: '1px solid #27272A' }}>
+                  {t.text.length} caractères {t.text.length > 160 ? '· sera envoyé en plusieurs SMS' : '· tient dans un seul SMS'}
+                </p>
+              )}
+            </div>
           </motion.div>
         ))}
       </div>
+
+      <p className="text-[11px] text-gray-600 mt-4 text-center">💡 N&apos;hésitez pas à personnaliser ces messages avant de les envoyer.</p>
     </Modal>
   )
 }
@@ -651,7 +675,7 @@ export default function BookingSettingsPage() {
     <div className="relative min-h-screen" style={{ background: '#09090B' }}>
       <div className="absolute top-0 left-0 right-0 h-px pointer-events-none z-10" style={{ background: 'linear-gradient(90deg, transparent 5%, #10B981 35%, #34D399 65%, transparent 95%)' }} />
 
-      <div className="max-w-4xl mx-auto px-4 py-10">
+      <div className="max-w-7xl mx-auto px-4 py-10">
 
         <motion.div initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.3 }} className="mb-8 flex items-center justify-between">
           <Link href="/dashboard" className="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors duration-150">
@@ -737,6 +761,9 @@ export default function BookingSettingsPage() {
             </div>
           </div>
         </Modal>
+
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6 items-start">
+        <div className="min-w-0">
 
         {/* ── Business info ────────────────────────────────────────────────── */}
         <SectionCard title="Informations" subtitle="Le nom et la description visibles par vos clients sur la page de réservation." tooltip="Ces informations apparaissent en haut de votre page publique et dans les emails envoyés à vos clients. Le logo remplace le rond avec vos initiales.">
@@ -1111,7 +1138,106 @@ export default function BookingSettingsPage() {
           )}
         </SectionCard>
 
+        </div>
+
+        <ConfigSidebar
+          publicUrl={publicUrl}
+          savedSlug={savedSlug}
+          logoUrl={logoUrl}
+          description={description}
+          address={address}
+          phone={phone}
+          services={services}
+          instructions={instructions}
+          paymentMethods={paymentMethods}
+          activeDaysCount={Object.values(week).filter((d) => d.dayActive).length}
+        />
+
+        </div>
+
       </div>
+    </div>
+  )
+}
+
+// ─── Sidebar: live preview + profile completeness + tips ──────────────────────
+
+function ConfigSidebar({
+  publicUrl, savedSlug, logoUrl, description, address, phone, services, instructions, paymentMethods, activeDaysCount,
+}: {
+  publicUrl: string; savedSlug: string; logoUrl: string; description: string; address: string; phone: string
+  services: string; instructions: string; paymentMethods: string; activeDaysCount: number
+}) {
+  const [previewKey, setPreviewKey] = useState(0)
+
+  const checklist = [
+    { done: !!savedSlug, label: 'Nom et lien de réservation' },
+    { done: !!logoUrl, label: 'Logo ajouté' },
+    { done: !!description.trim(), label: 'Description renseignée' },
+    { done: !!(address.trim() || phone.trim()), label: 'Coordonnées renseignées' },
+    { done: activeDaysCount > 0, label: 'Au moins un jour ouvert' },
+    { done: !!(services.trim() || instructions.trim() || paymentMethods.trim()), label: 'Détails pratiques renseignés' },
+  ]
+  const doneCount = checklist.filter((c) => c.done).length
+
+  return (
+    <div className="flex flex-col gap-5 lg:sticky lg:top-6">
+
+      {/* ── Live preview ──────────────────────────────────────────────────── */}
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.1 }} className="rounded-2xl overflow-hidden" style={{ background: '#18181B', border: '1px solid #27272A' }}>
+        <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid #27272A' }}>
+          <span className="text-xs font-bold text-white flex items-center gap-1.5">👁️ Aperçu en direct</span>
+          {savedSlug && (
+            <motion.button whileTap={{ scale: 0.9, rotate: 180 }} onClick={() => setPreviewKey((k) => k + 1)} className="text-gray-500 hover:text-white text-xs" title="Actualiser l'aperçu">
+              ↻
+            </motion.button>
+          )}
+        </div>
+        {savedSlug ? (
+          <div style={{ background: '#F8FAFC' }}>
+            <iframe key={previewKey} src={publicUrl} title="Aperçu de votre page de réservation" className="w-full" style={{ height: 480, border: 'none' }} />
+          </div>
+        ) : (
+          <div className="p-6 text-center">
+            <p className="text-3xl mb-2">🔍</p>
+            <p className="text-xs text-gray-500">Enregistrez un nom et un lien pour voir l&apos;aperçu de votre page.</p>
+          </div>
+        )}
+        <div className="px-4 py-2.5" style={{ borderTop: '1px solid #27272A' }}>
+          <p className="text-[10px] text-gray-600">C&apos;est exactement ce que voient vos clients.</p>
+        </div>
+      </motion.div>
+
+      {/* ── Profile completeness ─────────────────────────────────────────── */}
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.15 }} className="rounded-2xl p-5" style={{ background: '#18181B', border: '1px solid #27272A' }}>
+        <div className="flex items-center justify-between mb-3">
+          <span className="text-xs font-bold text-white">Profil complété</span>
+          <span className="text-xs font-bold" style={{ color: doneCount === checklist.length ? '#6EE7B7' : '#A1A1AA' }}>{doneCount}/{checklist.length}</span>
+        </div>
+        <div className="w-full h-1.5 rounded-full mb-4 overflow-hidden" style={{ background: '#27272A' }}>
+          <motion.div className="h-full" style={{ background: '#10B981' }} animate={{ width: `${(doneCount / checklist.length) * 100}%` }} transition={{ duration: 0.4 }} />
+        </div>
+        <div className="flex flex-col gap-2">
+          {checklist.map((c) => (
+            <div key={c.label} className="flex items-center gap-2 text-xs">
+              <span className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] shrink-0" style={{ background: c.done ? 'rgba(16,185,129,0.15)' : '#27272A', color: c.done ? '#6EE7B7' : '#52525B' }}>
+                {c.done ? '✓' : '·'}
+              </span>
+              <span style={{ color: c.done ? '#D4D4D8' : '#71717A' }}>{c.label}</span>
+            </div>
+          ))}
+        </div>
+      </motion.div>
+
+      {/* ── Tips ──────────────────────────────────────────────────────────── */}
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.2 }} className="rounded-2xl p-5" style={{ background: 'rgba(16,185,129,0.05)', border: '1px solid rgba(16,185,129,0.15)' }}>
+        <p className="text-xs font-bold mb-3 flex items-center gap-1.5" style={{ color: '#6EE7B7' }}>💡 Conseils</p>
+        <ul className="flex flex-col gap-2.5 text-xs text-gray-400 leading-relaxed">
+          <li>• Un logo augmente la confiance des nouveaux clients dès le premier coup d&apos;œil.</li>
+          <li>• Détaillez vos prestations : moins de questions avant le RDV, plus de réservations directes.</li>
+          <li>• Partagez votre lien sur vos réseaux et par SMS — voir le bouton « Message à envoyer à vos clients ».</li>
+        </ul>
+      </motion.div>
     </div>
   )
 }
