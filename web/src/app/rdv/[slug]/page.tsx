@@ -3,8 +3,14 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { formatDateFR, formatHourFR, getParisNow } from '@/lib/booking'
+import { formatDateFR, formatHourFR, getParisNow, timeToMinutes } from '@/lib/booking'
 import { downloadICS } from '@/lib/ics'
+import { NotFoundIllustration } from '@/components/booking/illustrations'
+import {
+  CalendarIcon, ClockIcon, MapPinIcon, PhoneIcon, FileTextIcon, CreditCardIcon, InfoIcon,
+  ChevronLeftIcon, ChevronRightIcon, CheckIcon, ZapIcon, ShieldCheckIcon, ArrowLeftIcon,
+  AlertCircleIcon, ExternalLinkIcon, DownloadIcon,
+} from '@/components/booking/icons'
 
 const MONTH_NAMES = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre']
 const WEEK_SHORT = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
@@ -61,7 +67,7 @@ function ProgressSteps({ current }: { current: number }) {
                 className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
                 style={{ border: '1.5px solid' }}
               >
-                {done ? '✓' : n}
+                {done ? <CheckIcon size={13} strokeWidth={2.5} /> : n}
               </motion.div>
               <span className="hidden sm:block text-[10px] font-semibold text-center whitespace-nowrap" style={{ color: active ? INK : MUTED }}>{label}</span>
             </div>
@@ -98,11 +104,11 @@ function Modal({ open, onClose, children }: { open: boolean; onClose?: () => voi
         >
           <motion.div
             className="absolute inset-0"
-            style={{ background: 'rgba(15,23,42,0.5)', backdropFilter: 'blur(2px)' }}
+            style={{ background: 'rgba(15,23,42,0.55)', backdropFilter: 'blur(2px)' }}
             onClick={onClose}
           />
           <motion.div
-            className="relative w-full max-w-sm rounded-2xl p-6"
+            className="relative w-full max-w-sm rounded-2xl p-6 max-h-[85vh] overflow-y-auto"
             style={{ background: CARD, boxShadow: '0 24px 64px rgba(15,23,42,0.25)' }}
             initial={{ opacity: 0, scale: 0.94, y: 12 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -119,14 +125,35 @@ function Modal({ open, onClose, children }: { open: boolean; onClose?: () => voi
 
 // ─── Business info card (left column) ──────────────────────────────────────────
 
+function InfoRow({ icon, label, value, href }: { icon: React.ReactNode; label: string; value: string; href?: string }) {
+  const content = (
+    <div className="flex gap-3">
+      <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: ACCENT_SOFT, color: ACCENT_DARK }}>
+        {icon}
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-[10px] font-bold uppercase tracking-wide mb-0.5" style={{ color: '#94A3B8' }}>{label}</p>
+        <p className="text-sm leading-snug" style={{ color: href ? ACCENT_DARK : INK }}>{value}</p>
+      </div>
+      {href && <ExternalLinkIcon size={13} className="shrink-0 mt-1" />}
+    </div>
+  )
+  if (href) {
+    return <a href={href} target="_blank" rel="noopener noreferrer" className="block hover:opacity-80 transition-opacity">{content}</a>
+  }
+  return content
+}
+
 function BusinessCard({ info }: { info: Info }) {
-  const hasPractical = !!(info.services || info.paymentMethods || info.instructions)
+  const mapsUrl = info.address ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(info.address)}` : undefined
+  const telUrl = info.phone ? `tel:${info.phone.replace(/\s+/g, '')}` : undefined
+
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
       <div className="rounded-2xl p-6" style={{ background: CARD, border: `1px solid ${BORDER}` }}>
         {info.logoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={info.logoUrl} alt={info.businessName} className="w-16 h-16 rounded-2xl object-cover mb-4" style={{ border: `1px solid ${BORDER}` }} />
+          <img src={info.logoUrl} alt={info.businessName} className="w-16 h-16 rounded-2xl object-cover mb-4" style={{ border: `1px solid ${BORDER}`, boxShadow: '0 4px 14px rgba(15,23,42,0.08)' }} />
         ) : (
           <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-2xl font-extrabold mb-4" style={{ background: ACCENT_SOFT, color: ACCENT_DARK, border: `1px solid ${ACCENT_BORDER}` }}>
             {info.businessName?.charAt(0).toUpperCase() ?? '?'}
@@ -136,52 +163,35 @@ function BusinessCard({ info }: { info: Info }) {
         <h1 className="text-xl font-extrabold mb-1.5" style={{ color: INK }}>{info.businessName}</h1>
         {info.description && <p className="text-sm leading-relaxed mb-4" style={{ color: MUTED }}>{info.description}</p>}
 
-        <div className="flex flex-col gap-2 mb-1">
+        <div className="flex flex-wrap gap-2 mb-1">
           <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full w-fit" style={{ background: ACCENT_SOFT, color: ACCENT_DARK }}>
-            ⏱ Rendez-vous de {info.slotDuration} min
+            <ClockIcon size={13} /> {info.slotDuration} min
+          </span>
+          <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full w-fit" style={{ background: '#FEF3C7', color: '#92400E' }}>
+            <ZapIcon size={13} /> Confirmation immédiate
           </span>
         </div>
 
         {(info.address || info.phone) && (
-          <div className="flex flex-col gap-2.5 mt-4 pt-4 text-sm" style={{ borderTop: `1px solid ${BORDER}` }}>
-            {info.address && (
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-wide" style={{ color: '#94A3B8' }}>Adresse</p>
-                <p style={{ color: INK }}>{info.address}</p>
-              </div>
-            )}
-            {info.phone && (
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-wide" style={{ color: '#94A3B8' }}>Téléphone</p>
-                <p style={{ color: INK }}>{info.phone}</p>
-              </div>
-            )}
+          <div className="flex flex-col gap-3 mt-4 pt-4" style={{ borderTop: `1px solid ${BORDER}` }}>
+            {info.address && <InfoRow icon={<MapPinIcon size={15} />} label="Adresse" value={info.address} href={mapsUrl} />}
+            {info.phone && <InfoRow icon={<PhoneIcon size={15} />} label="Téléphone" value={info.phone} href={telUrl} />}
           </div>
         )}
       </div>
 
-      {hasPractical && (
-        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.08 }} className="rounded-2xl p-6 mt-4" style={{ background: CARD, border: `1px solid ${BORDER}` }}>
-          {info.services && (
-            <div className="mb-4 last:mb-0">
-              <p className="text-[11px] font-bold uppercase tracking-wide mb-1" style={{ color: MUTED }}>Prestations</p>
-              <p className="text-sm leading-relaxed" style={{ color: INK }}>{info.services}</p>
-            </div>
-          )}
-          {info.paymentMethods && (
-            <div className="mb-4 last:mb-0">
-              <p className="text-[11px] font-bold uppercase tracking-wide mb-1" style={{ color: MUTED }}>Moyens de paiement</p>
-              <p className="text-sm leading-relaxed" style={{ color: INK }}>{info.paymentMethods}</p>
-            </div>
-          )}
-          {info.instructions && (
-            <div className="last:mb-0">
-              <p className="text-[11px] font-bold uppercase tracking-wide mb-1" style={{ color: MUTED }}>À savoir avant votre RDV</p>
-              <p className="text-sm leading-relaxed" style={{ color: INK }}>{info.instructions}</p>
-            </div>
-          )}
+      {(info.services || info.paymentMethods || info.instructions) && (
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.08 }} className="rounded-2xl p-6 mt-4 flex flex-col gap-4" style={{ background: CARD, border: `1px solid ${BORDER}` }}>
+          {info.services && <InfoRow icon={<FileTextIcon size={15} />} label="Prestations" value={info.services} />}
+          {info.paymentMethods && <InfoRow icon={<CreditCardIcon size={15} />} label="Moyens de paiement" value={info.paymentMethods} />}
+          {info.instructions && <InfoRow icon={<InfoIcon size={15} />} label="À savoir avant votre RDV" value={info.instructions} />}
         </motion.div>
       )}
+
+      <div className="flex items-center gap-2 mt-4 px-1">
+        <ShieldCheckIcon size={14} style={{ color: ACCENT_DARK }} className="shrink-0" />
+        <p className="text-[11px]" style={{ color: MUTED }}>Annulation gratuite jusqu&apos;à votre rendez-vous.</p>
+      </div>
     </motion.div>
   )
 }
@@ -218,6 +228,7 @@ export default function PublicBookingPage() {
   const [monthOffset, setMonthOffset] = useState(0)
   const [monthDirection, setMonthDirection] = useState(1)
   const [availableDates, setAvailableDates] = useState<Set<string>>(new Set())
+  const [slotCounts, setSlotCounts] = useState<Record<string, number>>({})
   const [calendarLoading, setCalendarLoading] = useState(false)
 
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
@@ -232,12 +243,17 @@ export default function PublicBookingPage() {
   const [clientEmail, setClientEmail] = useState('')
   const [clientPhone, setClientPhone] = useState('')
   const [serviceNote, setServiceNote] = useState('')
+  const [nameTouched, setNameTouched] = useState(false)
+  const [emailTouched, setEmailTouched] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState('')
   const [confirmedAt, setConfirmedAt] = useState<{ date: string; time: string; bookingUid: string } | null>(null)
   const [toast, setToast] = useState('')
 
   const slotsRequestId = useRef(0)
+
+  const nameError = nameTouched && !clientName.trim() ? 'Votre nom est requis.' : ''
+  const emailError = emailTouched && !EMAIL_REGEX.test(clientEmail.trim()) ? 'Adresse email invalide.' : ''
 
   // ── Load business info ──────────────────────────────────────────────────
   useEffect(() => {
@@ -282,8 +298,9 @@ export default function PublicBookingPage() {
         const res = await fetch(`/api/bookings/calendar?slug=${encodeURIComponent(slug)}&year=${year}&month=${month}`)
         if (cancelled) return
         if (res.ok) {
-          const data = await res.json() as { availableDates: string[] }
+          const data = await res.json() as { availableDates: string[]; slotCounts?: Record<string, number> }
           setAvailableDates(new Set(data.availableDates))
+          setSlotCounts(data.slotCounts ?? {})
         }
       } finally {
         if (!cancelled) setCalendarLoading(false)
@@ -345,6 +362,8 @@ export default function PublicBookingPage() {
 
   const handleOpenRecap = (e: React.FormEvent) => {
     e.preventDefault()
+    setNameTouched(true)
+    setEmailTouched(true)
     if (!selectedDate || !selectedTime) return
     setFormError('')
     if (!clientName.trim()) { setFormError('Votre nom est requis.'); return }
@@ -408,6 +427,9 @@ export default function PublicBookingPage() {
 
   const progressStep = step === 'confirmed' ? 4 : step === 'form' ? 3 : selectedDate ? 2 : 1
 
+  const morningSlots = useMemo(() => slots.filter((s) => timeToMinutes(s) < 12 * 60), [slots])
+  const afternoonSlots = useMemo(() => slots.filter((s) => timeToMinutes(s) >= 12 * 60), [slots])
+
   // ── Render ───────────────────────────────────────────────────────────────
 
   if (step === 'loading') {
@@ -418,8 +440,14 @@ export default function PublicBookingPage() {
     return (
       <div className="min-h-screen flex items-center justify-center px-4" style={{ background: PAGE_BG }}>
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="text-center max-w-sm rounded-2xl p-10" style={{ background: CARD, border: `1px solid ${BORDER}`, boxShadow: '0 8px 30px rgba(15,23,42,0.06)' }}>
-          <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 300, damping: 18 }} className="w-16 h-16 mx-auto mb-5 rounded-full flex items-center justify-center text-3xl" style={{ background: '#F1F5F9' }}>
-            {step === 'error' ? '⚠️' : '🔍'}
+          <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 300, damping: 18 }} className="mx-auto mb-5">
+            {step === 'error' ? (
+              <div className="w-16 h-16 mx-auto rounded-full flex items-center justify-center" style={{ background: '#FEF2F2', color: '#DC2626' }}>
+                <AlertCircleIcon size={28} />
+              </div>
+            ) : (
+              <NotFoundIllustration size={96} />
+            )}
           </motion.div>
           <h1 className="text-lg font-extrabold mb-2" style={{ color: INK }}>{step === 'error' ? 'Une erreur est survenue' : 'Page introuvable'}</h1>
           <p className="text-sm" style={{ color: MUTED }}>
@@ -449,12 +477,12 @@ export default function PublicBookingPage() {
             {/* ── Calendar + slots ─────────────────────────────────────────── */}
             {step === 'calendar' && (
               <motion.div key="calendar" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.3, delay: 0.1 }} className="rounded-2xl p-6" style={{ background: CARD, border: `1px solid ${BORDER}` }}>
-                <p className="text-sm font-bold mb-4" style={{ color: INK }}>Choisissez une date</p>
+                <p className="text-sm font-bold mb-4 flex items-center gap-2" style={{ color: INK }}><CalendarIcon size={16} /> Choisissez une date</p>
 
                 <div className="flex items-center justify-between mb-5">
-                  <motion.button whileTap={{ scale: 0.9 }} onClick={() => goMonth(-1)} disabled={monthOffset === 0} className="w-8 h-8 rounded-lg flex items-center justify-center disabled:opacity-30" style={{ color: MUTED, border: `1px solid ${BORDER}` }}>←</motion.button>
+                  <motion.button whileTap={{ scale: 0.9 }} onClick={() => goMonth(-1)} disabled={monthOffset === 0} className="w-8 h-8 rounded-lg flex items-center justify-center disabled:opacity-30" style={{ color: MUTED, border: `1px solid ${BORDER}` }}><ChevronLeftIcon size={16} /></motion.button>
                   <span className="text-sm font-bold capitalize" style={{ color: INK }}>{MONTH_NAMES[calendarMonth.getMonth()]} {calendarMonth.getFullYear()}</span>
-                  <motion.button whileTap={{ scale: 0.9 }} onClick={() => goMonth(1)} disabled={monthOffset === 6} className="w-8 h-8 rounded-lg flex items-center justify-center disabled:opacity-30" style={{ color: MUTED, border: `1px solid ${BORDER}` }}>→</motion.button>
+                  <motion.button whileTap={{ scale: 0.9 }} onClick={() => goMonth(1)} disabled={monthOffset === 6} className="w-8 h-8 rounded-lg flex items-center justify-center disabled:opacity-30" style={{ color: MUTED, border: `1px solid ${BORDER}` }}><ChevronRightIcon size={16} /></motion.button>
                 </div>
 
                 <div className="grid grid-cols-7 gap-1.5 mb-2">
@@ -483,6 +511,7 @@ export default function PublicBookingPage() {
                         const isToday = key === toDateKey(today)
                         const isAvailable = !isPast && availableDates.has(key)
                         const isSelected = key === selectedDate
+                        const count = slotCounts[key]
                         return (
                           <motion.button
                             key={i}
@@ -490,7 +519,7 @@ export default function PublicBookingPage() {
                             whileHover={isAvailable ? { scale: 1.06 } : undefined}
                             disabled={!isAvailable}
                             onClick={() => handlePickDate(date)}
-                            className="aspect-square rounded-lg text-xs font-semibold relative"
+                            className="aspect-square rounded-lg text-xs font-semibold relative flex flex-col items-center justify-center gap-0.5"
                             style={{
                               background: isSelected ? ACCENT : isAvailable ? ACCENT_SOFT : 'transparent',
                               color: isSelected ? '#fff' : isAvailable ? ACCENT_DARK : '#CBD5E1',
@@ -499,7 +528,12 @@ export default function PublicBookingPage() {
                               transition: 'background 0.15s, color 0.15s',
                             }}
                           >
-                            {date.getDate()}
+                            <span>{date.getDate()}</span>
+                            {isAvailable && count !== undefined && (
+                              <span className="text-[8px] font-bold leading-none" style={{ color: isSelected ? 'rgba(255,255,255,0.8)' : ACCENT_DARK, opacity: 0.75 }}>
+                                {count}
+                              </span>
+                            )}
                           </motion.button>
                         )
                       })
@@ -532,26 +566,48 @@ export default function PublicBookingPage() {
                         ) : slots.length === 0 ? (
                           <p className="text-sm" style={{ color: MUTED }}>Plus aucun créneau libre ce jour-là.</p>
                         ) : (
-                          <motion.div
-                            className="grid grid-cols-3 sm:grid-cols-4 gap-2"
-                            initial="hidden"
-                            animate="show"
-                            variants={{ show: { transition: { staggerChildren: 0.03 } } }}
-                          >
-                            {slots.map((s) => (
-                              <motion.button
-                                key={s}
-                                variants={{ hidden: { opacity: 0, y: 6 }, show: { opacity: 1, y: 0 } }}
-                                whileTap={{ scale: 0.92 }}
-                                whileHover={{ borderColor: ACCENT, background: ACCENT_SOFT, color: ACCENT_DARK }}
-                                onClick={() => handlePickTime(s)}
-                                className="px-2 py-2.5 rounded-lg text-xs font-semibold"
-                                style={{ background: '#FFFFFF', border: `1px solid ${BORDER}`, color: INK, transition: 'border-color 0.15s, color 0.15s, background 0.15s' }}
-                              >
-                                {formatHourFR(s)}
-                              </motion.button>
-                            ))}
-                          </motion.div>
+                          <div className="flex flex-col gap-4">
+                            {morningSlots.length > 0 && (
+                              <div>
+                                <p className="text-[11px] font-bold uppercase tracking-wide mb-2" style={{ color: '#94A3B8' }}>Matin</p>
+                                <motion.div className="grid grid-cols-3 sm:grid-cols-4 gap-2" initial="hidden" animate="show" variants={{ show: { transition: { staggerChildren: 0.03 } } }}>
+                                  {morningSlots.map((s) => (
+                                    <motion.button
+                                      key={s}
+                                      variants={{ hidden: { opacity: 0, y: 6 }, show: { opacity: 1, y: 0 } }}
+                                      whileTap={{ scale: 0.92 }}
+                                      whileHover={{ borderColor: ACCENT, background: ACCENT_SOFT, color: ACCENT_DARK }}
+                                      onClick={() => handlePickTime(s)}
+                                      className="px-2 py-2.5 rounded-lg text-xs font-semibold"
+                                      style={{ background: '#FFFFFF', border: `1px solid ${BORDER}`, color: INK, transition: 'border-color 0.15s, color 0.15s, background 0.15s' }}
+                                    >
+                                      {formatHourFR(s)}
+                                    </motion.button>
+                                  ))}
+                                </motion.div>
+                              </div>
+                            )}
+                            {afternoonSlots.length > 0 && (
+                              <div>
+                                <p className="text-[11px] font-bold uppercase tracking-wide mb-2" style={{ color: '#94A3B8' }}>Après-midi</p>
+                                <motion.div className="grid grid-cols-3 sm:grid-cols-4 gap-2" initial="hidden" animate="show" variants={{ show: { transition: { staggerChildren: 0.03, delayChildren: morningSlots.length * 0.03 } } }}>
+                                  {afternoonSlots.map((s) => (
+                                    <motion.button
+                                      key={s}
+                                      variants={{ hidden: { opacity: 0, y: 6 }, show: { opacity: 1, y: 0 } }}
+                                      whileTap={{ scale: 0.92 }}
+                                      whileHover={{ borderColor: ACCENT, background: ACCENT_SOFT, color: ACCENT_DARK }}
+                                      onClick={() => handlePickTime(s)}
+                                      className="px-2 py-2.5 rounded-lg text-xs font-semibold"
+                                      style={{ background: '#FFFFFF', border: `1px solid ${BORDER}`, color: INK, transition: 'border-color 0.15s, color 0.15s, background 0.15s' }}
+                                    >
+                                      {formatHourFR(s)}
+                                    </motion.button>
+                                  ))}
+                                </motion.div>
+                              </div>
+                            )}
+                          </div>
                         )}
                       </div>
                     </motion.div>
@@ -563,23 +619,40 @@ export default function PublicBookingPage() {
             {/* ── Booking form ─────────────────────────────────────────────── */}
             {step === 'form' && selectedDate && selectedTime && (
               <motion.div key="form" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.25 }} className="rounded-2xl p-6" style={{ background: CARD, border: `1px solid ${BORDER}` }}>
-                <button onClick={() => setStep('calendar')} className="text-xs font-semibold mb-4 transition-colors" style={{ color: MUTED }}>← Changer de créneau</button>
+                <button onClick={() => setStep('calendar')} className="text-xs font-semibold mb-4 inline-flex items-center gap-1.5" style={{ color: MUTED }}><ArrowLeftIcon size={13} /> Changer de créneau</button>
 
                 <div className="rounded-xl p-3.5 mb-5 flex items-center gap-2.5" style={{ background: ACCENT_SOFT, border: `1px solid ${ACCENT_BORDER}` }}>
-                  <span className="text-lg">🗓️</span>
+                  <CalendarIcon size={18} style={{ color: ACCENT_DARK }} />
                   <p className="text-sm font-bold capitalize" style={{ color: ACCENT_DARK }}>{formatDateFR(selectedDate)} à {formatHourFR(selectedTime)}</p>
                 </div>
 
                 <p className="text-sm font-bold mb-4" style={{ color: INK }}>Vos informations</p>
 
-                <form onSubmit={handleOpenRecap} className="flex flex-col gap-3.5">
+                <form onSubmit={handleOpenRecap} className="flex flex-col gap-3.5" noValidate>
                   <div>
                     <label className="block text-xs font-semibold mb-1.5" style={{ color: MUTED }}>Nom complet *</label>
-                    <input value={clientName} onChange={(e) => setClientName(e.target.value)} required className="w-full px-3.5 py-2.5 rounded-xl text-sm outline-none" style={{ background: '#FFFFFF', border: `1px solid ${BORDER}`, color: INK }} placeholder="Jean Dupont" />
+                    <input
+                      value={clientName}
+                      onChange={(e) => setClientName(e.target.value)}
+                      onBlur={() => setNameTouched(true)}
+                      className="w-full px-3.5 py-2.5 rounded-xl text-sm outline-none"
+                      style={{ background: '#FFFFFF', border: `1px solid ${nameError ? '#FCA5A5' : BORDER}`, color: INK }}
+                      placeholder="Jean Dupont"
+                    />
+                    {nameError && <p className="text-xs font-medium mt-1" style={{ color: '#DC2626' }}>{nameError}</p>}
                   </div>
                   <div>
                     <label className="block text-xs font-semibold mb-1.5" style={{ color: MUTED }}>Email *</label>
-                    <input type="email" value={clientEmail} onChange={(e) => setClientEmail(e.target.value)} required className="w-full px-3.5 py-2.5 rounded-xl text-sm outline-none" style={{ background: '#FFFFFF', border: `1px solid ${BORDER}`, color: INK }} placeholder="jean@email.com" />
+                    <input
+                      type="email"
+                      value={clientEmail}
+                      onChange={(e) => setClientEmail(e.target.value)}
+                      onBlur={() => setEmailTouched(true)}
+                      className="w-full px-3.5 py-2.5 rounded-xl text-sm outline-none"
+                      style={{ background: '#FFFFFF', border: `1px solid ${emailError ? '#FCA5A5' : BORDER}`, color: INK }}
+                      placeholder="jean@email.com"
+                    />
+                    {emailError && <p className="text-xs font-medium mt-1" style={{ color: '#DC2626' }}>{emailError}</p>}
                   </div>
                   <div>
                     <label className="block text-xs font-semibold mb-1.5" style={{ color: MUTED }}>Téléphone</label>
@@ -590,7 +663,7 @@ export default function PublicBookingPage() {
                     <textarea value={serviceNote} onChange={(e) => setServiceNote(e.target.value)} rows={2} className="w-full px-3.5 py-2.5 rounded-xl text-sm outline-none resize-none" style={{ background: '#FFFFFF', border: `1px solid ${BORDER}`, color: INK }} placeholder="Précisez votre demande si besoin…" />
                   </div>
 
-                  {formError && <p className="text-xs font-medium" style={{ color: '#DC2626' }}>{formError}</p>}
+                  {formError && <p className="text-xs font-medium flex items-center gap-1.5" style={{ color: '#DC2626' }}><AlertCircleIcon size={14} />{formError}</p>}
 
                   <motion.button whileTap={{ scale: 0.98 }} type="submit" className="mt-1 w-full py-3 rounded-xl text-sm font-bold" style={{ background: ACCENT, color: '#fff' }}>
                     Vérifier et confirmer
@@ -603,13 +676,13 @@ export default function PublicBookingPage() {
             {step === 'confirmed' && confirmedAt && info && (
               <motion.div key="confirmed" initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} transition={{ type: 'spring', stiffness: 300, damping: 24 }} className="max-w-md mx-auto rounded-2xl p-8 text-center" style={{ background: CARD, border: `1px solid ${BORDER}`, boxShadow: '0 8px 30px rgba(15,23,42,0.06)' }}>
                 <motion.div
-                  initial={{ scale: 0, rotate: -20 }}
-                  animate={{ scale: 1, rotate: 0 }}
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
                   transition={{ type: 'spring', stiffness: 400, damping: 15, delay: 0.1 }}
-                  className="w-16 h-16 mx-auto mb-5 rounded-full flex items-center justify-center text-3xl"
-                  style={{ background: ACCENT_SOFT, color: ACCENT_DARK }}
+                  className="w-16 h-16 mx-auto mb-5 rounded-full flex items-center justify-center"
+                  style={{ background: ACCENT }}
                 >
-                  ✓
+                  <CheckIcon size={30} strokeWidth={2.5} className="text-white" />
                 </motion.div>
                 <h2 className="text-xl font-extrabold mb-2" style={{ color: INK }}>Rendez-vous confirmé</h2>
                 <p className="text-sm mb-4" style={{ color: MUTED }}>Un email de confirmation vous a été envoyé à {clientEmail}.</p>
@@ -636,8 +709,8 @@ export default function PublicBookingPage() {
                   {info.phone && <p className="text-xs mt-2" style={{ color: MUTED }}>{info.phone}</p>}
                 </div>
 
-                <motion.button whileTap={{ scale: 0.98 }} onClick={handleAddToCalendar} className="w-full py-3 rounded-xl text-sm font-bold mb-3" style={{ background: INK, color: '#fff' }}>
-                  📅 Ajouter à mon agenda
+                <motion.button whileTap={{ scale: 0.98 }} onClick={handleAddToCalendar} className="w-full py-3 rounded-xl text-sm font-bold mb-3 inline-flex items-center justify-center gap-2" style={{ background: INK, color: '#fff' }}>
+                  <DownloadIcon size={16} /> Ajouter à mon agenda
                 </motion.button>
 
                 {info.instructions && (
@@ -645,6 +718,12 @@ export default function PublicBookingPage() {
                     <p className="text-[11px] font-bold uppercase tracking-wide mb-1" style={{ color: MUTED }}>À savoir avant votre RDV</p>
                     <p className="text-sm leading-relaxed" style={{ color: INK }}>{info.instructions}</p>
                   </div>
+                )}
+
+                {(info.phone || info.address) && (
+                  <p className="text-xs mt-4" style={{ color: MUTED }}>
+                    Besoin de modifier ou d&apos;annuler ? {info.phone ? <>Contactez {info.businessName} au <a href={`tel:${info.phone.replace(/\s+/g, '')}`} className="font-semibold" style={{ color: ACCENT_DARK }}>{info.phone}</a>.</> : `Contactez directement ${info.businessName}.`}
+                  </p>
                 )}
               </motion.div>
             )}
@@ -656,7 +735,7 @@ export default function PublicBookingPage() {
       {/* ── Slot confirmation modal ────────────────────────────────────────── */}
       <Modal open={showSlotModal} onClose={() => setShowSlotModal(false)}>
         <div className="text-center">
-          <div className="w-12 h-12 mx-auto mb-4 rounded-full flex items-center justify-center text-xl" style={{ background: ACCENT_SOFT }}>🗓️</div>
+          <div className="w-12 h-12 mx-auto mb-4 rounded-full flex items-center justify-center" style={{ background: ACCENT_SOFT, color: ACCENT_DARK }}><CalendarIcon size={20} /></div>
           <p className="text-xs font-semibold mb-1" style={{ color: MUTED }}>Créneau sélectionné</p>
           {selectedDate && selectedTime && (
             <>
@@ -688,7 +767,11 @@ export default function PublicBookingPage() {
           {clientPhone && <div className="flex justify-between gap-3"><span style={{ color: MUTED }}>Téléphone</span><span className="font-medium text-right" style={{ color: INK }}>{clientPhone}</span></div>}
           {serviceNote && <div className="flex justify-between gap-3"><span className="shrink-0" style={{ color: MUTED }}>Note</span><span className="font-medium text-right" style={{ color: INK }}>{serviceNote}</span></div>}
         </div>
-        {formError && <p className="text-xs mb-3 font-medium" style={{ color: '#DC2626' }}>{formError}</p>}
+        <div className="flex items-center gap-2 mb-4 px-3 py-2 rounded-lg" style={{ background: '#F8FAFC' }}>
+          <ShieldCheckIcon size={14} style={{ color: ACCENT_DARK }} className="shrink-0" />
+          <p className="text-[11px]" style={{ color: MUTED }}>Vos informations ne sont utilisées que pour ce rendez-vous.</p>
+        </div>
+        {formError && <p className="text-xs mb-3 font-medium flex items-center gap-1.5" style={{ color: '#DC2626' }}><AlertCircleIcon size={14} />{formError}</p>}
         <div className="flex gap-2">
           <button disabled={submitting} onClick={() => setShowRecapModal(false)} className="flex-1 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-40" style={{ background: '#F1F5F9', color: MUTED }}>Modifier</button>
           <motion.button whileTap={{ scale: 0.97 }} disabled={submitting} onClick={handleConfirmBooking} className="flex-1 py-2.5 rounded-xl text-sm font-bold disabled:opacity-60 inline-flex items-center justify-center gap-2" style={{ background: ACCENT, color: '#fff' }}>
@@ -715,7 +798,7 @@ export default function PublicBookingPage() {
             className="fixed bottom-6 left-1/2 z-[60] px-4 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-2"
             style={{ background: INK, color: '#fff', boxShadow: '0 12px 32px rgba(0,0,0,0.3)' }}
           >
-            ✓ {toast}
+            <CheckIcon size={14} /> {toast}
           </motion.div>
         )}
       </AnimatePresence>

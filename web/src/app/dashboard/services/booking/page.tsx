@@ -7,6 +7,12 @@ import { useAuth } from '@/hooks/useAuth'
 import { createClient } from '@/lib/supabase/client'
 import { slugify, SLUG_REGEX, getParisNow } from '@/lib/booking'
 import { compressImage, extensionForMimeType } from '@/lib/image'
+import {
+  StoreIcon, LinkIcon, MessageSquareIcon, ImageIcon, FileTextIcon, CreditCardIcon, InfoIcon,
+  ClockIcon, CalendarIcon, SparklesIcon, EyeIcon, ExternalLinkIcon, RefreshIcon, CheckIcon,
+  ChevronLeftIcon, ChevronRightIcon, TrashIcon, AlertCircleIcon, ArrowLeftIcon, ArrowRightIcon,
+  ZapIcon, CheckCircleIcon, MailIcon,
+} from '@/components/booking/icons'
 
 const MAX_LOGO_SIZE = 50 * 1024 * 1024 // 50 MB — image is compressed to ~800x800 client-side before upload anyway
 const ACCEPTED_LOGO_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
@@ -20,6 +26,7 @@ const WEEK_SHORT: Record<number, string> = { 1: 'Lun', 2: 'Mar', 3: 'Mer', 4: 'J
 const DURATIONS = [15, 30, 45, 60]
 const BUFFERS = [0, 5, 10, 15]
 const ADVANCE_OPTIONS = [7, 14, 30, 60, 90]
+const ONBOARDING_STEPS = ['Vos informations', 'Détails pratiques', 'Réglages des créneaux', 'Disponibilités']
 
 const MONTH_NAMES = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre']
 
@@ -84,7 +91,7 @@ function InfoTooltip({ text }: { text: string }) {
   )
 }
 
-function SectionCard({ title, subtitle, tooltip, children }: { title: string; subtitle?: string; tooltip?: string; children: React.ReactNode }) {
+function SectionCard({ title, subtitle, tooltip, icon, iconColor = '#6EE7B7', iconBg = 'rgba(16,185,129,0.12)', children }: { title: string; subtitle?: string; tooltip?: string; icon?: React.ReactNode; iconColor?: string; iconBg?: string; children: React.ReactNode }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
@@ -94,11 +101,18 @@ function SectionCard({ title, subtitle, tooltip, children }: { title: string; su
       className="rounded-2xl p-6 sm:p-7 mb-6"
       style={{ background: '#18181B', border: '1px solid #27272A' }}
     >
-      <div className="flex items-center gap-2 mb-1">
-        <h2 className="text-lg font-bold text-white">{title}</h2>
-        {tooltip && <InfoTooltip text={tooltip} />}
+      <div className="flex items-center gap-3 mb-1">
+        {icon && (
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: iconBg, color: iconColor }}>
+            {icon}
+          </div>
+        )}
+        <div className="flex items-center gap-2">
+          <h2 className="text-lg font-bold text-white">{title}</h2>
+          {tooltip && <InfoTooltip text={tooltip} />}
+        </div>
       </div>
-      {subtitle && <p className="text-gray-500 text-sm mb-5">{subtitle}</p>}
+      {subtitle && <p className="text-gray-500 text-sm mb-5 mt-1">{subtitle}</p>}
       {children}
     </motion.div>
   )
@@ -126,13 +140,13 @@ function Modal({ open, onClose, children }: { open: boolean; onClose: () => void
   )
 }
 
-type MessageTemplate = { icon: string; label: string; tag: string; accent: string; accentSoft: string; text: string }
+type MessageTemplate = { icon: React.ReactNode; label: string; tag: string; accent: string; accentSoft: string; text: string }
 
 function buildMessageTemplates(businessName: string, url: string): MessageTemplate[] {
   const name = businessName || 'Votre activité'
   return [
     {
-      icon: '💬',
+      icon: <MessageSquareIcon size={13} />,
       label: 'SMS',
       tag: 'Court et direct',
       accent: '#3B82F6',
@@ -140,7 +154,7 @@ function buildMessageTemplates(businessName: string, url: string): MessageTempla
       text: `${name} : réservez votre prochain RDV en ligne en 30 secondes, où que vous soyez → ${url}`,
     },
     {
-      icon: '✉️',
+      icon: <MailIcon size={13} />,
       label: 'Email',
       tag: 'Formel et complet',
       accent: '#A855F7',
@@ -148,7 +162,7 @@ function buildMessageTemplates(businessName: string, url: string): MessageTempla
       text: `Bonjour,\n\nPour vous simplifier la prise de rendez-vous, vous pouvez désormais réserver directement en ligne, à l'heure qui vous convient le mieux — sans appel ni attente :\n\n${url}\n\nLa réservation prend moins d'une minute et vous recevrez une confirmation immédiate par email. N'hésitez pas à nous contacter si vous avez la moindre question.\n\nAu plaisir de vous accueillir prochainement,\n${name}`,
     },
     {
-      icon: '📱',
+      icon: <SparklesIcon size={13} />,
       label: 'Réseaux sociaux',
       tag: 'Accrocheur',
       accent: '#EC4899',
@@ -202,7 +216,7 @@ function ClientMessageModal({ open, onClose, businessName, url }: { open: boolea
                 className="text-[11px] font-bold px-2.5 py-1 rounded-lg"
                 style={{ background: copiedIdx === idx ? '#10B981' : '#27272A', color: copiedIdx === idx ? '#fff' : '#A1A1AA' }}
               >
-                {copiedIdx === idx ? '✓ Copié !' : 'Copier ce message'}
+                <span className="inline-flex items-center gap-1">{copiedIdx === idx && <CheckIcon size={11} strokeWidth={2.5} />}{copiedIdx === idx ? 'Copié !' : 'Copier ce message'}</span>
               </motion.button>
             </div>
             <div className="px-4 py-3.5">
@@ -217,24 +231,28 @@ function ClientMessageModal({ open, onClose, businessName, url }: { open: boolea
         ))}
       </div>
 
-      <p className="text-[11px] text-gray-600 mt-4 text-center">💡 N&apos;hésitez pas à personnaliser ces messages avant de les envoyer.</p>
+      <p className="text-[11px] text-gray-600 mt-4 text-center flex items-center justify-center gap-1.5"><SparklesIcon size={12} /> N&apos;hésitez pas à personnaliser ces messages avant de les envoyer.</p>
     </Modal>
   )
 }
 
 function SlugBadge({ status }: { status: SlugStatus }) {
-  const map: Record<SlugStatus, { label: string; color: string; bg: string } | null> = {
+  const map: Record<SlugStatus, { label: string; color: string; bg: string; icon?: React.ReactNode } | null> = {
     idle: null,
     invalid: { label: 'Format invalide (lettres, chiffres, tirets)', color: '#FCA5A5', bg: 'rgba(239,68,68,0.1)' },
     checking: { label: 'Vérification…', color: '#A1A1AA', bg: '#27272A' },
-    available: { label: '✓ Disponible', color: '#6EE7B7', bg: 'rgba(16,185,129,0.12)' },
+    available: { label: 'Disponible', color: '#6EE7B7', bg: 'rgba(16,185,129,0.12)', icon: <CheckIcon size={11} strokeWidth={2.5} /> },
     taken: { label: 'Déjà pris', color: '#FCA5A5', bg: 'rgba(239,68,68,0.1)' },
-    current: { label: '✓ Votre lien actuel', color: '#6EE7B7', bg: 'rgba(16,185,129,0.12)' },
-    'check-failed': { label: '⚠ Vérification impossible', color: '#FCD34D', bg: 'rgba(245,158,11,0.1)' },
+    current: { label: 'Votre lien actuel', color: '#6EE7B7', bg: 'rgba(16,185,129,0.12)', icon: <CheckIcon size={11} strokeWidth={2.5} /> },
+    'check-failed': { label: 'Vérification impossible', color: '#FCD34D', bg: 'rgba(245,158,11,0.1)', icon: <AlertCircleIcon size={11} /> },
   }
   const cfg = map[status]
   if (!cfg) return null
-  return <span className="text-[11px] font-semibold px-2 py-1 rounded-full whitespace-nowrap" style={{ color: cfg.color, background: cfg.bg }}>{cfg.label}</span>
+  return (
+    <span className="text-[11px] font-semibold px-2 py-1 rounded-full whitespace-nowrap inline-flex items-center gap-1" style={{ color: cfg.color, background: cfg.bg }}>
+      {cfg.icon}{cfg.label}
+    </span>
+  )
 }
 
 // ─── Main page ────────────────────────────────────────────────────────────────
@@ -270,6 +288,7 @@ export default function BookingSettingsPage() {
   const [copied, setCopied] = useState(false)
   const [showMessageModal, setShowMessageModal] = useState(false)
   const [showRemoveLogoConfirm, setShowRemoveLogoConfirm] = useState(false)
+  const [onboardingStep, setOnboardingStep] = useState(1)
 
   const [week, setWeek] = useState<Record<number, DayState>>(defaultWeek())
   const [dayErrors, setDayErrors] = useState<Record<number, boolean>>({})
@@ -671,6 +690,18 @@ export default function BookingSettingsPage() {
   // Europe/Paris wall-clock date, regardless of the pro's device timezone.
   const today = useMemo(() => { const d = getParisNow(); d.setHours(0, 0, 0, 0); return d }, [])
 
+  const activeDaysCount = Object.values(week).filter((d) => d.dayActive).length
+  const completionChecklist = [
+    !!savedSlug,
+    !!logoUrl,
+    !!description.trim(),
+    !!(address.trim() || phone.trim()),
+    activeDaysCount > 0,
+    !!(services.trim() || instructions.trim() || paymentMethods.trim()),
+  ]
+  const completionPercent = Math.round((completionChecklist.filter(Boolean).length / completionChecklist.length) * 100)
+  const isOnboarding = loaded && !savedSlug
+
   return (
     <div className="relative min-h-screen" style={{ background: '#09090B' }}>
       <div className="absolute top-0 left-0 right-0 h-px pointer-events-none z-10" style={{ background: 'linear-gradient(90deg, transparent 5%, #10B981 35%, #34D399 65%, transparent 95%)' }} />
@@ -683,13 +714,28 @@ export default function BookingSettingsPage() {
             Retour aux services
           </Link>
           <Link href="/dashboard/services/booking/appointments" className="inline-flex items-center gap-2 text-sm font-semibold px-3 py-1.5 rounded-xl transition-colors" style={{ background: 'rgba(16,185,129,0.1)', color: '#6EE7B7', border: '1px solid rgba(16,185,129,0.25)' }}>
-            📋 Voir mes RDV →
+            <CalendarIcon size={15} /> Voir mes RDV <ArrowRightIcon size={13} />
           </Link>
         </motion.div>
 
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
-          <h1 className="text-3xl font-extrabold text-white mb-2">Configurez votre agenda</h1>
-          <p className="text-gray-500 text-sm">Renseignez vos informations et vos disponibilités — vos clients pourront réserver immédiatement.</p>
+          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-extrabold text-white mb-2">Configurez votre agenda</h1>
+              <p className="text-gray-500 text-sm">Renseignez vos informations et vos disponibilités — vos clients pourront réserver immédiatement.</p>
+            </div>
+            {loaded && (
+              <div className="shrink-0 w-full sm:w-48">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-[11px] font-semibold text-gray-500">Profil complété</span>
+                  <span className="text-xs font-bold" style={{ color: completionPercent === 100 ? '#6EE7B7' : '#A1A1AA' }}>{completionPercent}%</span>
+                </div>
+                <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: '#27272A' }}>
+                  <motion.div className="h-full rounded-full" style={{ background: completionPercent === 100 ? '#10B981' : 'linear-gradient(90deg, #10B981, #34D399)' }} initial={{ width: 0 }} animate={{ width: `${completionPercent}%` }} transition={{ duration: 0.6, ease: 'easeOut' }} />
+                </div>
+              </div>
+            )}
+          </div>
         </motion.div>
 
         {/* ── Public link ──────────────────────────────────────────────────── */}
@@ -707,7 +753,7 @@ export default function BookingSettingsPage() {
                 className="px-4 py-2 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1.5"
                 style={{ background: '#27272A', color: '#E4E4E7' }}
               >
-                👁️ Prévisualiser
+                <EyeIcon size={14} /> Prévisualiser
               </a>
             )}
             <motion.button
@@ -726,7 +772,7 @@ export default function BookingSettingsPage() {
                   transition={{ duration: 0.15 }}
                   className="inline-block"
                 >
-                  {copied ? '✓ Copié !' : '🔗 Copier le lien'}
+                  <span className="inline-flex items-center gap-1.5">{copied ? <CheckIcon size={13} strokeWidth={2.5} /> : <LinkIcon size={13} />}{copied ? 'Copié !' : 'Copier le lien'}</span>
                 </motion.span>
               </AnimatePresence>
             </motion.button>
@@ -744,7 +790,7 @@ export default function BookingSettingsPage() {
             className="w-full sm:w-auto mb-6 px-4 py-2.5 rounded-xl text-xs font-bold inline-flex items-center gap-2"
             style={{ background: '#18181B', color: '#A1A1AA', border: '1px solid #27272A' }}
           >
-            💬 Message à envoyer à vos clients
+            <MessageSquareIcon size={15} /> Message à envoyer à vos clients
           </motion.button>
         )}
 
@@ -752,7 +798,7 @@ export default function BookingSettingsPage() {
 
         <Modal open={showRemoveLogoConfirm} onClose={() => setShowRemoveLogoConfirm(false)}>
           <div className="text-center">
-            <div className="w-12 h-12 mx-auto mb-4 rounded-full flex items-center justify-center text-xl" style={{ background: 'rgba(239,68,68,0.1)' }}>🗑️</div>
+            <div className="w-12 h-12 mx-auto mb-4 rounded-full flex items-center justify-center" style={{ background: 'rgba(239,68,68,0.1)', color: '#EF4444' }}><TrashIcon size={20} /></div>
             <p className="text-sm font-bold text-white mb-1.5">Supprimer le logo ?</p>
             <p className="text-xs text-gray-500 mb-5">Il disparaîtra de votre page de réservation publique. Vous pourrez en ajouter un nouveau à tout moment.</p>
             <div className="flex gap-2">
@@ -765,8 +811,41 @@ export default function BookingSettingsPage() {
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6 items-start">
         <div className="min-w-0">
 
+        {isOnboarding && (
+          <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="rounded-2xl p-5 mb-6" style={{ background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.2)' }}>
+            <p className="text-sm font-bold text-white mb-1">Bienvenue — configurons votre page de réservation</p>
+            <p className="text-xs text-gray-400 mb-4">Quatre étapes rapides pour que vos clients puissent réserver dès aujourd&apos;hui.</p>
+            <div className="flex items-center gap-2 mb-1">
+              {ONBOARDING_STEPS.map((s, idx) => {
+                const n = idx + 1
+                const done = n < onboardingStep
+                const active = n === onboardingStep
+                return (
+                  <div key={s} className="flex items-center flex-1 last:flex-none">
+                    <div className="flex flex-col items-center gap-1">
+                      <motion.div
+                        animate={{ background: done || active ? '#10B981' : '#27272A', color: done || active ? '#fff' : '#71717A' }}
+                        className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0"
+                      >
+                        {done ? <CheckIcon size={11} strokeWidth={3} /> : n}
+                      </motion.div>
+                    </div>
+                    {n < ONBOARDING_STEPS.length && (
+                      <div className="flex-1 h-px mx-1.5" style={{ background: '#27272A' }}>
+                        <motion.div className="h-px" style={{ background: '#10B981' }} initial={false} animate={{ width: done ? '100%' : '0%' }} transition={{ duration: 0.3 }} />
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+            <p className="text-[11px] font-semibold text-gray-500 mt-2">Étape {onboardingStep}/{ONBOARDING_STEPS.length} — {ONBOARDING_STEPS[onboardingStep - 1]}</p>
+          </motion.div>
+        )}
+
         {/* ── Business info ────────────────────────────────────────────────── */}
-        <SectionCard title="Informations" subtitle="Le nom et la description visibles par vos clients sur la page de réservation." tooltip="Ces informations apparaissent en haut de votre page publique et dans les emails envoyés à vos clients. Le logo remplace le rond avec vos initiales.">
+        {(!isOnboarding || onboardingStep === 1) && (
+        <SectionCard title="Informations" subtitle="Le nom et la description visibles par vos clients sur la page de réservation." tooltip="Ces informations apparaissent en haut de votre page publique et dans les emails envoyés à vos clients. Le logo remplace le rond avec vos initiales." icon={<StoreIcon size={18} />} iconColor="#6EE7B7" iconBg="rgba(16,185,129,0.12)">
           <div className="flex flex-col gap-4">
             <div>
               <label className="block text-xs font-semibold text-gray-400 mb-2">Logo</label>
@@ -923,9 +1002,19 @@ export default function BookingSettingsPage() {
             <p className="text-xs text-gray-600">Ces informations apparaissent dans les emails de confirmation envoyés à vos clients. Si elles sont vides, des valeurs par défaut génériques sont utilisées.</p>
           </div>
         </SectionCard>
+        )}
+
+        {isOnboarding && onboardingStep === 1 && (
+          <div className="flex justify-end mb-6 -mt-2">
+            <motion.button whileTap={{ scale: 0.97 }} disabled={!canSave} onClick={() => setOnboardingStep(2)} className="px-5 py-2.5 rounded-xl text-sm font-bold inline-flex items-center gap-2 disabled:opacity-40" style={{ background: canSave ? '#10B981' : '#27272A', color: canSave ? '#fff' : '#52525B' }}>
+              Continuer <ArrowRightIcon size={14} />
+            </motion.button>
+          </div>
+        )}
 
         {/* ── Practical details ────────────────────────────────────────────── */}
-        <SectionCard title="Détails pratiques" subtitle="Ces informations sont affichées à vos clients sur la page de réservation publique." tooltip="Facultatif mais recommandé : plus vos clients savent à quoi s'attendre (prestations, paiement, consignes), moins vous recevrez de questions avant le RDV.">
+        {(!isOnboarding || onboardingStep === 2) && (
+        <SectionCard title="Détails pratiques" subtitle="Ces informations sont affichées à vos clients sur la page de réservation publique." tooltip="Facultatif mais recommandé : plus vos clients savent à quoi s'attendre (prestations, paiement, consignes), moins vous recevrez de questions avant le RDV." icon={<FileTextIcon size={18} />} iconColor="#93C5FD" iconBg="rgba(59,130,246,0.12)">
           <div className="flex flex-col gap-4">
             <div>
               <label className="block text-xs font-semibold text-gray-400 mb-2">Prestations proposées</label>
@@ -961,9 +1050,22 @@ export default function BookingSettingsPage() {
             </div>
           </div>
         </SectionCard>
+        )}
+
+        {isOnboarding && onboardingStep === 2 && (
+          <div className="flex justify-between mb-6 -mt-2">
+            <motion.button whileTap={{ scale: 0.97 }} onClick={() => setOnboardingStep(1)} className="px-5 py-2.5 rounded-xl text-sm font-semibold inline-flex items-center gap-2" style={{ background: '#18181B', color: '#A1A1AA', border: '1px solid #27272A' }}>
+              <ArrowLeftIcon size={14} /> Retour
+            </motion.button>
+            <motion.button whileTap={{ scale: 0.97 }} onClick={() => setOnboardingStep(3)} className="px-5 py-2.5 rounded-xl text-sm font-bold inline-flex items-center gap-2" style={{ background: '#10B981', color: '#fff' }}>
+              Continuer <ArrowRightIcon size={14} />
+            </motion.button>
+          </div>
+        )}
 
         {/* ── Slot config ──────────────────────────────────────────────────── */}
-        <SectionCard title="Réglages des créneaux" subtitle="Durée de chaque rendez-vous, battement entre deux RDV, et fenêtre de réservation." tooltip="Durée : le temps réservé pour chaque créneau proposé. Battement : la pause automatique ajoutée entre deux RDV consécutifs. Réservable jusqu'à : le nombre de jours à l'avance où vos clients peuvent réserver.">
+        {(!isOnboarding || onboardingStep === 3) && (
+        <SectionCard title="Réglages des créneaux" subtitle="Durée de chaque rendez-vous, battement entre deux RDV, et fenêtre de réservation." tooltip="Durée : le temps réservé pour chaque créneau proposé — ex : 30 min pour une coupe, 60 min pour une couleur. Battement : la pause automatique ajoutée entre deux RDV consécutifs. Réservable jusqu'à : le nombre de jours à l'avance où vos clients peuvent réserver." icon={<ClockIcon size={18} />} iconColor="#FCD34D" iconBg="rgba(245,158,11,0.12)">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
             <div>
               <label className="block text-xs font-semibold text-gray-400 mb-2">Durée d&apos;un créneau</label>
@@ -997,9 +1099,22 @@ export default function BookingSettingsPage() {
             </div>
           </div>
         </SectionCard>
+        )}
+
+        {isOnboarding && onboardingStep === 3 && (
+          <div className="flex justify-between mb-6 -mt-2">
+            <motion.button whileTap={{ scale: 0.97 }} onClick={() => setOnboardingStep(2)} className="px-5 py-2.5 rounded-xl text-sm font-semibold inline-flex items-center gap-2" style={{ background: '#18181B', color: '#A1A1AA', border: '1px solid #27272A' }}>
+              <ArrowLeftIcon size={14} /> Retour
+            </motion.button>
+            <motion.button whileTap={{ scale: 0.97 }} onClick={() => setOnboardingStep(4)} className="px-5 py-2.5 rounded-xl text-sm font-bold inline-flex items-center gap-2" style={{ background: '#10B981', color: '#fff' }}>
+              Continuer <ArrowRightIcon size={14} />
+            </motion.button>
+          </div>
+        )}
 
         {/* ── Weekly availability ──────────────────────────────────────────── */}
-        <SectionCard title="Disponibilités hebdomadaires" subtitle="Activez les jours ouverts et définissez vos plages horaires (matin / après-midi)." tooltip="Ce sont vos horaires récurrents, toutes les semaines. Pour bloquer une date ponctuelle (congé, jour férié) sans toucher à ces réglages, utilisez la section « Jours bloqués » plus bas.">
+        {(!isOnboarding || onboardingStep === 4) && (
+        <SectionCard title="Disponibilités hebdomadaires" subtitle="Activez les jours ouverts et définissez vos plages horaires (matin / après-midi)." tooltip="Ce sont vos horaires récurrents, toutes les semaines. Pour bloquer une date ponctuelle (congé, jour férié) sans toucher à ces réglages, utilisez la section « Jours bloqués » plus bas." icon={<CalendarIcon size={18} />} iconColor="#D8B4FE" iconBg="rgba(168,85,247,0.12)">
           <div className="flex items-center justify-between mb-3.5">
             <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full" style={{ background: 'rgba(16,185,129,0.1)', color: '#6EE7B7' }}>
               {Object.values(week).filter((d) => d.dayActive).length} jour{Object.values(week).filter((d) => d.dayActive).length > 1 ? 's' : ''} actif{Object.values(week).filter((d) => d.dayActive).length > 1 ? 's' : ''} sur 7
@@ -1056,38 +1171,49 @@ export default function BookingSettingsPage() {
                     )}
                   </div>
                   {dayErrors[dayKey] && (
-                    <p className="text-[11px] mt-1" style={{ color: '#FCA5A5' }}>⚠ Erreur d&apos;enregistrement pour ce jour — réessayez.</p>
+                    <p className="text-[11px] mt-1 flex items-center gap-1" style={{ color: '#FCA5A5' }}><AlertCircleIcon size={12} /> Erreur d&apos;enregistrement pour ce jour — réessayez.</p>
                   )}
                 </motion.div>
               )
             })}
           </div>
         </SectionCard>
+        )}
+
+        {isOnboarding && onboardingStep === 4 && (
+          <div className="flex justify-start mb-3 -mt-2">
+            <motion.button whileTap={{ scale: 0.97 }} onClick={() => setOnboardingStep(3)} className="px-5 py-2.5 rounded-xl text-sm font-semibold inline-flex items-center gap-2" style={{ background: '#18181B', color: '#A1A1AA', border: '1px solid #27272A' }}>
+              <ArrowLeftIcon size={14} /> Retour
+            </motion.button>
+          </div>
+        )}
 
         {/* ── Save bar ─────────────────────────────────────────────────────── */}
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="rounded-2xl p-5 mb-6 flex flex-col sm:flex-row sm:items-center gap-3" style={{ background: '#18181B', border: '1px solid #27272A' }}>
           <div className="flex-1 min-w-0">
             {saveState === 'saving' && <span className="text-xs text-gray-500">Enregistrement…</span>}
-            {saveState === 'saved' && <span className="text-xs font-semibold" style={{ color: '#6EE7B7' }}>✓ Enregistré — vos informations et disponibilités sont à jour.</span>}
-            {saveState === 'error' && <span className="text-xs font-semibold" style={{ color: '#FCA5A5' }}>✗ {saveError}</span>}
+            {saveState === 'saved' && <span className="text-xs font-semibold inline-flex items-center gap-1.5" style={{ color: '#6EE7B7' }}><CheckIcon size={13} strokeWidth={2.5} /> Enregistré — vos informations et disponibilités sont à jour.</span>}
+            {saveState === 'error' && <span className="text-xs font-semibold inline-flex items-center gap-1.5" style={{ color: '#FCA5A5' }}><AlertCircleIcon size={13} /> {saveError}</span>}
             {saveState === 'idle' && !canSave && <span className="text-xs text-gray-600">Renseignez un nom d&apos;activité et un lien valide pour enregistrer.</span>}
+            {saveState === 'idle' && canSave && isOnboarding && <span className="text-xs text-gray-600">Dernière étape : enregistrez pour activer votre page de réservation.</span>}
           </div>
           <button
             onClick={handleSave}
             disabled={!canSave || saveState === 'saving'}
-            className="shrink-0 px-5 py-2.5 rounded-xl text-xs font-bold transition-all"
+            className="shrink-0 px-5 py-2.5 rounded-xl text-xs font-bold transition-all inline-flex items-center justify-center gap-2"
             style={{ background: canSave ? '#10B981' : '#27272A', color: canSave ? '#fff' : '#52525B', cursor: canSave && saveState !== 'saving' ? 'pointer' : 'not-allowed', opacity: saveState === 'saving' ? 0.7 : 1 }}
           >
-            {saveState === 'saving' ? 'Enregistrement…' : 'Enregistrer'}
+            {saveState === 'saving' ? 'Enregistrement…' : isOnboarding ? <>Terminer la configuration <CheckIcon size={13} strokeWidth={2.5} /></> : 'Enregistrer'}
           </button>
         </motion.div>
 
         {/* ── Blocked dates ────────────────────────────────────────────────── */}
-        <SectionCard title="Jours bloqués" subtitle="Cliquez sur une date pour la bloquer (congés, indisponibilité ponctuelle)." tooltip="Un jour bloqué n'apparaît plus comme disponible sur votre page publique, même s'il correspond à un jour normalement ouvert dans vos disponibilités hebdomadaires.">
+        {!isOnboarding && (
+        <SectionCard title="Jours bloqués" subtitle="Cliquez sur une date pour la bloquer (congés, indisponibilité ponctuelle)." tooltip="Un jour bloqué n'apparaît plus comme disponible sur votre page publique, même s'il correspond à un jour normalement ouvert dans vos disponibilités hebdomadaires." icon={<TrashIcon size={18} />} iconColor="#FCA5A5" iconBg="rgba(239,68,68,0.12)">
           <div className="flex items-center justify-between mb-4">
-            <motion.button whileTap={{ scale: 0.9 }} onClick={() => setCalendarMonthOffset((o) => Math.max(0, o - 1))} disabled={calendarMonthOffset === 0} className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-500 disabled:opacity-30" style={{ border: '1px solid #27272A' }}>←</motion.button>
+            <motion.button whileTap={{ scale: 0.9 }} onClick={() => setCalendarMonthOffset((o) => Math.max(0, o - 1))} disabled={calendarMonthOffset === 0} className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-500 disabled:opacity-30" style={{ border: '1px solid #27272A' }}><ChevronLeftIcon size={14} /></motion.button>
             <span className="text-sm font-bold text-white capitalize">{MONTH_NAMES[calendarMonth.getMonth()]} {calendarMonth.getFullYear()}</span>
-            <motion.button whileTap={{ scale: 0.9 }} onClick={() => setCalendarMonthOffset((o) => Math.min(2, o + 1))} disabled={calendarMonthOffset === 2} className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-500 disabled:opacity-30" style={{ border: '1px solid #27272A' }}>→</motion.button>
+            <motion.button whileTap={{ scale: 0.9 }} onClick={() => setCalendarMonthOffset((o) => Math.min(2, o + 1))} disabled={calendarMonthOffset === 2} className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-500 disabled:opacity-30" style={{ border: '1px solid #27272A' }}><ChevronRightIcon size={14} /></motion.button>
           </div>
           <div className="flex items-center gap-3 mb-3.5">
             <span className="flex items-center gap-1.5 text-[10px] text-gray-500"><span className="w-2 h-2 rounded-full" style={{ background: 'rgba(16,185,129,0.4)' }} />Disponible</span>
@@ -1137,6 +1263,7 @@ export default function BookingSettingsPage() {
             <p className="text-xs text-gray-500 mt-4">{blockedDates.size} jour{blockedDates.size > 1 ? 's' : ''} bloqué{blockedDates.size > 1 ? 's' : ''}.</p>
           )}
         </SectionCard>
+        )}
 
         </div>
 
@@ -1180,17 +1307,32 @@ function ConfigSidebar({
   ]
   const doneCount = checklist.filter((c) => c.done).length
 
+  const personalizedTips: string[] = []
+  if (!logoUrl) personalizedTips.push("Ajoutez un logo pour rassurer vos clients — les pages avec logo inspirent davantage confiance.")
+  if (!description.trim()) personalizedTips.push('Une courte description aide vos clients à savoir à quoi s\'attendre avant même de réserver.')
+  if (!(address.trim() || phone.trim())) personalizedTips.push('Renseignez une adresse ou un téléphone : vos clients pourront vous localiser ou vous joindre facilement.')
+  if (activeDaysCount === 0) personalizedTips.push('Activez au moins un jour dans vos disponibilités pour commencer à recevoir des réservations.')
+  if (!(services.trim() || instructions.trim() || paymentMethods.trim())) personalizedTips.push('Détaillez vos prestations : moins de questions avant le RDV, plus de réservations directes.')
+  if (personalizedTips.length === 0) {
+    personalizedTips.push('Votre profil est complet — partagez votre lien sur vos réseaux et par SMS pour recevoir vos premières réservations.')
+  }
+
   return (
     <div className="flex flex-col gap-5 lg:sticky lg:top-6">
 
       {/* ── Live preview ──────────────────────────────────────────────────── */}
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.1 }} className="rounded-2xl overflow-hidden" style={{ background: '#18181B', border: '1px solid #27272A' }}>
         <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid #27272A' }}>
-          <span className="text-xs font-bold text-white flex items-center gap-1.5">👁️ Aperçu en direct</span>
+          <span className="text-xs font-bold text-white flex items-center gap-1.5"><EyeIcon size={14} /> Aperçu en direct</span>
           {savedSlug && (
-            <motion.button whileTap={{ scale: 0.9, rotate: 180 }} onClick={() => setPreviewKey((k) => k + 1)} className="text-gray-500 hover:text-white text-xs" title="Actualiser l'aperçu">
-              ↻
-            </motion.button>
+            <div className="flex items-center gap-2.5">
+              <a href={publicUrl} target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-white text-[10px] font-semibold inline-flex items-center gap-1" title="Ouvrir en grand">
+                <ExternalLinkIcon size={12} /> Ouvrir en grand
+              </a>
+              <motion.button whileTap={{ scale: 0.9, rotate: 180 }} onClick={() => setPreviewKey((k) => k + 1)} className="text-gray-500 hover:text-white" title="Actualiser l'aperçu">
+                <RefreshIcon size={13} />
+              </motion.button>
+            </div>
           )}
         </div>
         {savedSlug ? (
@@ -1199,7 +1341,7 @@ function ConfigSidebar({
           </div>
         ) : (
           <div className="p-6 text-center">
-            <p className="text-3xl mb-2">🔍</p>
+            <EyeIcon size={32} className="mx-auto mb-2 text-gray-600" />
             <p className="text-xs text-gray-500">Enregistrez un nom et un lien pour voir l&apos;aperçu de votre page.</p>
           </div>
         )}
@@ -1220,8 +1362,8 @@ function ConfigSidebar({
         <div className="flex flex-col gap-2">
           {checklist.map((c) => (
             <div key={c.label} className="flex items-center gap-2 text-xs">
-              <span className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] shrink-0" style={{ background: c.done ? 'rgba(16,185,129,0.15)' : '#27272A', color: c.done ? '#6EE7B7' : '#52525B' }}>
-                {c.done ? '✓' : '·'}
+              <span className="w-4 h-4 rounded-full flex items-center justify-center shrink-0" style={{ background: c.done ? 'rgba(16,185,129,0.15)' : '#27272A', color: c.done ? '#6EE7B7' : '#52525B' }}>
+                {c.done ? <CheckIcon size={9} strokeWidth={3} /> : <span className="w-1 h-1 rounded-full" style={{ background: 'currentColor' }} />}
               </span>
               <span style={{ color: c.done ? '#D4D4D8' : '#71717A' }}>{c.label}</span>
             </div>
@@ -1231,11 +1373,9 @@ function ConfigSidebar({
 
       {/* ── Tips ──────────────────────────────────────────────────────────── */}
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.2 }} className="rounded-2xl p-5" style={{ background: 'rgba(16,185,129,0.05)', border: '1px solid rgba(16,185,129,0.15)' }}>
-        <p className="text-xs font-bold mb-3 flex items-center gap-1.5" style={{ color: '#6EE7B7' }}>💡 Conseils</p>
+        <p className="text-xs font-bold mb-3 flex items-center gap-1.5" style={{ color: '#6EE7B7' }}><SparklesIcon size={14} /> Conseils pour vous</p>
         <ul className="flex flex-col gap-2.5 text-xs text-gray-400 leading-relaxed">
-          <li>• Un logo augmente la confiance des nouveaux clients dès le premier coup d&apos;œil.</li>
-          <li>• Détaillez vos prestations : moins de questions avant le RDV, plus de réservations directes.</li>
-          <li>• Partagez votre lien sur vos réseaux et par SMS — voir le bouton « Message à envoyer à vos clients ».</li>
+          {personalizedTips.map((tip) => <li key={tip} className="flex gap-2"><span className="shrink-0">•</span>{tip}</li>)}
         </ul>
       </motion.div>
     </div>

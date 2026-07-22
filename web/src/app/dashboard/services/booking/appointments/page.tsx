@@ -6,6 +6,12 @@ import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
 import { createClient } from '@/lib/supabase/client'
 import { formatDateFR, formatHourFR, getParisNow, toDateKey } from '@/lib/booking'
+import { getAvailableSlotsForDate } from '@/lib/availability'
+import {
+  CalendarIcon, ListIcon, GridIcon, SearchIcon, TrendingUpIcon, UsersIcon, ClockIcon,
+  ChevronLeftIcon, ChevronRightIcon, PhoneIcon, MailIcon, SparklesIcon, ArrowLeftIcon,
+} from '@/components/booking/icons'
+import { EmptyInboxIllustration } from '@/components/booking/illustrations'
 
 type Status = 'confirmed' | 'cancelled' | 'completed'
 type Booking = {
@@ -66,6 +72,7 @@ export default function AppointmentsPage() {
   const [cancellingId, setCancellingId] = useState<string | null>(null)
   const [confirmCancelId, setConfirmCancelId] = useState<string | null>(null)
   const [justUpdated, setJustUpdated] = useState(false)
+  const [fillRate, setFillRate] = useState<number | null>(null)
 
   const loadBookings = useCallback(async () => {
     if (!user?.id) return
@@ -104,6 +111,45 @@ export default function AppointmentsPage() {
   // Europe/Paris wall-clock date, regardless of the pro's device timezone —
   // the day changes at 00:00 Paris time, not local device time nor UTC.
   const today = useMemo(() => toDateKey(getParisNow()), [])
+
+  // Fill rate for the next 7 days: (already-booked slots) / (already-booked +
+  // still-free slots), reusing the exact same slot math as the public booking
+  // page so this can never drift from what clients actually see as available.
+  useEffect(() => {
+    if (!user?.id || bookings.length === 0 && loading) return
+    let cancelled = false
+    ;(async () => {
+      const supabase = createClient()
+      const { data: settings } = await supabase
+        .from('booking_settings')
+        .select('slot_duration, buffer_time, advance_booking_days')
+        .eq('user_id', user.id)
+        .maybeSingle()
+      if (cancelled || !settings) return
+
+      const days: string[] = []
+      const base = getParisNow()
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(base)
+        d.setDate(d.getDate() + i)
+        days.push(toDateKey(d))
+      }
+
+      let totalFree = 0
+      let totalBooked = 0
+      for (const day of days) {
+        const free = await getAvailableSlotsForDate(supabase, user.id, day, settings.slot_duration, settings.buffer_time, settings.advance_booking_days)
+        const booked = bookings.filter((b) => b.booking_date === day && b.status !== 'cancelled').length
+        totalFree += free.length
+        totalBooked += booked
+      }
+      if (!cancelled) {
+        const capacity = totalFree + totalBooked
+        setFillRate(capacity > 0 ? Math.round((totalBooked / capacity) * 100) : null)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [user?.id, bookings, loading])
 
   // Filter then sort the flat list ONCE on a single combined date+time key —
   // grouping below simply preserves that order, so the two can never disagree.
@@ -161,6 +207,23 @@ export default function AppointmentsPage() {
     all: bookings.length,
   }), [bookings, today])
 
+  // Confirmed-booking count per day, last 7 days including today — the shared
+  // dataset behind every stat card's sparkline.
+  const dailyTrend = useMemo(() => {
+    const base = getParisNow()
+    const days: { date: string; count: number }[] = []
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(base)
+      d.setDate(d.getDate() - i)
+      const key = toDateKey(d)
+      days.push({ date: key, count: bookings.filter((b) => b.booking_date === key && b.status !== 'cancelled').length })
+    }
+    return days
+  }, [bookings])
+
+  const todayCount = bookings.filter((b) => b.booking_date === today && b.status !== 'cancelled').length
+  const uniqueClientsCount = new Set(bookings.map((b) => b.client_email.toLowerCase())).size
+
   return (
     <div className="relative min-h-screen" style={{ background: '#09090B' }}>
       <div className="absolute top-0 left-0 right-0 h-px pointer-events-none z-10" style={{ background: 'linear-gradient(90deg, transparent 5%, #10B981 35%, #34D399 65%, transparent 95%)' }} />
@@ -199,11 +262,18 @@ export default function AppointmentsPage() {
             {(['list', 'calendar'] as ViewMode[]).map((v) => (
               <button key={v} onClick={() => setView(v)} className="relative px-3 py-1.5 rounded-lg text-xs font-semibold" style={{ color: view === v ? '#fff' : '#71717A' }}>
                 {view === v && <motion.div layoutId="view-pill" className="absolute inset-0 rounded-lg" style={{ background: '#10B981' }} transition={{ type: 'spring', stiffness: 400, damping: 30 }} />}
-                <span className="relative">{v === 'list' ? '📋 Liste' : '📅 Calendrier'}</span>
+                <span className="relative inline-flex items-center gap-1.5">{v === 'list' ? <ListIcon size={13} /> : <GridIcon size={13} />}{v === 'list' ? 'Liste' : 'Calendrier'}</span>
               </button>
             ))}
           </div>
         </motion.div>
+
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <StatCard icon={<CalendarIcon size={16} />} label="Rendez-vous aujourd'hui" value={String(todayCount)} sparkline={dailyTrend.map((d) => d.count)} accent="#10B981" delay={0} />
+          <StatCard icon={<ClockIcon size={16} />} label="Cette semaine (à venir)" value={String(counts.upcoming)} sparkline={dailyTrend.map((d) => d.count)} accent="#3B82F6" delay={0.05} />
+          <StatCard icon={<TrendingUpIcon size={16} />} label="Taux de remplissage (7j)" value={fillRate === null ? '—' : `${fillRate}%`} accent="#F59E0B" delay={0.1} />
+          <StatCard icon={<UsersIcon size={16} />} label="Clients uniques" value={String(uniqueClientsCount)} accent="#D8B4FE" delay={0.15} />
+        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6 items-start">
         <div className="min-w-0">
@@ -220,13 +290,16 @@ export default function AppointmentsPage() {
               <span className="relative">{f.label} <span style={{ opacity: 0.7 }}>({counts[f.key]})</span></span>
             </button>
           ))}
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Rechercher un client…"
-            className="ml-auto px-3.5 py-1.5 rounded-full text-xs text-white placeholder-gray-600 outline-none w-full sm:w-56 transition-shadow"
-            style={{ background: '#18181B', border: '1px solid #27272A' }}
-          />
+          <div className="relative ml-auto w-full sm:w-56">
+            <SearchIcon size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600 pointer-events-none" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Rechercher un client…"
+              className="w-full pl-8 pr-3.5 py-1.5 rounded-full text-xs text-white placeholder-gray-600 outline-none transition-shadow"
+              style={{ background: '#18181B', border: '1px solid #27272A' }}
+            />
+          </div>
         </motion.div>
 
         {loading ? (
@@ -237,9 +310,20 @@ export default function AppointmentsPage() {
           </div>
         ) : filtered.length === 0 ? (
           <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="rounded-2xl p-12 text-center" style={{ background: '#18181B', border: '1px solid #27272A' }}>
-            <motion.p initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 300, damping: 16, delay: 0.1 }} className="text-4xl mb-3">📭</motion.p>
+            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 300, damping: 16, delay: 0.1 }} className="mx-auto mb-3 w-fit">
+              <EmptyInboxIllustration size={80} />
+            </motion.div>
             <p className="text-gray-400 text-sm font-medium mb-1">Aucun rendez-vous dans cette catégorie</p>
-            <p className="text-gray-600 text-xs">{filter === 'upcoming' ? 'Vos prochaines réservations apparaîtront ici.' : 'Changez de filtre pour voir d\'autres rendez-vous.'}</p>
+            <p className="text-gray-600 text-xs">
+              {bookings.length === 0
+                ? 'Partagez votre lien de réservation pour recevoir vos premiers rendez-vous.'
+                : filter === 'upcoming' ? 'Vos prochaines réservations apparaîtront ici.' : 'Changez de filtre pour voir d\'autres rendez-vous.'}
+            </p>
+            {bookings.length === 0 && (
+              <Link href="/dashboard/services/booking" className="inline-flex items-center gap-1.5 mt-4 text-xs font-bold px-4 py-2 rounded-xl" style={{ background: 'rgba(16,185,129,0.1)', color: '#6EE7B7', border: '1px solid rgba(16,185,129,0.25)' }}>
+                <ArrowLeftIcon size={12} /> Aller chercher mon lien de réservation
+              </Link>
+            )}
           </motion.div>
         ) : view === 'list' ? (
           <div className="flex flex-col gap-6">
@@ -272,7 +356,16 @@ export default function AppointmentsPage() {
                           <div className="text-sm font-bold text-white w-16 shrink-0">{formatHourFR(b.booking_time)}</div>
                           <div className="flex-1 min-w-[160px]">
                             <p className="text-sm font-semibold text-white">{b.client_name}</p>
-                            <p className="text-xs text-gray-500">{b.client_email}{b.client_phone ? ` · ${b.client_phone}` : ''}</p>
+                            <div className="flex items-center gap-3 flex-wrap">
+                              <a href={`mailto:${b.client_email}`} onClick={(e) => e.stopPropagation()} className="text-xs text-gray-500 hover:text-gray-300 inline-flex items-center gap-1 transition-colors">
+                                <MailIcon size={11} />{b.client_email}
+                              </a>
+                              {b.client_phone && (
+                                <a href={`tel:${b.client_phone.replace(/\s+/g, '')}`} onClick={(e) => e.stopPropagation()} className="text-xs text-gray-500 hover:text-gray-300 inline-flex items-center gap-1 transition-colors">
+                                  <PhoneIcon size={11} />{b.client_phone}
+                                </a>
+                              )}
+                            </div>
                             {b.service_note && <p className="text-xs text-gray-600 mt-0.5 italic">&ldquo;{b.service_note}&rdquo;</p>}
                           </div>
                           <span className="text-[11px] font-semibold px-2 py-1 rounded-full" style={{ color: badge.color, background: badge.bg }}>{badge.label}</span>
@@ -313,6 +406,50 @@ export default function AppointmentsPage() {
 
       </div>
     </div>
+  )
+}
+
+// ─── Overview stat cards ────────────────────────────────────────────────────────
+
+function Sparkline({ data, accent }: { data: number[]; accent: string }) {
+  const max = Math.max(1, ...data)
+  return (
+    <div className="flex items-end gap-1 h-8">
+      {data.map((v, i) => (
+        <motion.div
+          key={i}
+          initial={{ height: 0 }}
+          animate={{ height: `${Math.max(8, (v / max) * 100)}%` }}
+          transition={{ duration: 0.4, delay: i * 0.03 }}
+          className="flex-1 rounded-sm"
+          style={{ background: i === data.length - 1 ? accent : `${accent}55` }}
+        />
+      ))}
+    </div>
+  )
+}
+
+function StatCard({ icon, label, value, sparkline, accent, delay = 0 }: {
+  icon: React.ReactNode; label: string; value: string; sparkline?: number[]; accent: string; delay?: number
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 14 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35, delay }}
+      whileHover={{ borderColor: '#3F3F46' }}
+      className="rounded-2xl p-5"
+      style={{ background: '#18181B', border: '1px solid #27272A' }}
+    >
+      <div className="flex items-center justify-between mb-3">
+        <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: `${accent}22`, color: accent }}>
+          {icon}
+        </div>
+      </div>
+      <p className="text-2xl font-extrabold text-white mb-0.5">{value}</p>
+      <p className="text-xs text-gray-500 mb-3">{label}</p>
+      {sparkline && <Sparkline data={sparkline} accent={accent} />}
+    </motion.div>
   )
 }
 
@@ -357,9 +494,9 @@ function CalendarView({ bookings }: { bookings: Booking[] }) {
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="rounded-2xl p-6" style={{ background: '#18181B', border: '1px solid #27272A' }}>
       <div className="flex items-center justify-between mb-5">
-        <motion.button whileTap={{ scale: 0.9 }} onClick={() => setMonthOffset((o) => o - 1)} className="w-7 h-7 rounded-lg text-gray-500" style={{ border: '1px solid #27272A' }}>←</motion.button>
+        <motion.button whileTap={{ scale: 0.9 }} onClick={() => setMonthOffset((o) => o - 1)} className="w-7 h-7 rounded-lg text-gray-500 flex items-center justify-center" style={{ border: '1px solid #27272A' }}><ChevronLeftIcon size={14} /></motion.button>
         <span className="text-sm font-bold text-white capitalize">{MONTH_NAMES[month.getMonth()]} {month.getFullYear()}</span>
-        <motion.button whileTap={{ scale: 0.9 }} onClick={() => setMonthOffset((o) => o + 1)} className="w-7 h-7 rounded-lg text-gray-500" style={{ border: '1px solid #27272A' }}>→</motion.button>
+        <motion.button whileTap={{ scale: 0.9 }} onClick={() => setMonthOffset((o) => o + 1)} className="w-7 h-7 rounded-lg text-gray-500 flex items-center justify-center" style={{ border: '1px solid #27272A' }}><ChevronRightIcon size={14} /></motion.button>
       </div>
       <div className="grid grid-cols-7 gap-1.5 mb-2">
         {WEEK_SHORT.map((d) => <div key={d} className="text-center text-[10px] font-semibold text-gray-600">{d}</div>)}
@@ -433,18 +570,6 @@ function StatsSidebar({ bookings, today }: { bookings: Booking[]; today: string 
       .sort((a, b) => (sortKey(a) < sortKey(b) ? -1 : 1))[0] ?? null
   }, [active, today])
 
-  const in7Days = useMemo(() => {
-    const d = getParisNow()
-    d.setDate(d.getDate() + 7)
-    return toDateKey(d)
-  }, [])
-
-  const stats = useMemo(() => ({
-    upcoming: active.filter((b) => b.booking_date >= today).length,
-    thisWeek: active.filter((b) => b.booking_date >= today && b.booking_date <= in7Days).length,
-    uniqueClients: new Set(bookings.map((b) => b.client_email.toLowerCase())).size,
-  }), [active, bookings, today, in7Days])
-
   const nextAvatar = next ? avatarStyle(next.client_email || next.client_name) : null
 
   return (
@@ -474,28 +599,10 @@ function StatsSidebar({ bookings, today }: { bookings: Booking[]; today: string 
         )}
       </motion.div>
 
-      {/* ── Quick stats ──────────────────────────────────────────────────── */}
-      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.05 }} className="rounded-2xl p-5" style={{ background: '#18181B', border: '1px solid #27272A' }}>
-        <p className="text-xs font-bold text-white mb-3.5">Aperçu rapide</p>
-        <div className="flex flex-col gap-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-gray-500">À venir</span>
-            <span className="text-sm font-bold text-white">{stats.upcoming}</span>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-gray-500">Dans les 7 prochains jours</span>
-            <span className="text-sm font-bold text-white">{stats.thisWeek}</span>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-gray-500">Clients uniques</span>
-            <span className="text-sm font-bold text-white">{stats.uniqueClients}</span>
-          </div>
-        </div>
-      </motion.div>
 
       {/* ── Tips ──────────────────────────────────────────────────────────── */}
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.1 }} className="rounded-2xl p-5" style={{ background: 'rgba(16,185,129,0.05)', border: '1px solid rgba(16,185,129,0.15)' }}>
-        <p className="text-xs font-bold mb-3 flex items-center gap-1.5" style={{ color: '#6EE7B7' }}>💡 Conseil</p>
+        <p className="text-xs font-bold mb-3 flex items-center gap-1.5" style={{ color: '#6EE7B7' }}><SparklesIcon size={14} /> Conseil</p>
         <p className="text-xs text-gray-400 leading-relaxed">Utilisez la recherche pour retrouver rapidement un client, ou la vue calendrier pour visualiser votre charge sur le mois.</p>
       </motion.div>
     </div>

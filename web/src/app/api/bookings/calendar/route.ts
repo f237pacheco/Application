@@ -40,6 +40,7 @@ export async function GET(request: Request) {
 
     const daysInMonth = new Date(year, month, 0).getDate();
     const availableDates: string[] = [];
+    const slotCounts: Record<string, number> = {};
 
     for (let d = 1; d <= daysInMonth; d++) {
       const date = new Date(year, month - 1, d);
@@ -53,10 +54,13 @@ export async function GET(request: Request) {
         settings.buffer_time,
         settings.advance_booking_days
       );
-      if (slots.length > 0) availableDates.push(dateKey);
+      if (slots.length > 0) {
+        availableDates.push(dateKey);
+        slotCounts[dateKey] = slots.length;
+      }
     }
 
-    return NextResponse.json({ availableDates });
+    return NextResponse.json({ availableDates, slotCounts });
   } catch (err) {
     console.error(`[bookings/calendar] EXCEPTION pour slug="${slug}":`, JSON.stringify(err), err);
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
