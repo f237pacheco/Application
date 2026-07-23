@@ -56,7 +56,7 @@ function toDateKey(d: Date): string {
 
 function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
   return (
-    <button onClick={onToggle} className="relative w-9 h-5 rounded-full shrink-0 transition-colors" style={{ background: on ? '#6366F1' : '#D9D6E8' }}>
+    <button onClick={onToggle} className="relative w-9 h-5 rounded-full shrink-0 transition-colors" style={{ background: on ? '#10B981' : 'rgba(255,255,255,0.12)' }}>
       <motion.div animate={{ x: on ? 18 : 2 }} transition={{ type: 'spring', stiffness: 500, damping: 30 }} className="absolute top-0.5 w-4 h-4 rounded-full" style={{ background: '#FAFAFA' }} />
     </button>
   )
@@ -70,7 +70,7 @@ function InfoTooltip({ text }: { text: string }) {
         type="button"
         onClick={() => setOpen((o) => !o)}
         className="w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0"
-        style={{ background: '#ECEAF5', color: '#6B7280' }}
+        style={{ background: 'rgba(255,255,255,0.06)', color: '#9CA3AF' }}
         aria-label="Aide"
       >
         i
@@ -83,7 +83,7 @@ function InfoTooltip({ text }: { text: string }) {
             exit={{ opacity: 0, y: 4, scale: 0.96 }}
             transition={{ duration: 0.15 }}
             className="absolute z-20 top-6 left-0 w-64 rounded-xl p-3 text-xs leading-relaxed"
-            style={{ background: '#1A1A2E', color: '#E5E7EB', boxShadow: '0 12px 32px rgba(26,26,46,0.35)', border: '1px solid #2E2E48' }}
+            style={{ background: '#1D1D26', color: '#FAFAFA', boxShadow: '0 12px 32px rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.1)' }}
           >
             {text}
           </motion.div>
@@ -122,10 +122,10 @@ function Modal({ open, onClose, gradientHeader, children }: { open: boolean; onC
     <AnimatePresence>
       {open && (
         <motion.div className="fixed inset-0 z-50 flex items-center justify-center px-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
-          <motion.div className="absolute inset-0" style={{ background: 'rgba(26,26,46,0.6)', backdropFilter: 'blur(3px)' }} onClick={onClose} />
+          <motion.div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(3px)' }} onClick={onClose} />
           <motion.div
             className="relative w-full max-w-lg max-h-[85vh] overflow-y-auto rounded-2xl"
-            style={{ background: CARD, boxShadow: '0 24px 64px rgba(26,26,46,0.25)' }}
+            style={{ background: CARD, boxShadow: '0 24px 64px rgba(0,0,0,0.25)' }}
             initial={{ opacity: 0, scale: 0.92, y: 16 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 8 }}
@@ -157,17 +157,17 @@ function buildMessageTemplates(businessName: string, url: string): MessageTempla
       icon: <MailIcon size={13} />,
       label: 'Email',
       tag: 'Formel et complet',
-      accent: '#A855F7',
-      accentSoft: 'rgba(168,85,247,0.1)',
+      accent: '#F59E0B',
+      accentSoft: 'rgba(245,158,11,0.1)',
       text: `Bonjour,\n\nPour vous simplifier la prise de rendez-vous, vous pouvez désormais réserver directement en ligne, à l'heure qui vous convient le mieux — sans appel ni attente :\n\n${url}\n\nLa réservation prend moins d'une minute et vous recevrez une confirmation immédiate par email. N'hésitez pas à nous contacter si vous avez la moindre question.\n\nAu plaisir de vous accueillir prochainement,\n${name}`,
     },
     {
       icon: <SparklesIcon size={13} />,
       label: 'Réseaux sociaux',
       tag: 'Accrocheur',
-      accent: '#EC4899',
-      accentSoft: 'rgba(236,72,153,0.1)',
-      text: `✨ Nouveauté chez ${name} !\n\nFini le temps d'attente au téléphone : réservez votre rendez-vous en ligne, 24h/24, en quelques clics 👇\n${url}`,
+      accent: '#10B981',
+      accentSoft: 'rgba(16,185,129,0.1)',
+      text: `Nouveauté chez ${name} !\n\nFini le temps d'attente au téléphone : réservez votre rendez-vous en ligne, 24h/24, en quelques clics :\n${url}`,
     },
   ]
 }
@@ -206,27 +206,27 @@ function ClientMessageModal({ open, onClose, businessName, url }: { open: boolea
             transition={{ duration: 0.35, delay: idx * 0.08 }}
             whileHover={{ borderColor: t.accent + '55' }}
             className="rounded-2xl overflow-hidden"
-            style={{ background: '#FFFFFF', border: '1px solid #ECEAF5' }}
+            style={{ background: '#111117', border: '1px solid rgba(255,255,255,0.06)' }}
           >
             <div className="flex items-center justify-between px-4 py-3" style={{ background: t.accentSoft, borderBottom: `1px solid ${t.accent}33` }}>
               <span className="text-xs font-bold flex items-center gap-2" style={{ color: t.accent }}>
                 <span className="w-6 h-6 rounded-full flex items-center justify-center text-[11px]" style={{ background: t.accent + '22' }}>{t.icon}</span>
                 {t.label}
-                <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(107,114,128,0.1)', color: '#6B7280' }}>{t.tag}</span>
+                <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(255,255,255,0.06)', color: '#9CA3AF' }}>{t.tag}</span>
               </span>
               <motion.button
                 whileTap={{ scale: 0.94 }}
                 onClick={() => handleCopy(idx, t.text)}
                 className="text-[11px] font-bold px-2.5 py-1 rounded-lg"
-                style={{ background: copiedIdx === idx ? '#6366F1' : '#ECEAF5', color: copiedIdx === idx ? '#fff' : '#6B7280' }}
+                style={{ background: copiedIdx === idx ? '#10B981' : 'rgba(255,255,255,0.06)', color: copiedIdx === idx ? '#fff' : '#9CA3AF' }}
               >
                 <span className="inline-flex items-center gap-1">{copiedIdx === idx && <CheckIcon size={11} strokeWidth={2.5} />}{copiedIdx === idx ? 'Copié !' : 'Copier ce message'}</span>
               </motion.button>
             </div>
             <div className="px-4 py-3.5">
-              <p className="text-[13px] text-[#4B5563] leading-relaxed whitespace-pre-line">{t.text}</p>
+              <p className="text-[13px] text-[#9CA3AF] leading-relaxed whitespace-pre-line">{t.text}</p>
               {t.label === 'SMS' && (
-                <p className="text-[10px] mt-2.5 pt-2.5" style={{ color: t.text.length > 160 ? '#FCA5A5' : '#9CA3AF', borderTop: '1px solid #ECEAF5' }}>
+                <p className="text-[10px] mt-2.5 pt-2.5" style={{ color: t.text.length > 160 ? '#F87171' : '#6B7280', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
                   {t.text.length} caractères {t.text.length > 160 ? '· sera envoyé en plusieurs SMS' : '· tient dans un seul SMS'}
                 </p>
               )}
@@ -235,7 +235,7 @@ function ClientMessageModal({ open, onClose, businessName, url }: { open: boolea
         ))}
       </div>
 
-      <p className="text-[11px] text-[#9CA3AF] mt-4 text-center flex items-center justify-center gap-1.5"><SparklesIcon size={12} /> N&apos;hésitez pas à personnaliser ces messages avant de les envoyer.</p>
+      <p className="text-[11px] text-[#6B7280] mt-4 text-center flex items-center justify-center gap-1.5"><SparklesIcon size={12} /> N&apos;hésitez pas à personnaliser ces messages avant de les envoyer.</p>
     </Modal>
   )
 }
@@ -243,12 +243,12 @@ function ClientMessageModal({ open, onClose, businessName, url }: { open: boolea
 function SlugBadge({ status }: { status: SlugStatus }) {
   const map: Record<SlugStatus, { label: string; color: string; bg: string; icon?: React.ReactNode } | null> = {
     idle: null,
-    invalid: { label: 'Format invalide (lettres, chiffres, tirets)', color: '#FCA5A5', bg: 'rgba(239,68,68,0.1)' },
-    checking: { label: 'Vérification…', color: '#6B7280', bg: '#ECEAF5' },
-    available: { label: 'Disponible', color: '#8B5CF6', bg: 'rgba(99,102,241,0.12)', icon: <CheckIcon size={11} strokeWidth={2.5} /> },
-    taken: { label: 'Déjà pris', color: '#FCA5A5', bg: 'rgba(239,68,68,0.1)' },
-    current: { label: 'Votre lien actuel', color: '#8B5CF6', bg: 'rgba(99,102,241,0.12)', icon: <CheckIcon size={11} strokeWidth={2.5} /> },
-    'check-failed': { label: 'Vérification impossible', color: '#FCD34D', bg: 'rgba(245,158,11,0.1)', icon: <AlertCircleIcon size={11} /> },
+    invalid: { label: 'Format invalide (lettres, chiffres, tirets)', color: '#F87171', bg: 'rgba(239,68,68,0.1)' },
+    checking: { label: 'Vérification…', color: '#9CA3AF', bg: 'rgba(255,255,255,0.06)' },
+    available: { label: 'Disponible', color: '#10B981', bg: 'rgba(16,185,129,0.12)', icon: <CheckIcon size={11} strokeWidth={2.5} /> },
+    taken: { label: 'Déjà pris', color: '#F87171', bg: 'rgba(239,68,68,0.1)' },
+    current: { label: 'Votre lien actuel', color: '#10B981', bg: 'rgba(16,185,129,0.12)', icon: <CheckIcon size={11} strokeWidth={2.5} /> },
+    'check-failed': { label: 'Vérification impossible', color: '#F59E0B', bg: 'rgba(245,158,11,0.1)', icon: <AlertCircleIcon size={11} /> },
   }
   const cfg = map[status]
   if (!cfg) return null
@@ -717,7 +717,7 @@ export default function BookingSettingsPage() {
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 12L6 8l4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
             Retour aux services
           </Link>
-          <Link href="/dashboard/services/booking/appointments" className="inline-flex items-center gap-2 text-sm font-semibold px-3 py-1.5 rounded-xl transition-colors" style={{ background: 'rgba(99,102,241,0.1)', color: '#8B5CF6', border: '1px solid rgba(99,102,241,0.25)' }}>
+          <Link href="/dashboard/services/booking/appointments" className="inline-flex items-center gap-2 text-sm font-semibold px-3 py-1.5 rounded-xl transition-colors" style={{ background: 'rgba(16,185,129,0.1)', color: '#10B981', border: '1px solid rgba(16,185,129,0.25)' }}>
             <CalendarIcon size={15} /> Voir mes RDV <ArrowRightIcon size={13} />
           </Link>
         </motion.div>
@@ -725,17 +725,17 @@ export default function BookingSettingsPage() {
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
           <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-extrabold text-[#1A1A2E] mb-2">Configurez votre agenda</h1>
-              <p className="text-[#6B7280] text-sm">Renseignez vos informations et vos disponibilités — vos clients pourront réserver immédiatement.</p>
+              <h1 className="text-3xl font-extrabold text-[#FAFAFA] mb-2">Configurez votre agenda</h1>
+              <p className="text-[#9CA3AF] text-sm">Renseignez vos informations et vos disponibilités — vos clients pourront réserver immédiatement.</p>
             </div>
             {loaded && (
               <div className="shrink-0 w-full sm:w-48">
                 <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-[11px] font-semibold text-[#6B7280]">Profil complété</span>
-                  <span className="text-xs font-bold" style={{ color: completionPercent === 100 ? '#8B5CF6' : '#6B7280' }}><AnimatedCounter value={completionPercent} suffix="%" /></span>
+                  <span className="text-[11px] font-semibold text-[#9CA3AF]">Profil complété</span>
+                  <span className="text-xs font-bold" style={{ color: completionPercent === 100 ? '#10B981' : '#9CA3AF' }}><AnimatedCounter value={completionPercent} suffix="%" /></span>
                 </div>
-                <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: '#ECEAF5' }}>
-                  <motion.div className="h-full rounded-full" style={{ background: completionPercent === 100 ? '#6366F1' : 'linear-gradient(90deg, #6366F1, #8B5CF6)' }} initial={{ width: 0 }} animate={{ width: `${completionPercent}%` }} transition={{ duration: 0.6, ease: 'easeOut' }} />
+                <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)' }}>
+                  <motion.div className="h-full rounded-full" style={{ background: completionPercent === 100 ? '#10B981' : 'linear-gradient(90deg, #10B981, #10B981)' }} initial={{ width: 0 }} animate={{ width: `${completionPercent}%` }} transition={{ duration: 0.6, ease: 'easeOut' }} />
                 </div>
               </div>
             )}
@@ -743,10 +743,10 @@ export default function BookingSettingsPage() {
         </motion.div>
 
         {/* ── Public link ──────────────────────────────────────────────────── */}
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="rounded-2xl p-5 mb-6 flex flex-col sm:flex-row sm:items-center gap-3" style={{ background: savedSlug ? 'rgba(99,102,241,0.06)' : '#FFFFFF', border: savedSlug ? '1px solid rgba(99,102,241,0.25)' : '1px solid #ECEAF5' }}>
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="rounded-2xl p-5 mb-6 flex flex-col sm:flex-row sm:items-center gap-3" style={{ background: savedSlug ? 'rgba(16,185,129,0.06)' : '#111117', border: savedSlug ? '1px solid rgba(16,185,129,0.25)' : '1px solid rgba(255,255,255,0.06)' }}>
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-semibold text-[#6B7280] mb-1">Votre lien de réservation public</p>
-            <p className="text-sm font-mono truncate" style={{ color: savedSlug ? '#8B5CF6' : '#9CA3AF' }}>{publicUrl}</p>
+            <p className="text-xs font-semibold text-[#9CA3AF] mb-1">Votre lien de réservation public</p>
+            <p className="text-sm font-mono truncate" style={{ color: savedSlug ? '#10B981' : '#6B7280' }}>{publicUrl}</p>
           </div>
           <div className="flex gap-2 shrink-0">
             {savedSlug && (
@@ -755,7 +755,7 @@ export default function BookingSettingsPage() {
                 target="_blank"
                 rel="noopener noreferrer"
                 className="px-4 py-2 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1.5"
-                style={{ background: '#ECEAF5', color: '#1A1A2E' }}
+                style={{ background: 'rgba(255,255,255,0.06)', color: '#FAFAFA' }}
               >
                 <EyeIcon size={14} /> Prévisualiser
               </a>
@@ -765,7 +765,7 @@ export default function BookingSettingsPage() {
               onClick={handleCopyLink}
               whileTap={savedSlug ? { scale: 0.96 } : undefined}
               className="px-4 py-2 rounded-xl text-xs font-bold"
-              style={{ background: savedSlug ? '#6366F1' : '#ECEAF5', color: savedSlug ? '#fff' : '#9CA3AF', cursor: savedSlug ? 'pointer' : 'not-allowed' }}
+              style={{ background: savedSlug ? '#10B981' : 'rgba(255,255,255,0.06)', color: savedSlug ? '#fff' : '#6B7280', cursor: savedSlug ? 'pointer' : 'not-allowed' }}
             >
               <AnimatePresence mode="wait" initial={false}>
                 <motion.span
@@ -788,11 +788,11 @@ export default function BookingSettingsPage() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.05 }}
-            whileHover={{ borderColor: '#6366F1', color: '#8B5CF6' }}
+            whileHover={{ borderColor: '#10B981', color: '#10B981' }}
             whileTap={{ scale: 0.98 }}
             onClick={() => setShowMessageModal(true)}
             className="w-full sm:w-auto mb-6 px-4 py-2.5 rounded-xl text-xs font-bold inline-flex items-center gap-2"
-            style={{ background: '#FFFFFF', color: '#6B7280', border: '1px solid #ECEAF5' }}
+            style={{ background: '#111117', color: '#9CA3AF', border: '1px solid rgba(255,255,255,0.06)' }}
           >
             <MessageSquareIcon size={15} /> Message à envoyer à vos clients
           </motion.button>
@@ -803,10 +803,10 @@ export default function BookingSettingsPage() {
         <Modal open={showRemoveLogoConfirm} onClose={() => setShowRemoveLogoConfirm(false)}>
           <div className="text-center">
             <div className="w-12 h-12 mx-auto mb-4 rounded-full flex items-center justify-center" style={{ background: 'rgba(239,68,68,0.1)', color: '#EF4444' }}><TrashIcon size={20} /></div>
-            <p className="text-sm font-bold text-[#1A1A2E] mb-1.5">Supprimer le logo ?</p>
-            <p className="text-xs text-[#6B7280] mb-5">Il disparaîtra de votre page de réservation publique. Vous pourrez en ajouter un nouveau à tout moment.</p>
+            <p className="text-sm font-bold text-[#FAFAFA] mb-1.5">Supprimer le logo ?</p>
+            <p className="text-xs text-[#9CA3AF] mb-5">Il disparaîtra de votre page de réservation publique. Vous pourrez en ajouter un nouveau à tout moment.</p>
             <div className="flex gap-2">
-              <button onClick={() => setShowRemoveLogoConfirm(false)} className="flex-1 py-2.5 rounded-xl text-sm font-semibold" style={{ background: '#ECEAF5', color: '#6B7280' }}>Annuler</button>
+              <button onClick={() => setShowRemoveLogoConfirm(false)} className="flex-1 py-2.5 rounded-xl text-sm font-semibold" style={{ background: 'rgba(255,255,255,0.06)', color: '#9CA3AF' }}>Annuler</button>
               <motion.button whileTap={{ scale: 0.97 }} onClick={handleRemoveLogo} className="flex-1 py-2.5 rounded-xl text-sm font-bold" style={{ background: '#EF4444', color: '#fff' }}>Supprimer</motion.button>
             </div>
           </div>
@@ -816,9 +816,9 @@ export default function BookingSettingsPage() {
         <div className="min-w-0">
 
         {isOnboarding && (
-          <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="rounded-2xl p-5 mb-6" style={{ background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.2)' }}>
-            <p className="text-sm font-bold text-[#1A1A2E] mb-1">Bienvenue — configurons votre page de réservation</p>
-            <p className="text-xs text-[#6B7280] mb-4">Quatre étapes rapides pour que vos clients puissent réserver dès aujourd&apos;hui.</p>
+          <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="rounded-2xl p-5 mb-6" style={{ background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.2)' }}>
+            <p className="text-sm font-bold text-[#FAFAFA] mb-1">Bienvenue — configurons votre page de réservation</p>
+            <p className="text-xs text-[#9CA3AF] mb-4">Quatre étapes rapides pour que vos clients puissent réserver dès aujourd&apos;hui.</p>
             <div className="flex items-center gap-2 mb-1">
               {ONBOARDING_STEPS.map((s, idx) => {
                 const n = idx + 1
@@ -828,22 +828,22 @@ export default function BookingSettingsPage() {
                   <div key={s} className="flex items-center flex-1 last:flex-none">
                     <div className="flex flex-col items-center gap-1">
                       <motion.div
-                        animate={{ background: done || active ? '#6366F1' : '#ECEAF5', color: done || active ? '#fff' : '#6B7280' }}
+                        animate={{ background: done || active ? '#10B981' : 'rgba(255,255,255,0.06)', color: done || active ? '#fff' : '#9CA3AF' }}
                         className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0"
                       >
                         {done ? <CheckIcon size={11} strokeWidth={3} /> : n}
                       </motion.div>
                     </div>
                     {n < ONBOARDING_STEPS.length && (
-                      <div className="flex-1 h-px mx-1.5" style={{ background: '#ECEAF5' }}>
-                        <motion.div className="h-px" style={{ background: '#6366F1' }} initial={false} animate={{ width: done ? '100%' : '0%' }} transition={{ duration: 0.3 }} />
+                      <div className="flex-1 h-px mx-1.5" style={{ background: 'rgba(255,255,255,0.06)' }}>
+                        <motion.div className="h-px" style={{ background: '#10B981' }} initial={false} animate={{ width: done ? '100%' : '0%' }} transition={{ duration: 0.3 }} />
                       </div>
                     )}
                   </div>
                 )
               })}
             </div>
-            <p className="text-[11px] font-semibold text-[#6B7280] mt-2">Étape {onboardingStep}/{ONBOARDING_STEPS.length} — {ONBOARDING_STEPS[onboardingStep - 1]}</p>
+            <p className="text-[11px] font-semibold text-[#9CA3AF] mt-2">Étape {onboardingStep}/{ONBOARDING_STEPS.length} — {ONBOARDING_STEPS[onboardingStep - 1]}</p>
           </motion.div>
         )}
 
@@ -852,17 +852,17 @@ export default function BookingSettingsPage() {
         <SectionCard title="Informations" subtitle="Le nom et la description visibles par vos clients sur la page de réservation." tooltip="Ces informations apparaissent en haut de votre page publique et dans les emails envoyés à vos clients. Le logo remplace le rond avec vos initiales." icon={<StoreIcon size={18} />} gradient={TINTS.indigo.gradient}>
           <div className="flex flex-col gap-4">
             <div>
-              <label className="block text-xs font-semibold text-[#6B7280] mb-2">Logo</label>
+              <label className="block text-xs font-semibold text-[#9CA3AF] mb-2">Logo</label>
 
               {logoPreview ? (
                 <div className="flex items-center gap-4">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={logoPreview} alt="Aperçu" className="w-16 h-16 rounded-2xl object-cover" style={{ border: '1px solid #ECEAF5' }} />
+                  <img src={logoPreview} alt="Aperçu" className="w-16 h-16 rounded-2xl object-cover" style={{ border: '1px solid rgba(255,255,255,0.06)' }} />
                   <div className="flex-1">
-                    <p className="text-xs text-[#6B7280] mb-2">Aperçu — confirmez pour envoyer.</p>
+                    <p className="text-xs text-[#9CA3AF] mb-2">Aperçu — confirmez pour envoyer.</p>
                     {logoUploading && (
-                      <div className="w-full h-1.5 rounded-full mb-2 overflow-hidden" style={{ background: '#ECEAF5' }}>
-                        <motion.div className="h-full" style={{ background: '#6366F1' }} animate={{ width: `${logoProgress}%` }} transition={{ duration: 0.3 }} />
+                      <div className="w-full h-1.5 rounded-full mb-2 overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)' }}>
+                        <motion.div className="h-full" style={{ background: '#10B981' }} animate={{ width: `${logoProgress}%` }} transition={{ duration: 0.3 }} />
                       </div>
                     )}
                     <div className="flex gap-2">
@@ -870,7 +870,7 @@ export default function BookingSettingsPage() {
                         onClick={handleConfirmLogoUpload}
                         disabled={logoUploading}
                         className="px-3.5 py-1.5 rounded-lg text-xs font-bold disabled:opacity-60"
-                        style={{ background: '#6366F1', color: '#fff' }}
+                        style={{ background: '#10B981', color: '#fff' }}
                       >
                         {logoUploading ? 'Envoi…' : 'Confirmer'}
                       </button>
@@ -878,21 +878,21 @@ export default function BookingSettingsPage() {
                         onClick={handleCancelLogoSelect}
                         disabled={logoUploading}
                         className="px-3.5 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-60"
-                        style={{ background: '#ECEAF5', color: '#6B7280' }}
+                        style={{ background: 'rgba(255,255,255,0.06)', color: '#9CA3AF' }}
                       >
                         Annuler
                       </button>
                     </div>
-                    {logoError && <p className="text-[11px] mt-1.5" style={{ color: '#FCA5A5' }}>{logoError}</p>}
+                    {logoError && <p className="text-[11px] mt-1.5" style={{ color: '#F87171' }}>{logoError}</p>}
                   </div>
                 </div>
               ) : (
                 <div className="flex items-center gap-4">
                   {logoUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={logoUrl} alt="Logo" className="w-16 h-16 rounded-2xl object-cover" style={{ border: '1px solid #ECEAF5' }} />
+                    <img src={logoUrl} alt="Logo" className="w-16 h-16 rounded-2xl object-cover" style={{ border: '1px solid rgba(255,255,255,0.06)' }} />
                   ) : (
-                    <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-xl font-bold" style={{ background: 'rgba(99,102,241,0.1)', color: '#8B5CF6', border: '1px solid #ECEAF5' }}>
+                    <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-xl font-bold" style={{ background: 'rgba(16,185,129,0.1)', color: '#10B981', border: '1px solid rgba(255,255,255,0.06)' }}>
                       {businessName.charAt(0).toUpperCase() || '?'}
                     </div>
                   )}
@@ -901,9 +901,9 @@ export default function BookingSettingsPage() {
                       <label
                         className="inline-block px-3.5 py-2 rounded-xl text-xs font-semibold cursor-pointer"
                         style={{
-                          background: !savedSlug ? '#ECEAF5' : '#FFFFFF',
-                          color: !savedSlug ? '#9CA3AF' : '#6B7280',
-                          border: '1px solid #ECEAF5',
+                          background: !savedSlug ? 'rgba(255,255,255,0.06)' : '#111117',
+                          color: !savedSlug ? '#6B7280' : '#9CA3AF',
+                          border: '1px solid rgba(255,255,255,0.06)',
                           pointerEvents: !savedSlug ? 'none' : 'auto',
                         }}
                       >
@@ -917,100 +917,100 @@ export default function BookingSettingsPage() {
                         />
                       </label>
                       {logoUrl && (
-                        <button onClick={() => setShowRemoveLogoConfirm(true)} className="px-3.5 py-2 rounded-xl text-xs font-semibold" style={{ background: 'rgba(239,68,68,0.08)', color: '#FCA5A5', border: '1px solid rgba(239,68,68,0.2)' }}>
+                        <button onClick={() => setShowRemoveLogoConfirm(true)} className="px-3.5 py-2 rounded-xl text-xs font-semibold" style={{ background: 'rgba(239,68,68,0.08)', color: '#F87171', border: '1px solid rgba(239,68,68,0.2)' }}>
                           Supprimer
                         </button>
                       )}
                     </div>
-                    <p className="text-[11px] text-[#9CA3AF] mt-1.5">
+                    <p className="text-[11px] text-[#6B7280] mt-1.5">
                       {!savedSlug ? 'Enregistrez vos informations une première fois pour activer l\'upload.' : 'JPG, PNG ou WebP, 10 Mo maximum — redimensionné automatiquement.'}
                     </p>
-                    {logoError && <p className="text-[11px] mt-1" style={{ color: '#FCA5A5' }}>{logoError}</p>}
+                    {logoError && <p className="text-[11px] mt-1" style={{ color: '#F87171' }}>{logoError}</p>}
                   </div>
                 </div>
               )}
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-[#6B7280] mb-2">Nom de votre activité *</label>
+              <label className="block text-xs font-semibold text-[#9CA3AF] mb-2">Nom de votre activité *</label>
               <input
                 value={businessName}
                 onChange={(e) => setBusinessName(e.target.value)}
                 placeholder="Ex : Salon Claire Bernard"
-                className="w-full px-3.5 py-2.5 rounded-xl text-sm text-[#1A1A2E] placeholder-gray-600 outline-none"
-                style={{ background: '#FFFFFF', border: '1px solid #ECEAF5' }}
+                className="w-full px-3.5 py-2.5 rounded-xl text-sm text-[#FAFAFA] placeholder-gray-600 outline-none"
+                style={{ background: '#111117', border: '1px solid rgba(255,255,255,0.06)' }}
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-[#6B7280] mb-2">Lien personnalisé *</label>
-              <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl" style={{ background: '#FFFFFF', border: '1px solid #ECEAF5' }}>
-                <span className="text-xs text-[#9CA3AF] shrink-0">/rdv/</span>
+              <label className="block text-xs font-semibold text-[#9CA3AF] mb-2">Lien personnalisé *</label>
+              <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl" style={{ background: '#111117', border: '1px solid rgba(255,255,255,0.06)' }}>
+                <span className="text-xs text-[#6B7280] shrink-0">/rdv/</span>
                 <input
                   value={slug}
                   onChange={(e) => { setSlugTouched(true); setSlug(slugify(e.target.value)) }}
                   placeholder="votre-nom"
-                  className="flex-1 bg-transparent text-sm text-[#1A1A2E] placeholder-gray-600 outline-none min-w-0"
+                  className="flex-1 bg-transparent text-sm text-[#FAFAFA] placeholder-gray-600 outline-none min-w-0"
                 />
                 <SlugBadge status={slugStatus} />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-[#6B7280] mb-2">Description</label>
+              <label className="block text-xs font-semibold text-[#9CA3AF] mb-2">Description</label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Une courte description de votre activité, visible sur votre page publique."
                 rows={3}
-                className="w-full px-3.5 py-2.5 rounded-xl text-sm text-[#1A1A2E] placeholder-gray-600 outline-none resize-none"
-                style={{ background: '#FFFFFF', border: '1px solid #ECEAF5' }}
+                className="w-full px-3.5 py-2.5 rounded-xl text-sm text-[#FAFAFA] placeholder-gray-600 outline-none resize-none"
+                style={{ background: '#111117', border: '1px solid rgba(255,255,255,0.06)' }}
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-[#6B7280] mb-2">Adresse</label>
+              <label className="block text-xs font-semibold text-[#9CA3AF] mb-2">Adresse</label>
               <input
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
                 placeholder="Ex : 12 rue de la Paix, 49000 Angers"
-                className="w-full px-3.5 py-2.5 rounded-xl text-sm text-[#1A1A2E] placeholder-gray-600 outline-none"
-                style={{ background: '#FFFFFF', border: '1px solid #ECEAF5' }}
+                className="w-full px-3.5 py-2.5 rounded-xl text-sm text-[#FAFAFA] placeholder-gray-600 outline-none"
+                style={{ background: '#111117', border: '1px solid rgba(255,255,255,0.06)' }}
               />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-[#6B7280] mb-2">Téléphone</label>
+                <label className="block text-xs font-semibold text-[#9CA3AF] mb-2">Téléphone</label>
                 <input
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="Ex : 02 41 00 00 00"
-                  className="w-full px-3.5 py-2.5 rounded-xl text-sm text-[#1A1A2E] placeholder-gray-600 outline-none"
-                  style={{ background: '#FFFFFF', border: '1px solid #ECEAF5' }}
+                  className="w-full px-3.5 py-2.5 rounded-xl text-sm text-[#FAFAFA] placeholder-gray-600 outline-none"
+                  style={{ background: '#111117', border: '1px solid rgba(255,255,255,0.06)' }}
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-[#6B7280] mb-2">Email de contact</label>
+                <label className="block text-xs font-semibold text-[#9CA3AF] mb-2">Email de contact</label>
                 <input
                   type="email"
                   value={emailContact}
                   onChange={(e) => setEmailContact(e.target.value)}
                   placeholder="contact@votre-activite.fr"
-                  className="w-full px-3.5 py-2.5 rounded-xl text-sm text-[#1A1A2E] placeholder-gray-600 outline-none"
-                  style={{ background: '#FFFFFF', border: '1px solid #ECEAF5' }}
+                  className="w-full px-3.5 py-2.5 rounded-xl text-sm text-[#FAFAFA] placeholder-gray-600 outline-none"
+                  style={{ background: '#111117', border: '1px solid rgba(255,255,255,0.06)' }}
                 />
               </div>
             </div>
 
-            <p className="text-xs text-[#9CA3AF]">Ces informations apparaissent dans les emails de confirmation envoyés à vos clients. Si elles sont vides, des valeurs par défaut génériques sont utilisées.</p>
+            <p className="text-xs text-[#6B7280]">Ces informations apparaissent dans les emails de confirmation envoyés à vos clients. Si elles sont vides, des valeurs par défaut génériques sont utilisées.</p>
           </div>
         </SectionCard>
         )}
 
         {isOnboarding && onboardingStep === 1 && (
           <div className="flex justify-end mb-6 -mt-2">
-            <motion.button whileTap={{ scale: 0.97 }} disabled={!canSave} onClick={() => setOnboardingStep(2)} className="px-5 py-2.5 rounded-xl text-sm font-bold inline-flex items-center gap-2 disabled:opacity-40" style={{ background: canSave ? '#6366F1' : '#ECEAF5', color: canSave ? '#fff' : '#9CA3AF' }}>
+            <motion.button whileTap={{ scale: 0.97 }} disabled={!canSave} onClick={() => setOnboardingStep(2)} className="px-5 py-2.5 rounded-xl text-sm font-bold inline-flex items-center gap-2 disabled:opacity-40" style={{ background: canSave ? '#10B981' : 'rgba(255,255,255,0.06)', color: canSave ? '#fff' : '#6B7280' }}>
               Continuer <ArrowRightIcon size={14} />
             </motion.button>
           </div>
@@ -1021,35 +1021,35 @@ export default function BookingSettingsPage() {
         <SectionCard title="Détails pratiques" subtitle="Ces informations sont affichées à vos clients sur la page de réservation publique." tooltip="Facultatif mais recommandé : plus vos clients savent à quoi s'attendre (prestations, paiement, consignes), moins vous recevrez de questions avant le RDV." icon={<FileTextIcon size={18} />} gradient={TINTS.violet.gradient}>
           <div className="flex flex-col gap-4">
             <div>
-              <label className="block text-xs font-semibold text-[#6B7280] mb-2">Prestations proposées</label>
+              <label className="block text-xs font-semibold text-[#9CA3AF] mb-2">Prestations proposées</label>
               <textarea
                 value={services}
                 onChange={(e) => setServices(e.target.value)}
                 placeholder="Ex : Coupe, coloration, brushing, soins…"
                 rows={2}
-                className="w-full px-3.5 py-2.5 rounded-xl text-sm text-[#1A1A2E] placeholder-gray-600 outline-none resize-none"
-                style={{ background: '#FFFFFF', border: '1px solid #ECEAF5' }}
+                className="w-full px-3.5 py-2.5 rounded-xl text-sm text-[#FAFAFA] placeholder-gray-600 outline-none resize-none"
+                style={{ background: '#111117', border: '1px solid rgba(255,255,255,0.06)' }}
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-[#6B7280] mb-2">Consignes avant le RDV</label>
+              <label className="block text-xs font-semibold text-[#9CA3AF] mb-2">Consignes avant le RDV</label>
               <textarea
                 value={instructions}
                 onChange={(e) => setInstructions(e.target.value)}
                 placeholder="Ex : Merci d'arriver 5 minutes en avance, cheveux propres et secs."
                 rows={2}
-                className="w-full px-3.5 py-2.5 rounded-xl text-sm text-[#1A1A2E] placeholder-gray-600 outline-none resize-none"
-                style={{ background: '#FFFFFF', border: '1px solid #ECEAF5' }}
+                className="w-full px-3.5 py-2.5 rounded-xl text-sm text-[#FAFAFA] placeholder-gray-600 outline-none resize-none"
+                style={{ background: '#111117', border: '1px solid rgba(255,255,255,0.06)' }}
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-[#6B7280] mb-2">Moyens de paiement acceptés</label>
+              <label className="block text-xs font-semibold text-[#9CA3AF] mb-2">Moyens de paiement acceptés</label>
               <input
                 value={paymentMethods}
                 onChange={(e) => setPaymentMethods(e.target.value)}
                 placeholder="Ex : Carte bancaire, espèces, chèque"
-                className="w-full px-3.5 py-2.5 rounded-xl text-sm text-[#1A1A2E] placeholder-gray-600 outline-none"
-                style={{ background: '#FFFFFF', border: '1px solid #ECEAF5' }}
+                className="w-full px-3.5 py-2.5 rounded-xl text-sm text-[#FAFAFA] placeholder-gray-600 outline-none"
+                style={{ background: '#111117', border: '1px solid rgba(255,255,255,0.06)' }}
               />
             </div>
           </div>
@@ -1058,10 +1058,10 @@ export default function BookingSettingsPage() {
 
         {isOnboarding && onboardingStep === 2 && (
           <div className="flex justify-between mb-6 -mt-2">
-            <motion.button whileTap={{ scale: 0.97 }} onClick={() => setOnboardingStep(1)} className="px-5 py-2.5 rounded-xl text-sm font-semibold inline-flex items-center gap-2" style={{ background: '#FFFFFF', color: '#6B7280', border: '1px solid #ECEAF5' }}>
+            <motion.button whileTap={{ scale: 0.97 }} onClick={() => setOnboardingStep(1)} className="px-5 py-2.5 rounded-xl text-sm font-semibold inline-flex items-center gap-2" style={{ background: '#111117', color: '#9CA3AF', border: '1px solid rgba(255,255,255,0.06)' }}>
               <ArrowLeftIcon size={14} /> Retour
             </motion.button>
-            <motion.button whileTap={{ scale: 0.97 }} onClick={() => setOnboardingStep(3)} className="px-5 py-2.5 rounded-xl text-sm font-bold inline-flex items-center gap-2" style={{ background: '#6366F1', color: '#fff' }}>
+            <motion.button whileTap={{ scale: 0.97 }} onClick={() => setOnboardingStep(3)} className="px-5 py-2.5 rounded-xl text-sm font-bold inline-flex items-center gap-2" style={{ background: '#10B981', color: '#fff' }}>
               Continuer <ArrowRightIcon size={14} />
             </motion.button>
           </div>
@@ -1072,30 +1072,30 @@ export default function BookingSettingsPage() {
         <SectionCard title="Réglages des créneaux" subtitle="Durée de chaque rendez-vous, battement entre deux RDV, et fenêtre de réservation." tooltip="Durée : le temps réservé pour chaque créneau proposé — ex : 30 min pour une coupe, 60 min pour une couleur. Battement : la pause automatique ajoutée entre deux RDV consécutifs. Réservable jusqu'à : le nombre de jours à l'avance où vos clients peuvent réserver." icon={<ClockIcon size={18} />} gradient={TINTS.amber.gradient}>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
             <div>
-              <label className="block text-xs font-semibold text-[#6B7280] mb-2">Durée d&apos;un créneau</label>
+              <label className="block text-xs font-semibold text-[#9CA3AF] mb-2">Durée d&apos;un créneau</label>
               <div className="flex flex-wrap gap-2">
                 {DURATIONS.map((d) => (
-                  <button key={d} onClick={() => setSlotDuration(d)} className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all" style={{ background: slotDuration === d ? '#6366F1' : '#FFFFFF', color: slotDuration === d ? '#fff' : '#6B7280', border: slotDuration === d ? 'none' : '1px solid #ECEAF5' }}>
+                  <button key={d} onClick={() => setSlotDuration(d)} className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all" style={{ background: slotDuration === d ? '#10B981' : '#111117', color: slotDuration === d ? '#fff' : '#9CA3AF', border: slotDuration === d ? 'none' : '1px solid rgba(255,255,255,0.06)' }}>
                     {d} min
                   </button>
                 ))}
               </div>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-[#6B7280] mb-2">Battement entre RDV</label>
+              <label className="block text-xs font-semibold text-[#9CA3AF] mb-2">Battement entre RDV</label>
               <div className="flex flex-wrap gap-2">
                 {BUFFERS.map((b) => (
-                  <button key={b} onClick={() => setBufferTime(b)} className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all" style={{ background: bufferTime === b ? '#6366F1' : '#FFFFFF', color: bufferTime === b ? '#fff' : '#6B7280', border: bufferTime === b ? 'none' : '1px solid #ECEAF5' }}>
+                  <button key={b} onClick={() => setBufferTime(b)} className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all" style={{ background: bufferTime === b ? '#10B981' : '#111117', color: bufferTime === b ? '#fff' : '#9CA3AF', border: bufferTime === b ? 'none' : '1px solid rgba(255,255,255,0.06)' }}>
                     {b} min
                   </button>
                 ))}
               </div>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-[#6B7280] mb-2">Réservable jusqu&apos;à</label>
+              <label className="block text-xs font-semibold text-[#9CA3AF] mb-2">Réservable jusqu&apos;à</label>
               <div className="flex flex-wrap gap-2">
                 {ADVANCE_OPTIONS.map((a) => (
-                  <button key={a} onClick={() => setAdvanceDays(a)} className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all" style={{ background: advanceDays === a ? '#6366F1' : '#FFFFFF', color: advanceDays === a ? '#fff' : '#6B7280', border: advanceDays === a ? 'none' : '1px solid #ECEAF5' }}>
+                  <button key={a} onClick={() => setAdvanceDays(a)} className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all" style={{ background: advanceDays === a ? '#10B981' : '#111117', color: advanceDays === a ? '#fff' : '#9CA3AF', border: advanceDays === a ? 'none' : '1px solid rgba(255,255,255,0.06)' }}>
                     {a}j
                   </button>
                 ))}
@@ -1107,10 +1107,10 @@ export default function BookingSettingsPage() {
 
         {isOnboarding && onboardingStep === 3 && (
           <div className="flex justify-between mb-6 -mt-2">
-            <motion.button whileTap={{ scale: 0.97 }} onClick={() => setOnboardingStep(2)} className="px-5 py-2.5 rounded-xl text-sm font-semibold inline-flex items-center gap-2" style={{ background: '#FFFFFF', color: '#6B7280', border: '1px solid #ECEAF5' }}>
+            <motion.button whileTap={{ scale: 0.97 }} onClick={() => setOnboardingStep(2)} className="px-5 py-2.5 rounded-xl text-sm font-semibold inline-flex items-center gap-2" style={{ background: '#111117', color: '#9CA3AF', border: '1px solid rgba(255,255,255,0.06)' }}>
               <ArrowLeftIcon size={14} /> Retour
             </motion.button>
-            <motion.button whileTap={{ scale: 0.97 }} onClick={() => setOnboardingStep(4)} className="px-5 py-2.5 rounded-xl text-sm font-bold inline-flex items-center gap-2" style={{ background: '#6366F1', color: '#fff' }}>
+            <motion.button whileTap={{ scale: 0.97 }} onClick={() => setOnboardingStep(4)} className="px-5 py-2.5 rounded-xl text-sm font-bold inline-flex items-center gap-2" style={{ background: '#10B981', color: '#fff' }}>
               Continuer <ArrowRightIcon size={14} />
             </motion.button>
           </div>
@@ -1120,7 +1120,7 @@ export default function BookingSettingsPage() {
         {(!isOnboarding || onboardingStep === 4) && (
         <SectionCard title="Disponibilités hebdomadaires" subtitle="Activez les jours ouverts et définissez vos plages horaires (matin / après-midi)." tooltip="Ce sont vos horaires récurrents, toutes les semaines. Pour bloquer une date ponctuelle (congé, jour férié) sans toucher à ces réglages, utilisez la section « Jours bloqués » plus bas." icon={<CalendarIcon size={18} />} gradient={TINTS.pink.gradient}>
           <div className="flex items-center justify-between mb-3.5">
-            <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full" style={{ background: 'rgba(99,102,241,0.1)', color: '#8B5CF6' }}>
+            <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full" style={{ background: 'rgba(16,185,129,0.1)', color: '#10B981' }}>
               {Object.values(week).filter((d) => d.dayActive).length} jour{Object.values(week).filter((d) => d.dayActive).length > 1 ? 's' : ''} actif{Object.values(week).filter((d) => d.dayActive).length > 1 ? 's' : ''} sur 7
             </span>
           </div>
@@ -1133,13 +1133,13 @@ export default function BookingSettingsPage() {
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3, delay: idx * 0.03 }}
-                  whileHover={{ borderColor: day.dayActive ? 'rgba(99,102,241,0.4)' : '#D9D6E8' }}
+                  whileHover={{ borderColor: day.dayActive ? 'rgba(16,185,129,0.4)' : 'rgba(255,255,255,0.12)' }}
                   className="rounded-xl p-3.5"
-                  style={{ background: '#FFFFFF', border: '1px solid #ECEAF5', borderLeft: `3px solid ${day.dayActive ? '#6366F1' : '#ECEAF5'}`, transition: 'border-color 0.2s' }}
+                  style={{ background: '#111117', border: '1px solid rgba(255,255,255,0.06)', borderLeft: `3px solid ${day.dayActive ? '#10B981' : 'rgba(255,255,255,0.06)'}`, transition: 'border-color 0.2s' }}
                 >
                   <div className="flex items-center gap-3 mb-2.5">
                     <Toggle on={day.dayActive} onToggle={() => updateDay(dayKey, { dayActive: !day.dayActive })} />
-                    <span className="text-sm font-semibold w-24 shrink-0" style={{ color: day.dayActive ? INK : '#9CA3AF' }}>{WEEK_LABELS[dayKey]}</span>
+                    <span className="text-sm font-semibold w-24 shrink-0" style={{ color: day.dayActive ? INK : '#6B7280' }}>{WEEK_LABELS[dayKey]}</span>
 
                     {day.dayActive && (
                       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }} className="flex flex-wrap items-center gap-3 flex-1">
@@ -1148,7 +1148,7 @@ export default function BookingSettingsPage() {
                             <button
                               onClick={() => updateRange(dayKey, period, { enabled: !day[period].enabled })}
                               className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md"
-                              style={{ color: day[period].enabled ? '#8B5CF6' : '#9CA3AF', background: day[period].enabled ? 'rgba(99,102,241,0.1)' : 'transparent' }}
+                              style={{ color: day[period].enabled ? '#10B981' : '#6B7280', background: day[period].enabled ? 'rgba(16,185,129,0.1)' : 'transparent' }}
                             >
                               {period === 'morning' ? 'Matin' : 'Après-midi'}
                             </button>
@@ -1157,17 +1157,17 @@ export default function BookingSettingsPage() {
                               disabled={!day[period].enabled}
                               value={day[period].start}
                               onChange={(e) => updateRange(dayKey, period, { start: e.target.value })}
-                              className="px-1.5 py-1 rounded-md text-xs text-[#1A1A2E] outline-none"
-                              style={{ background: '#FFFFFF', border: '1px solid #ECEAF5', opacity: day[period].enabled ? 1 : 0.4, colorScheme: 'dark' }}
+                              className="px-1.5 py-1 rounded-md text-xs text-[#FAFAFA] outline-none"
+                              style={{ background: '#111117', border: '1px solid rgba(255,255,255,0.06)', opacity: day[period].enabled ? 1 : 0.4, colorScheme: 'dark' }}
                             />
-                            <span className="text-[#9CA3AF] text-xs">–</span>
+                            <span className="text-[#6B7280] text-xs">–</span>
                             <input
                               type="time"
                               disabled={!day[period].enabled}
                               value={day[period].end}
                               onChange={(e) => updateRange(dayKey, period, { end: e.target.value })}
-                              className="px-1.5 py-1 rounded-md text-xs text-[#1A1A2E] outline-none"
-                              style={{ background: '#FFFFFF', border: '1px solid #ECEAF5', opacity: day[period].enabled ? 1 : 0.4, colorScheme: 'dark' }}
+                              className="px-1.5 py-1 rounded-md text-xs text-[#FAFAFA] outline-none"
+                              style={{ background: '#111117', border: '1px solid rgba(255,255,255,0.06)', opacity: day[period].enabled ? 1 : 0.4, colorScheme: 'dark' }}
                             />
                           </div>
                         ))}
@@ -1175,7 +1175,7 @@ export default function BookingSettingsPage() {
                     )}
                   </div>
                   {dayErrors[dayKey] && (
-                    <p className="text-[11px] mt-1 flex items-center gap-1" style={{ color: '#FCA5A5' }}><AlertCircleIcon size={12} /> Erreur d&apos;enregistrement pour ce jour — réessayez.</p>
+                    <p className="text-[11px] mt-1 flex items-center gap-1" style={{ color: '#F87171' }}><AlertCircleIcon size={12} /> Erreur d&apos;enregistrement pour ce jour — réessayez.</p>
                   )}
                 </motion.div>
               )
@@ -1186,20 +1186,20 @@ export default function BookingSettingsPage() {
 
         {isOnboarding && onboardingStep === 4 && (
           <div className="flex justify-start mb-3 -mt-2">
-            <motion.button whileTap={{ scale: 0.97 }} onClick={() => setOnboardingStep(3)} className="px-5 py-2.5 rounded-xl text-sm font-semibold inline-flex items-center gap-2" style={{ background: '#FFFFFF', color: '#6B7280', border: '1px solid #ECEAF5' }}>
+            <motion.button whileTap={{ scale: 0.97 }} onClick={() => setOnboardingStep(3)} className="px-5 py-2.5 rounded-xl text-sm font-semibold inline-flex items-center gap-2" style={{ background: '#111117', color: '#9CA3AF', border: '1px solid rgba(255,255,255,0.06)' }}>
               <ArrowLeftIcon size={14} /> Retour
             </motion.button>
           </div>
         )}
 
         {/* ── Save bar ─────────────────────────────────────────────────────── */}
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="rounded-2xl p-5 mb-6 flex flex-col sm:flex-row sm:items-center gap-3" style={{ background: '#FFFFFF', border: '1px solid #ECEAF5' }}>
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="rounded-2xl p-5 mb-6 flex flex-col sm:flex-row sm:items-center gap-3" style={{ background: '#111117', border: '1px solid rgba(255,255,255,0.06)' }}>
           <div className="flex-1 min-w-0">
-            {saveState === 'saving' && <span className="text-xs text-[#6B7280]">Enregistrement…</span>}
-            {saveState === 'saved' && <span className="text-xs font-semibold inline-flex items-center gap-1.5" style={{ color: '#8B5CF6' }}><CheckIcon size={13} strokeWidth={2.5} /> Enregistré — vos informations et disponibilités sont à jour.</span>}
-            {saveState === 'error' && <span className="text-xs font-semibold inline-flex items-center gap-1.5" style={{ color: '#FCA5A5' }}><AlertCircleIcon size={13} /> {saveError}</span>}
-            {saveState === 'idle' && !canSave && <span className="text-xs text-[#9CA3AF]">Renseignez un nom d&apos;activité et un lien valide pour enregistrer.</span>}
-            {saveState === 'idle' && canSave && isOnboarding && <span className="text-xs text-[#9CA3AF]">Dernière étape : enregistrez pour activer votre page de réservation.</span>}
+            {saveState === 'saving' && <span className="text-xs text-[#9CA3AF]">Enregistrement…</span>}
+            {saveState === 'saved' && <span className="text-xs font-semibold inline-flex items-center gap-1.5" style={{ color: '#10B981' }}><CheckIcon size={13} strokeWidth={2.5} /> Enregistré — vos informations et disponibilités sont à jour.</span>}
+            {saveState === 'error' && <span className="text-xs font-semibold inline-flex items-center gap-1.5" style={{ color: '#F87171' }}><AlertCircleIcon size={13} /> {saveError}</span>}
+            {saveState === 'idle' && !canSave && <span className="text-xs text-[#6B7280]">Renseignez un nom d&apos;activité et un lien valide pour enregistrer.</span>}
+            {saveState === 'idle' && canSave && isOnboarding && <span className="text-xs text-[#6B7280]">Dernière étape : enregistrez pour activer votre page de réservation.</span>}
           </div>
           <div className="shrink-0 w-full sm:w-auto">
             <GradientButton onClick={handleSave} disabled={!canSave || saveState === 'saving'} fullWidth={false} className="px-5 py-2.5 text-xs">
@@ -1212,17 +1212,17 @@ export default function BookingSettingsPage() {
         {!isOnboarding && (
         <SectionCard title="Jours bloqués" subtitle="Cliquez sur une date pour la bloquer (congés, indisponibilité ponctuelle)." tooltip="Un jour bloqué n'apparaît plus comme disponible sur votre page publique, même s'il correspond à un jour normalement ouvert dans vos disponibilités hebdomadaires." icon={<TrashIcon size={18} />} gradient="linear-gradient(135deg, #EF4444, #F87171)">
           <div className="flex items-center justify-between mb-4">
-            <motion.button whileTap={{ scale: 0.9 }} onClick={() => setCalendarMonthOffset((o) => Math.max(0, o - 1))} disabled={calendarMonthOffset === 0} className="w-7 h-7 rounded-lg flex items-center justify-center text-[#6B7280] disabled:opacity-30" style={{ border: '1px solid #ECEAF5' }}><ChevronLeftIcon size={14} /></motion.button>
-            <span className="text-sm font-bold text-[#1A1A2E] capitalize">{MONTH_NAMES[calendarMonth.getMonth()]} {calendarMonth.getFullYear()}</span>
-            <motion.button whileTap={{ scale: 0.9 }} onClick={() => setCalendarMonthOffset((o) => Math.min(2, o + 1))} disabled={calendarMonthOffset === 2} className="w-7 h-7 rounded-lg flex items-center justify-center text-[#6B7280] disabled:opacity-30" style={{ border: '1px solid #ECEAF5' }}><ChevronRightIcon size={14} /></motion.button>
+            <motion.button whileTap={{ scale: 0.9 }} onClick={() => setCalendarMonthOffset((o) => Math.max(0, o - 1))} disabled={calendarMonthOffset === 0} className="w-7 h-7 rounded-lg flex items-center justify-center text-[#9CA3AF] disabled:opacity-30" style={{ border: '1px solid rgba(255,255,255,0.06)' }}><ChevronLeftIcon size={14} /></motion.button>
+            <span className="text-sm font-bold text-[#FAFAFA] capitalize">{MONTH_NAMES[calendarMonth.getMonth()]} {calendarMonth.getFullYear()}</span>
+            <motion.button whileTap={{ scale: 0.9 }} onClick={() => setCalendarMonthOffset((o) => Math.min(2, o + 1))} disabled={calendarMonthOffset === 2} className="w-7 h-7 rounded-lg flex items-center justify-center text-[#9CA3AF] disabled:opacity-30" style={{ border: '1px solid rgba(255,255,255,0.06)' }}><ChevronRightIcon size={14} /></motion.button>
           </div>
           <div className="flex items-center gap-3 mb-3.5">
-            <span className="flex items-center gap-1.5 text-[10px] text-[#6B7280]"><span className="w-2 h-2 rounded-full" style={{ background: 'rgba(99,102,241,0.4)' }} />Disponible</span>
-            <span className="flex items-center gap-1.5 text-[10px] text-[#6B7280]"><span className="w-2 h-2 rounded-full" style={{ background: 'rgba(239,68,68,0.6)' }} />Bloqué</span>
-            <span className="flex items-center gap-1.5 text-[10px] text-[#6B7280]"><span className="w-2 h-2 rounded-full" style={{ background: '#D9D6E8' }} />Passé</span>
+            <span className="flex items-center gap-1.5 text-[10px] text-[#9CA3AF]"><span className="w-2 h-2 rounded-full" style={{ background: 'rgba(16,185,129,0.4)' }} />Disponible</span>
+            <span className="flex items-center gap-1.5 text-[10px] text-[#9CA3AF]"><span className="w-2 h-2 rounded-full" style={{ background: 'rgba(239,68,68,0.6)' }} />Bloqué</span>
+            <span className="flex items-center gap-1.5 text-[10px] text-[#9CA3AF]"><span className="w-2 h-2 rounded-full" style={{ background: 'rgba(255,255,255,0.12)' }} />Passé</span>
           </div>
           <div className="grid grid-cols-7 gap-1.5 mb-2">
-            {WEEK_ORDER.map((d) => <div key={d} className="text-center text-[10px] font-semibold text-[#9CA3AF]">{WEEK_SHORT[d]}</div>)}
+            {WEEK_ORDER.map((d) => <div key={d} className="text-center text-[10px] font-semibold text-[#6B7280]">{WEEK_SHORT[d]}</div>)}
           </div>
           <AnimatePresence mode="wait">
             <motion.div
@@ -1247,8 +1247,8 @@ export default function BookingSettingsPage() {
                     onClick={() => toggleBlockedDate(date)}
                     className="aspect-square rounded-lg text-xs font-semibold"
                     style={{
-                      background: isBlocked ? 'rgba(239,68,68,0.15)' : isPast ? 'transparent' : 'rgba(99,102,241,0.05)',
-                      color: isPast ? '#D9D6E8' : isBlocked ? '#FCA5A5' : '#6B7280',
+                      background: isBlocked ? 'rgba(239,68,68,0.15)' : isPast ? 'transparent' : 'rgba(16,185,129,0.05)',
+                      color: isPast ? 'rgba(255,255,255,0.12)' : isBlocked ? '#F87171' : '#9CA3AF',
                       border: isBlocked ? '1px solid rgba(239,68,68,0.3)' : '1px solid transparent',
                       cursor: isPast ? 'default' : 'pointer',
                       transition: 'background 0.15s, color 0.15s, border-color 0.15s',
@@ -1261,7 +1261,7 @@ export default function BookingSettingsPage() {
             </motion.div>
           </AnimatePresence>
           {blockedDates.size > 0 && (
-            <p className="text-xs text-[#6B7280] mt-4">{blockedDates.size} jour{blockedDates.size > 1 ? 's' : ''} bloqué{blockedDates.size > 1 ? 's' : ''}.</p>
+            <p className="text-xs text-[#9CA3AF] mt-4">{blockedDates.size} jour{blockedDates.size > 1 ? 's' : ''} bloqué{blockedDates.size > 1 ? 's' : ''}.</p>
           )}
         </SectionCard>
         )}
@@ -1322,60 +1322,60 @@ function ConfigSidebar({
     <div className="flex flex-col gap-5 lg:sticky lg:top-6">
 
       {/* ── Live preview ──────────────────────────────────────────────────── */}
-      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.1 }} className="rounded-2xl overflow-hidden" style={{ background: '#FFFFFF', border: '1px solid #ECEAF5' }}>
-        <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid #ECEAF5' }}>
-          <span className="text-xs font-bold text-[#1A1A2E] flex items-center gap-1.5"><EyeIcon size={14} /> Aperçu en direct</span>
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.1 }} className="rounded-2xl overflow-hidden" style={{ background: '#111117', border: '1px solid rgba(255,255,255,0.06)' }}>
+        <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+          <span className="text-xs font-bold text-[#FAFAFA] flex items-center gap-1.5"><EyeIcon size={14} /> Aperçu en direct</span>
           {savedSlug && (
             <div className="flex items-center gap-2.5">
-              <a href={publicUrl} target="_blank" rel="noopener noreferrer" className="text-[#6B7280] hover:text-[#1A1A2E] text-[10px] font-semibold inline-flex items-center gap-1" title="Ouvrir en grand">
+              <a href={publicUrl} target="_blank" rel="noopener noreferrer" className="text-[#9CA3AF] hover:text-[#FAFAFA] text-[10px] font-semibold inline-flex items-center gap-1" title="Ouvrir en grand">
                 <ExternalLinkIcon size={12} /> Ouvrir en grand
               </a>
-              <motion.button whileTap={{ scale: 0.9, rotate: 180 }} onClick={() => setPreviewKey((k) => k + 1)} className="text-[#6B7280] hover:text-[#1A1A2E]" title="Actualiser l'aperçu">
+              <motion.button whileTap={{ scale: 0.9, rotate: 180 }} onClick={() => setPreviewKey((k) => k + 1)} className="text-[#9CA3AF] hover:text-[#FAFAFA]" title="Actualiser l'aperçu">
                 <RefreshIcon size={13} />
               </motion.button>
             </div>
           )}
         </div>
         {savedSlug ? (
-          <div style={{ background: '#F8FAFC' }}>
+          <div style={{ background: '#0A0A0F' }}>
             <iframe key={previewKey} src={publicUrl} title="Aperçu de votre page de réservation" className="w-full" style={{ height: 480, border: 'none' }} />
           </div>
         ) : (
           <div className="p-6 text-center">
-            <EyeIcon size={32} className="mx-auto mb-2 text-[#9CA3AF]" />
-            <p className="text-xs text-[#6B7280]">Enregistrez un nom et un lien pour voir l&apos;aperçu de votre page.</p>
+            <EyeIcon size={32} className="mx-auto mb-2 text-[#6B7280]" />
+            <p className="text-xs text-[#9CA3AF]">Enregistrez un nom et un lien pour voir l&apos;aperçu de votre page.</p>
           </div>
         )}
-        <div className="px-4 py-2.5" style={{ borderTop: '1px solid #ECEAF5' }}>
-          <p className="text-[10px] text-[#9CA3AF]">C&apos;est exactement ce que voient vos clients.</p>
+        <div className="px-4 py-2.5" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+          <p className="text-[10px] text-[#6B7280]">C&apos;est exactement ce que voient vos clients.</p>
         </div>
       </motion.div>
 
       {/* ── Profile completeness ─────────────────────────────────────────── */}
-      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.15 }} className="rounded-2xl p-5" style={{ background: '#FFFFFF', border: '1px solid #ECEAF5' }}>
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.15 }} className="rounded-2xl p-5" style={{ background: '#111117', border: '1px solid rgba(255,255,255,0.06)' }}>
         <div className="flex items-center justify-between mb-3">
-          <span className="text-xs font-bold text-[#1A1A2E]">Profil complété</span>
-          <span className="text-xs font-bold" style={{ color: doneCount === checklist.length ? '#8B5CF6' : '#6B7280' }}>{doneCount}/{checklist.length}</span>
+          <span className="text-xs font-bold text-[#FAFAFA]">Profil complété</span>
+          <span className="text-xs font-bold" style={{ color: doneCount === checklist.length ? '#10B981' : '#9CA3AF' }}>{doneCount}/{checklist.length}</span>
         </div>
-        <div className="w-full h-1.5 rounded-full mb-4 overflow-hidden" style={{ background: '#ECEAF5' }}>
-          <motion.div className="h-full" style={{ background: '#6366F1' }} animate={{ width: `${(doneCount / checklist.length) * 100}%` }} transition={{ duration: 0.4 }} />
+        <div className="w-full h-1.5 rounded-full mb-4 overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)' }}>
+          <motion.div className="h-full" style={{ background: '#10B981' }} animate={{ width: `${(doneCount / checklist.length) * 100}%` }} transition={{ duration: 0.4 }} />
         </div>
         <div className="flex flex-col gap-2">
           {checklist.map((c) => (
             <div key={c.label} className="flex items-center gap-2 text-xs">
-              <span className="w-4 h-4 rounded-full flex items-center justify-center shrink-0" style={{ background: c.done ? 'rgba(99,102,241,0.15)' : '#ECEAF5', color: c.done ? '#8B5CF6' : '#9CA3AF' }}>
+              <span className="w-4 h-4 rounded-full flex items-center justify-center shrink-0" style={{ background: c.done ? 'rgba(16,185,129,0.15)' : 'rgba(255,255,255,0.06)', color: c.done ? '#10B981' : '#6B7280' }}>
                 {c.done ? <CheckIcon size={9} strokeWidth={3} /> : <span className="w-1 h-1 rounded-full" style={{ background: 'currentColor' }} />}
               </span>
-              <span style={{ color: c.done ? '#1A1A2E' : '#6B7280' }}>{c.label}</span>
+              <span style={{ color: c.done ? '#FAFAFA' : '#9CA3AF' }}>{c.label}</span>
             </div>
           ))}
         </div>
       </motion.div>
 
       {/* ── Tips ──────────────────────────────────────────────────────────── */}
-      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.2 }} className="rounded-2xl p-5" style={{ background: 'rgba(99,102,241,0.05)', border: '1px solid rgba(99,102,241,0.15)' }}>
-        <p className="text-xs font-bold mb-3 flex items-center gap-1.5" style={{ color: '#8B5CF6' }}><SparklesIcon size={14} /> Conseils pour vous</p>
-        <ul className="flex flex-col gap-2.5 text-xs text-[#6B7280] leading-relaxed">
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.2 }} className="rounded-2xl p-5" style={{ background: 'rgba(16,185,129,0.05)', border: '1px solid rgba(16,185,129,0.15)' }}>
+        <p className="text-xs font-bold mb-3 flex items-center gap-1.5" style={{ color: '#10B981' }}><SparklesIcon size={14} /> Conseils pour vous</p>
+        <ul className="flex flex-col gap-2.5 text-xs text-[#9CA3AF] leading-relaxed">
           {personalizedTips.map((tip) => <li key={tip} className="flex gap-2"><span className="shrink-0">•</span>{tip}</li>)}
         </ul>
       </motion.div>
