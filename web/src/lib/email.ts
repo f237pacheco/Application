@@ -169,6 +169,10 @@ async function send(
 
     if (error) {
       console.error(`[email] ÉCHEC EMAIL (${context}) vers ${payload.to}: ${JSON.stringify(error)}`);
+      const msg = (error as { message?: string }).message ?? '';
+      if (/only send testing emails|verify a domain/i.test(msg)) {
+        console.error(`[email] CAUSE PROBABLE : compte Resend en mode bac à sable (aucun domaine vérifié) — Resend n'autorise l'envoi qu'à l'adresse email du compte Resend lui-même, quel que soit le destinataire demandé. Vérifiez un domaine sur https://resend.com/domains puis définissez RESEND_FROM_EMAIL pour débloquer l'envoi vers de vrais clients.`);
+      }
       return;
     }
     console.log(`[email] EMAIL ENVOYÉ (${context}) id=${data?.id} vers ${payload.to}`);

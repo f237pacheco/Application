@@ -3,6 +3,10 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { getAvailableSlotsForDate } from '@/lib/availability';
 import { toDateKey, getParisNow } from '@/lib/booking';
 
+// Which dates are bookable changes constantly (new bookings, blocked dates,
+// the passage of "today" itself) — never let this be served from a stale cache.
+export const dynamic = 'force-dynamic';
+
 // Returns which days of a given month have at least one free slot, so the
 // public booking page can grey out empty/blocked days without one request per day.
 export async function GET(request: Request) {

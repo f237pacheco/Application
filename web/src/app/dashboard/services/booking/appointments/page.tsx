@@ -85,6 +85,7 @@ export default function AppointmentsPage() {
       .eq('user_id', user.id)
       .order('booking_date', { ascending: true })
       .order('booking_time', { ascending: true })
+    console.log('[appointments/date-trace] réservations chargées depuis la base (telles quelles, aucune transformation) ->', (data ?? []).map((b: { id: string; booking_date: string; booking_time: string }) => `${b.id.slice(0, 8)}: ${b.booking_date} ${b.booking_time}`))
     setBookings((data ?? []) as Booking[])
     setLoading(false)
   }, [user?.id])

@@ -309,6 +309,7 @@ export default function PublicBookingPage() {
         if (cancelled) return
         if (res.ok) {
           const data = await res.json() as { availableDates: string[]; slotCounts?: Record<string, number> }
+          console.log(`[rdv/date-trace] calendrier ${year}-${month} -> dates disponibles reçues du serveur:`, data.availableDates)
           setAvailableDates(new Set(data.availableDates))
           setSlotCounts(data.slotCounts ?? {})
         }
@@ -342,6 +343,7 @@ export default function PublicBookingPage() {
   // when the user clicks through several days quickly.
   const handlePickDate = useCallback(async (date: Date) => {
     const key = toDateKey(date)
+    console.log(`[rdv/date-trace] jour cliqué dans le calendrier -> Date.getDate()=${date.getDate()}, mois(0-idx)=${date.getMonth()}, année=${date.getFullYear()} -> clé envoyée="${key}"`)
     if (!availableDates.has(key)) return
     const requestId = ++slotsRequestId.current
     setSelectedDate(key)
@@ -385,6 +387,7 @@ export default function PublicBookingPage() {
     if (!selectedDate || !selectedTime) return
     setSubmitting(true)
     setFormError('')
+    console.log(`[rdv/date-trace] envoi réservation -> date="${selectedDate}" time="${selectedTime}"`)
     try {
       const res = await fetch('/api/bookings/create', {
         method: 'POST',
@@ -400,6 +403,7 @@ export default function PublicBookingPage() {
         }),
       })
       const data = await res.json() as { success?: boolean; date?: string; time?: string; bookingId?: string; error?: string }
+      console.log(`[rdv/date-trace] réponse API /bookings/create -> success=${data.success} date="${data.date}" time="${data.time}" bookingId=${data.bookingId}`)
       if (!res.ok || !data.success) {
         setShowRecapModal(false)
         setFormError(data.error ?? "Ce créneau n'est plus disponible.")

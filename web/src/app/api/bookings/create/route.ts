@@ -25,6 +25,8 @@ export async function POST(request: Request) {
     const clientPhone = (body.clientPhone ?? '').trim();
     const serviceNote = (body.serviceNote ?? '').trim();
 
+    console.log(`[bookings/create][date-trace] date reçue du client (brute, avant toute validation) = "${body.date}", time = "${body.time}"`);
+
     if (!slug || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^\d{2}:\d{2}$/.test(time)) {
       return NextResponse.json({ error: 'Paramètres invalides' }, { status: 400 });
     }
@@ -60,6 +62,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Ce créneau n'est plus disponible" }, { status: 409 });
     }
 
+    console.log(`[bookings/create][date-trace] date sur le point d'être insérée en base (booking_date) = "${date}"`);
+
     const { data: newBooking, error: insertError } = await supabase.from('bookings').insert({
       user_id: settings.user_id,
       client_name: clientName,
@@ -69,7 +73,7 @@ export async function POST(request: Request) {
       booking_date: date,
       booking_time: time,
       status: 'confirmed',
-    }).select('id').single();
+    }).select('id, booking_date, booking_time').single();
 
     if (insertError) {
       if (insertError.code === '23505') {
@@ -78,6 +82,7 @@ export async function POST(request: Request) {
       throw insertError;
     }
 
+    console.log(`[bookings/create][date-trace] relecture immédiate depuis la base après insert -> booking_date="${newBooking.booking_date}" booking_time="${newBooking.booking_time}" (doit être identique à la date envoyée ci-dessus)`);
     console.log(`[bookings/create] Réservation créée en base pour ${clientEmail} le ${date} à ${time}`);
 
     const { data: proProfile } = await supabase
@@ -105,10 +110,15 @@ export async function POST(request: Request) {
     };
 
     console.log('[bookings/create] Appel des fonctions d\'envoi d\'email (confirmation client + notification pro)...');
-    await Promise.all([
+    // allSettled, pas all : un échec/exception sur l'un des deux envois ne doit
+    // jamais empêcher l'autre de partir (avant ce correctif, Promise.all pouvait
+    // faire échouer silencieusement les DEUX emails si un seul levait une exception).
+    const [clientResult, proResult] = await Promise.allSettled([
       sendBookingConfirmationToClient(emailData),
       sendBookingNotificationToPro(emailData),
     ]);
+    if (clientResult.status === 'rejected') console.error('[bookings/create] EXCEPTION email client (non rattrapée par lib/email.ts):', clientResult.reason);
+    if (proResult.status === 'rejected') console.error('[bookings/create] EXCEPTION email pro (non rattrapée par lib/email.ts):', proResult.reason);
     console.log('[bookings/create] Envoi des emails terminé (voir logs [email] ci-dessus pour le résultat de chacun).');
 
     return NextResponse.json({ success: true, date, time, bookingId: newBooking.id });
