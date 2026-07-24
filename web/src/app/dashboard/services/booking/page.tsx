@@ -56,9 +56,58 @@ function toDateKey(d: Date): string {
 
 function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
   return (
-    <button onClick={onToggle} className="relative w-9 h-5 rounded-full shrink-0 transition-colors" style={{ background: on ? '#10B981' : 'rgba(255,255,255,0.12)' }}>
+    <motion.button
+      onClick={onToggle}
+      whileTap={{ scale: 0.92 }}
+      animate={{ background: on ? '#10B981' : 'rgba(255,255,255,0.12)', boxShadow: on ? '0 0 0 3px rgba(16,185,129,0.18)' : '0 0 0 0px rgba(16,185,129,0)' }}
+      transition={{ duration: 0.2 }}
+      className="relative w-9 h-5 rounded-full shrink-0"
+    >
       <motion.div animate={{ x: on ? 18 : 2 }} transition={{ type: 'spring', stiffness: 500, damping: 30 }} className="absolute top-0.5 w-4 h-4 rounded-full" style={{ background: '#FAFAFA' }} />
-    </button>
+    </motion.button>
+  )
+}
+
+// Grows with its content instead of scrolling internally — the pro always
+// sees everything they've typed. Height is set imperatively (not by CSS
+// `field-sizing: content`, not yet universally supported) so the CSS
+// `transition` on height can animate each resize smoothly.
+function AutoTextarea({
+  value, onChange, placeholder, minRows = 2, className = '', style,
+}: {
+  value: string
+  onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void
+  placeholder?: string
+  minRows?: number
+  className?: string
+  style?: React.CSSProperties
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null)
+
+  const resize = useCallback(() => {
+    const el = ref.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${el.scrollHeight}px`
+  }, [])
+
+  useEffect(() => { resize() }, [value, resize])
+  useEffect(() => {
+    window.addEventListener('resize', resize)
+    return () => window.removeEventListener('resize', resize)
+  }, [resize])
+
+  return (
+    <textarea
+      ref={ref}
+      value={value}
+      onChange={onChange}
+      onInput={resize}
+      placeholder={placeholder}
+      rows={minRows}
+      className={`resize-none overflow-hidden transition-[height] duration-150 ease-out ${className}`}
+      style={style}
+    />
   )
 }
 
@@ -99,13 +148,22 @@ function SectionCard({ title, subtitle, tooltip, icon, gradient = GRADIENT_BRAND
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: 'easeOut' }}
-      whileHover={{ borderColor: BORDER_STRONG }}
+      whileHover={{ borderColor: BORDER_STRONG, y: -2, boxShadow: '0 12px 32px rgba(0,0,0,0.45)' }}
       className="relative rounded-2xl p-6 sm:p-7 mb-6 overflow-hidden"
       style={{ background: CARD, border: `1px solid ${BORDER}`, boxShadow: SHADOW_SOFT }}
     >
-      <div className="absolute -top-10 -right-10 w-32 h-32 rounded-full pointer-events-none" style={{ background: gradient, opacity: 0.05 }} />
+      <motion.div
+        className="absolute -top-10 -right-10 w-32 h-32 rounded-full pointer-events-none"
+        style={{ background: gradient, opacity: 0.05 }}
+        animate={{ scale: [1, 1.15, 1] }}
+        transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
+      />
       <div className="flex items-center gap-3 mb-1 relative">
-        {icon && <GradientIconBadge icon={icon} gradient={gradient} size={36} radius={12} />}
+        {icon && (
+          <motion.div whileHover={{ scale: 1.08, rotate: -4 }} transition={{ type: 'spring', stiffness: 400, damping: 15 }}>
+            <GradientIconBadge icon={icon} gradient={gradient} size={36} radius={12} />
+          </motion.div>
+        )}
         <div className="flex items-center gap-2">
           <h2 className="text-lg font-bold" style={{ color: INK }}>{title}</h2>
           {tooltip && <InfoTooltip text={tooltip} />}
@@ -122,14 +180,22 @@ function Modal({ open, onClose, gradientHeader, children }: { open: boolean; onC
     <AnimatePresence>
       {open && (
         <motion.div className="fixed inset-0 z-50 flex items-center justify-center px-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
-          <motion.div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(3px)' }} onClick={onClose} />
+          <motion.div
+            className="absolute inset-0"
+            style={{ background: 'rgba(0,0,0,0.72)' }}
+            initial={{ backdropFilter: 'blur(0px)' }}
+            animate={{ backdropFilter: 'blur(6px)' }}
+            exit={{ backdropFilter: 'blur(0px)' }}
+            transition={{ duration: 0.25 }}
+            onClick={onClose}
+          />
           <motion.div
             className="relative w-full max-w-lg max-h-[85vh] overflow-y-auto rounded-2xl"
-            style={{ background: CARD, boxShadow: '0 24px 64px rgba(0,0,0,0.25)' }}
+            style={{ background: CARD, border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 32px 80px rgba(0,0,0,0.65)' }}
             initial={{ opacity: 0, scale: 0.92, y: 16 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 8 }}
-            transition={{ type: 'spring', stiffness: 320, damping: 28 }}
+            transition={{ type: 'spring', stiffness: 340, damping: 30 }}
           >
             {gradientHeader && <div className="px-6 pt-6 pb-5" style={{ background: GRADIENT_BRAND }}>{gradientHeader}</div>}
             <div className="p-6">{children}</div>
@@ -193,7 +259,7 @@ function ClientMessageModal({ open, onClose, businessName, url }: { open: boolea
             <p className="text-lg font-bold flex items-center gap-2"><MessageSquareIcon size={18} /> Messages prêts à envoyer</p>
             <p className="text-xs mt-1 opacity-85">Trois formats pour annoncer votre nouvelle prise de rendez-vous en ligne.</p>
           </div>
-          <button onClick={onClose} className="text-white/80 hover:text-white text-xl leading-none px-1 shrink-0">×</button>
+          <motion.button whileHover={{ scale: 1.15, rotate: 90 }} whileTap={{ scale: 0.9 }} transition={{ type: 'spring', stiffness: 400, damping: 20 }} onClick={onClose} className="text-white/80 hover:text-white text-xl leading-none px-1 shrink-0">×</motion.button>
         </div>
       }
     >
@@ -204,7 +270,7 @@ function ClientMessageModal({ open, onClose, businessName, url }: { open: boolea
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.35, delay: idx * 0.08 }}
-            whileHover={{ borderColor: t.accent + '55' }}
+            whileHover={{ borderColor: t.accent + '55', y: -2, boxShadow: `0 8px 24px ${t.accent}22` }}
             className="rounded-2xl overflow-hidden"
             style={{ background: '#111117', border: '1px solid rgba(255,255,255,0.06)' }}
           >
@@ -215,6 +281,7 @@ function ClientMessageModal({ open, onClose, businessName, url }: { open: boolea
                 <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(255,255,255,0.06)', color: '#9CA3AF' }}>{t.tag}</span>
               </span>
               <motion.button
+                whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.94 }}
                 onClick={() => handleCopy(idx, t.text)}
                 className="text-[11px] font-bold px-2.5 py-1 rounded-lg"
@@ -717,7 +784,7 @@ export default function BookingSettingsPage() {
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 12L6 8l4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
             Retour aux services
           </Link>
-          <Link href="/dashboard/services/booking/appointments" className="inline-flex items-center gap-2 text-sm font-semibold px-3 py-1.5 rounded-xl transition-colors" style={{ background: 'rgba(16,185,129,0.1)', color: '#10B981', border: '1px solid rgba(16,185,129,0.25)' }}>
+          <Link href="/dashboard/services/booking/appointments" className="inline-flex items-center gap-2 text-sm font-semibold px-3 py-1.5 rounded-xl transition-all duration-150 hover:scale-[1.04] hover:shadow-[0_6px_20px_rgba(16,185,129,0.25)] active:scale-[0.97]" style={{ background: 'rgba(16,185,129,0.1)', color: '#10B981', border: '1px solid rgba(16,185,129,0.25)' }}>
             <CalendarIcon size={15} /> Voir mes RDV <ArrowRightIcon size={13} />
           </Link>
         </motion.div>
@@ -732,10 +799,23 @@ export default function BookingSettingsPage() {
               <div className="shrink-0 w-full sm:w-48">
                 <div className="flex items-center justify-between mb-1.5">
                   <span className="text-[11px] font-semibold text-[#9CA3AF]">Profil complété</span>
-                  <span className="text-xs font-bold" style={{ color: completionPercent === 100 ? '#10B981' : '#9CA3AF' }}><AnimatedCounter value={completionPercent} suffix="%" /></span>
+                  <motion.span
+                    key={completionPercent === 100 ? 'done' : 'progress'}
+                    initial={{ opacity: 0, y: -3 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="text-xs font-bold"
+                    style={{ color: completionPercent === 100 ? '#10B981' : '#F59E0B' }}
+                  >
+                    <AnimatedCounter value={completionPercent} suffix="%" />
+                  </motion.span>
                 </div>
                 <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)' }}>
-                  <motion.div className="h-full rounded-full" style={{ background: completionPercent === 100 ? '#10B981' : 'linear-gradient(90deg, #10B981, #10B981)' }} initial={{ width: 0 }} animate={{ width: `${completionPercent}%` }} transition={{ duration: 0.6, ease: 'easeOut' }} />
+                  <motion.div
+                    className="h-full rounded-full"
+                    animate={{ width: `${completionPercent}%`, background: completionPercent === 100 ? '#10B981' : '#F59E0B' }}
+                    initial={{ width: 0 }}
+                    transition={{ duration: 0.6, ease: 'easeOut' }}
+                  />
                 </div>
               </div>
             )}
@@ -743,26 +823,37 @@ export default function BookingSettingsPage() {
         </motion.div>
 
         {/* ── Public link ──────────────────────────────────────────────────── */}
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="rounded-2xl p-5 mb-6 flex flex-col sm:flex-row sm:items-center gap-3" style={{ background: savedSlug ? 'rgba(16,185,129,0.06)' : '#111117', border: savedSlug ? '1px solid rgba(16,185,129,0.25)' : '1px solid rgba(255,255,255,0.06)' }}>
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} whileHover={savedSlug ? { borderColor: 'rgba(16,185,129,0.4)' } : undefined} className="rounded-2xl p-5 mb-6 flex flex-col sm:flex-row sm:items-center gap-3" style={{ background: savedSlug ? 'rgba(16,185,129,0.06)' : '#111117', border: savedSlug ? '1px solid rgba(16,185,129,0.25)' : '1px solid rgba(255,255,255,0.06)' }}>
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-semibold text-[#9CA3AF] mb-1">Votre lien de réservation public</p>
+            <p className="text-xs font-semibold text-[#9CA3AF] mb-1.5 inline-flex items-center gap-1.5">
+              {savedSlug && (
+                <span className="relative inline-flex w-1.5 h-1.5">
+                  <motion.span className="absolute inset-0 rounded-full" style={{ background: '#10B981' }} animate={{ scale: [1, 2.2], opacity: [0.7, 0] }} transition={{ duration: 1.8, repeat: Infinity, ease: 'easeOut' }} />
+                  <span className="relative w-1.5 h-1.5 rounded-full" style={{ background: '#10B981' }} />
+                </span>
+              )}
+              Votre lien de réservation public
+            </p>
             <p className="text-sm font-mono truncate" style={{ color: savedSlug ? '#10B981' : '#6B7280' }}>{publicUrl}</p>
           </div>
           <div className="flex gap-2 shrink-0">
             {savedSlug && (
-              <a
+              <motion.a
                 href={publicUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-4 py-2 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1.5"
+                whileHover={{ scale: 1.04, background: 'rgba(255,255,255,0.1)' }}
+                whileTap={{ scale: 0.96 }}
+                className="px-4 py-2 rounded-xl text-xs font-bold inline-flex items-center gap-1.5"
                 style={{ background: 'rgba(255,255,255,0.06)', color: '#FAFAFA' }}
               >
                 <EyeIcon size={14} /> Prévisualiser
-              </a>
+              </motion.a>
             )}
             <motion.button
               disabled={!savedSlug}
               onClick={handleCopyLink}
+              whileHover={savedSlug ? { scale: 1.04, boxShadow: '0 6px 20px rgba(16,185,129,0.35)' } : undefined}
               whileTap={savedSlug ? { scale: 0.96 } : undefined}
               className="px-4 py-2 rounded-xl text-xs font-bold"
               style={{ background: savedSlug ? '#10B981' : 'rgba(255,255,255,0.06)', color: savedSlug ? '#fff' : '#6B7280', cursor: savedSlug ? 'pointer' : 'not-allowed' }}
@@ -806,8 +897,8 @@ export default function BookingSettingsPage() {
             <p className="text-sm font-bold text-[#FAFAFA] mb-1.5">Supprimer le logo ?</p>
             <p className="text-xs text-[#9CA3AF] mb-5">Il disparaîtra de votre page de réservation publique. Vous pourrez en ajouter un nouveau à tout moment.</p>
             <div className="flex gap-2">
-              <button onClick={() => setShowRemoveLogoConfirm(false)} className="flex-1 py-2.5 rounded-xl text-sm font-semibold" style={{ background: 'rgba(255,255,255,0.06)', color: '#9CA3AF' }}>Annuler</button>
-              <motion.button whileTap={{ scale: 0.97 }} onClick={handleRemoveLogo} className="flex-1 py-2.5 rounded-xl text-sm font-bold" style={{ background: '#EF4444', color: '#fff' }}>Supprimer</motion.button>
+              <motion.button whileHover={{ background: 'rgba(255,255,255,0.1)' }} whileTap={{ scale: 0.97 }} onClick={() => setShowRemoveLogoConfirm(false)} className="flex-1 py-2.5 rounded-xl text-sm font-semibold" style={{ background: 'rgba(255,255,255,0.06)', color: '#9CA3AF' }}>Annuler</motion.button>
+              <motion.button whileHover={{ scale: 1.02, boxShadow: '0 6px 20px rgba(239,68,68,0.35)' }} whileTap={{ scale: 0.97 }} onClick={handleRemoveLogo} className="flex-1 py-2.5 rounded-xl text-sm font-bold" style={{ background: '#EF4444', color: '#fff' }}>Supprimer</motion.button>
             </div>
           </div>
         </Modal>
@@ -866,22 +957,26 @@ export default function BookingSettingsPage() {
                       </div>
                     )}
                     <div className="flex gap-2">
-                      <button
+                      <motion.button
+                        whileHover={!logoUploading ? { scale: 1.03, boxShadow: '0 6px 18px rgba(16,185,129,0.35)' } : undefined}
+                        whileTap={!logoUploading ? { scale: 0.96 } : undefined}
                         onClick={handleConfirmLogoUpload}
                         disabled={logoUploading}
                         className="px-3.5 py-1.5 rounded-lg text-xs font-bold disabled:opacity-60"
                         style={{ background: '#10B981', color: '#fff' }}
                       >
                         {logoUploading ? 'Envoi…' : 'Confirmer'}
-                      </button>
-                      <button
+                      </motion.button>
+                      <motion.button
+                        whileHover={!logoUploading ? { background: 'rgba(255,255,255,0.1)' } : undefined}
+                        whileTap={!logoUploading ? { scale: 0.96 } : undefined}
                         onClick={handleCancelLogoSelect}
                         disabled={logoUploading}
                         className="px-3.5 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-60"
                         style={{ background: 'rgba(255,255,255,0.06)', color: '#9CA3AF' }}
                       >
                         Annuler
-                      </button>
+                      </motion.button>
                     </div>
                     {logoError && <p className="text-[11px] mt-1.5" style={{ color: '#F87171' }}>{logoError}</p>}
                   </div>
@@ -899,7 +994,7 @@ export default function BookingSettingsPage() {
                   <div className="flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <label
-                        className="inline-block px-3.5 py-2 rounded-xl text-xs font-semibold cursor-pointer"
+                        className="inline-block px-3.5 py-2 rounded-xl text-xs font-semibold cursor-pointer transition-all duration-150 hover:scale-[1.03] active:scale-[0.97]"
                         style={{
                           background: !savedSlug ? 'rgba(255,255,255,0.06)' : '#111117',
                           color: !savedSlug ? '#6B7280' : '#9CA3AF',
@@ -917,7 +1012,7 @@ export default function BookingSettingsPage() {
                         />
                       </label>
                       {logoUrl && (
-                        <button onClick={() => setShowRemoveLogoConfirm(true)} className="px-3.5 py-2 rounded-xl text-xs font-semibold" style={{ background: 'rgba(239,68,68,0.08)', color: '#F87171', border: '1px solid rgba(239,68,68,0.2)' }}>
+                        <button onClick={() => setShowRemoveLogoConfirm(true)} className="px-3.5 py-2 rounded-xl text-xs font-semibold transition-all duration-150 hover:scale-[1.03] hover:bg-[rgba(239,68,68,0.14)] active:scale-[0.97]" style={{ background: 'rgba(239,68,68,0.08)', color: '#F87171', border: '1px solid rgba(239,68,68,0.2)' }}>
                           Supprimer
                         </button>
                       )}
@@ -937,20 +1032,20 @@ export default function BookingSettingsPage() {
                 value={businessName}
                 onChange={(e) => setBusinessName(e.target.value)}
                 placeholder="Ex : Salon Claire Bernard"
-                className="w-full px-3.5 py-2.5 rounded-xl text-sm text-[#FAFAFA] placeholder-gray-600 outline-none"
+                className="w-full px-3.5 py-2.5 rounded-xl text-sm text-[#FAFAFA] placeholder-gray-600 outline-none focus:shadow-[0_0_0_3px_rgba(16,185,129,0.15)] transition-shadow duration-150"
                 style={{ background: '#111117', border: '1px solid rgba(255,255,255,0.06)' }}
               />
             </div>
 
             <div>
               <label className="block text-xs font-semibold text-[#9CA3AF] mb-2">Lien personnalisé *</label>
-              <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl" style={{ background: '#111117', border: '1px solid rgba(255,255,255,0.06)' }}>
+              <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl transition-shadow duration-150 focus-within:shadow-[0_0_0_3px_rgba(16,185,129,0.15)]" style={{ background: '#111117', border: '1px solid rgba(255,255,255,0.06)' }}>
                 <span className="text-xs text-[#6B7280] shrink-0">/rdv/</span>
                 <input
                   value={slug}
                   onChange={(e) => { setSlugTouched(true); setSlug(slugify(e.target.value)) }}
                   placeholder="votre-nom"
-                  className="flex-1 bg-transparent text-sm text-[#FAFAFA] placeholder-gray-600 outline-none min-w-0"
+                  className="flex-1 bg-transparent text-sm text-[#FAFAFA] placeholder-gray-600 outline-none min-w-0 transition-shadow duration-150"
                 />
                 <SlugBadge status={slugStatus} />
               </div>
@@ -958,12 +1053,12 @@ export default function BookingSettingsPage() {
 
             <div>
               <label className="block text-xs font-semibold text-[#9CA3AF] mb-2">Description</label>
-              <textarea
+              <AutoTextarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Une courte description de votre activité, visible sur votre page publique."
-                rows={3}
-                className="w-full px-3.5 py-2.5 rounded-xl text-sm text-[#FAFAFA] placeholder-gray-600 outline-none resize-none"
+                minRows={3}
+                className="w-full px-3.5 py-2.5 rounded-xl text-sm text-[#FAFAFA] placeholder-gray-600 outline-none focus:shadow-[0_0_0_3px_rgba(16,185,129,0.15)] transition-shadow duration-150"
                 style={{ background: '#111117', border: '1px solid rgba(255,255,255,0.06)' }}
               />
             </div>
@@ -974,7 +1069,7 @@ export default function BookingSettingsPage() {
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
                 placeholder="Ex : 12 rue de la Paix, 49000 Angers"
-                className="w-full px-3.5 py-2.5 rounded-xl text-sm text-[#FAFAFA] placeholder-gray-600 outline-none"
+                className="w-full px-3.5 py-2.5 rounded-xl text-sm text-[#FAFAFA] placeholder-gray-600 outline-none focus:shadow-[0_0_0_3px_rgba(16,185,129,0.15)] transition-shadow duration-150"
                 style={{ background: '#111117', border: '1px solid rgba(255,255,255,0.06)' }}
               />
             </div>
@@ -986,7 +1081,7 @@ export default function BookingSettingsPage() {
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="Ex : 02 41 00 00 00"
-                  className="w-full px-3.5 py-2.5 rounded-xl text-sm text-[#FAFAFA] placeholder-gray-600 outline-none"
+                  className="w-full px-3.5 py-2.5 rounded-xl text-sm text-[#FAFAFA] placeholder-gray-600 outline-none focus:shadow-[0_0_0_3px_rgba(16,185,129,0.15)] transition-shadow duration-150"
                   style={{ background: '#111117', border: '1px solid rgba(255,255,255,0.06)' }}
                 />
               </div>
@@ -997,7 +1092,7 @@ export default function BookingSettingsPage() {
                   value={emailContact}
                   onChange={(e) => setEmailContact(e.target.value)}
                   placeholder="contact@votre-activite.fr"
-                  className="w-full px-3.5 py-2.5 rounded-xl text-sm text-[#FAFAFA] placeholder-gray-600 outline-none"
+                  className="w-full px-3.5 py-2.5 rounded-xl text-sm text-[#FAFAFA] placeholder-gray-600 outline-none focus:shadow-[0_0_0_3px_rgba(16,185,129,0.15)] transition-shadow duration-150"
                   style={{ background: '#111117', border: '1px solid rgba(255,255,255,0.06)' }}
                 />
               </div>
@@ -1022,33 +1117,34 @@ export default function BookingSettingsPage() {
           <div className="flex flex-col gap-4">
             <div>
               <label className="block text-xs font-semibold text-[#9CA3AF] mb-2">Prestations proposées</label>
-              <textarea
+              <AutoTextarea
                 value={services}
                 onChange={(e) => setServices(e.target.value)}
                 placeholder="Ex : Coupe, coloration, brushing, soins…"
-                rows={2}
-                className="w-full px-3.5 py-2.5 rounded-xl text-sm text-[#FAFAFA] placeholder-gray-600 outline-none resize-none"
+                minRows={2}
+                className="w-full px-3.5 py-2.5 rounded-xl text-sm text-[#FAFAFA] placeholder-gray-600 outline-none focus:shadow-[0_0_0_3px_rgba(16,185,129,0.15)] transition-shadow duration-150"
                 style={{ background: '#111117', border: '1px solid rgba(255,255,255,0.06)' }}
               />
             </div>
             <div>
               <label className="block text-xs font-semibold text-[#9CA3AF] mb-2">Consignes avant le RDV</label>
-              <textarea
+              <AutoTextarea
                 value={instructions}
                 onChange={(e) => setInstructions(e.target.value)}
                 placeholder="Ex : Merci d'arriver 5 minutes en avance, cheveux propres et secs."
-                rows={2}
-                className="w-full px-3.5 py-2.5 rounded-xl text-sm text-[#FAFAFA] placeholder-gray-600 outline-none resize-none"
+                minRows={2}
+                className="w-full px-3.5 py-2.5 rounded-xl text-sm text-[#FAFAFA] placeholder-gray-600 outline-none focus:shadow-[0_0_0_3px_rgba(16,185,129,0.15)] transition-shadow duration-150"
                 style={{ background: '#111117', border: '1px solid rgba(255,255,255,0.06)' }}
               />
             </div>
             <div>
               <label className="block text-xs font-semibold text-[#9CA3AF] mb-2">Moyens de paiement acceptés</label>
-              <input
+              <AutoTextarea
                 value={paymentMethods}
                 onChange={(e) => setPaymentMethods(e.target.value)}
                 placeholder="Ex : Carte bancaire, espèces, chèque"
-                className="w-full px-3.5 py-2.5 rounded-xl text-sm text-[#FAFAFA] placeholder-gray-600 outline-none"
+                minRows={1}
+                className="w-full px-3.5 py-2.5 rounded-xl text-sm text-[#FAFAFA] placeholder-gray-600 outline-none focus:shadow-[0_0_0_3px_rgba(16,185,129,0.15)] transition-shadow duration-150"
                 style={{ background: '#111117', border: '1px solid rgba(255,255,255,0.06)' }}
               />
             </div>
@@ -1075,9 +1171,18 @@ export default function BookingSettingsPage() {
               <label className="block text-xs font-semibold text-[#9CA3AF] mb-2">Durée d&apos;un créneau</label>
               <div className="flex flex-wrap gap-2">
                 {DURATIONS.map((d) => (
-                  <button key={d} onClick={() => setSlotDuration(d)} className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all" style={{ background: slotDuration === d ? '#10B981' : '#111117', color: slotDuration === d ? '#fff' : '#9CA3AF', border: slotDuration === d ? 'none' : '1px solid rgba(255,255,255,0.06)' }}>
+                  <motion.button
+                    key={d}
+                    onClick={() => setSlotDuration(d)}
+                    whileHover={{ scale: 1.06 }}
+                    whileTap={{ scale: 0.94 }}
+                    animate={{ background: slotDuration === d ? '#10B981' : '#111117', color: slotDuration === d ? '#fff' : '#9CA3AF', boxShadow: slotDuration === d ? '0 4px 14px rgba(16,185,129,0.3)' : '0 0 0 0 rgba(0,0,0,0)' }}
+                    transition={{ duration: 0.15 }}
+                    className="px-3 py-1.5 rounded-lg text-xs font-semibold"
+                    style={{ border: slotDuration === d ? 'none' : '1px solid rgba(255,255,255,0.06)' }}
+                  >
                     {d} min
-                  </button>
+                  </motion.button>
                 ))}
               </div>
             </div>
@@ -1085,9 +1190,18 @@ export default function BookingSettingsPage() {
               <label className="block text-xs font-semibold text-[#9CA3AF] mb-2">Battement entre RDV</label>
               <div className="flex flex-wrap gap-2">
                 {BUFFERS.map((b) => (
-                  <button key={b} onClick={() => setBufferTime(b)} className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all" style={{ background: bufferTime === b ? '#10B981' : '#111117', color: bufferTime === b ? '#fff' : '#9CA3AF', border: bufferTime === b ? 'none' : '1px solid rgba(255,255,255,0.06)' }}>
+                  <motion.button
+                    key={b}
+                    onClick={() => setBufferTime(b)}
+                    whileHover={{ scale: 1.06 }}
+                    whileTap={{ scale: 0.94 }}
+                    animate={{ background: bufferTime === b ? '#10B981' : '#111117', color: bufferTime === b ? '#fff' : '#9CA3AF', boxShadow: bufferTime === b ? '0 4px 14px rgba(16,185,129,0.3)' : '0 0 0 0 rgba(0,0,0,0)' }}
+                    transition={{ duration: 0.15 }}
+                    className="px-3 py-1.5 rounded-lg text-xs font-semibold"
+                    style={{ border: bufferTime === b ? 'none' : '1px solid rgba(255,255,255,0.06)' }}
+                  >
                     {b} min
-                  </button>
+                  </motion.button>
                 ))}
               </div>
             </div>
@@ -1095,9 +1209,18 @@ export default function BookingSettingsPage() {
               <label className="block text-xs font-semibold text-[#9CA3AF] mb-2">Réservable jusqu&apos;à</label>
               <div className="flex flex-wrap gap-2">
                 {ADVANCE_OPTIONS.map((a) => (
-                  <button key={a} onClick={() => setAdvanceDays(a)} className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all" style={{ background: advanceDays === a ? '#10B981' : '#111117', color: advanceDays === a ? '#fff' : '#9CA3AF', border: advanceDays === a ? 'none' : '1px solid rgba(255,255,255,0.06)' }}>
+                  <motion.button
+                    key={a}
+                    onClick={() => setAdvanceDays(a)}
+                    whileHover={{ scale: 1.06 }}
+                    whileTap={{ scale: 0.94 }}
+                    animate={{ background: advanceDays === a ? '#10B981' : '#111117', color: advanceDays === a ? '#fff' : '#9CA3AF', boxShadow: advanceDays === a ? '0 4px 14px rgba(16,185,129,0.3)' : '0 0 0 0 rgba(0,0,0,0)' }}
+                    transition={{ duration: 0.15 }}
+                    className="px-3 py-1.5 rounded-lg text-xs font-semibold"
+                    style={{ border: advanceDays === a ? 'none' : '1px solid rgba(255,255,255,0.06)' }}
+                  >
                     {a}j
-                  </button>
+                  </motion.button>
                 ))}
               </div>
             </div>
@@ -1157,7 +1280,7 @@ export default function BookingSettingsPage() {
                               disabled={!day[period].enabled}
                               value={day[period].start}
                               onChange={(e) => updateRange(dayKey, period, { start: e.target.value })}
-                              className="px-1.5 py-1 rounded-md text-xs text-[#FAFAFA] outline-none"
+                              className="px-1.5 py-1 rounded-md text-xs text-[#FAFAFA] outline-none focus:shadow-[0_0_0_3px_rgba(16,185,129,0.15)] transition-shadow duration-150"
                               style={{ background: '#111117', border: '1px solid rgba(255,255,255,0.06)', opacity: day[period].enabled ? 1 : 0.4, colorScheme: 'dark' }}
                             />
                             <span className="text-[#6B7280] text-xs">–</span>
@@ -1166,7 +1289,7 @@ export default function BookingSettingsPage() {
                               disabled={!day[period].enabled}
                               value={day[period].end}
                               onChange={(e) => updateRange(dayKey, period, { end: e.target.value })}
-                              className="px-1.5 py-1 rounded-md text-xs text-[#FAFAFA] outline-none"
+                              className="px-1.5 py-1 rounded-md text-xs text-[#FAFAFA] outline-none focus:shadow-[0_0_0_3px_rgba(16,185,129,0.15)] transition-shadow duration-150"
                               style={{ background: '#111117', border: '1px solid rgba(255,255,255,0.06)', opacity: day[period].enabled ? 1 : 0.4, colorScheme: 'dark' }}
                             />
                           </div>
@@ -1193,13 +1316,39 @@ export default function BookingSettingsPage() {
         )}
 
         {/* ── Save bar ─────────────────────────────────────────────────────── */}
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="rounded-2xl p-5 mb-6 flex flex-col sm:flex-row sm:items-center gap-3" style={{ background: '#111117', border: '1px solid rgba(255,255,255,0.06)' }}>
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{
+            opacity: 1, y: 0,
+            background: saveState === 'saved' ? 'rgba(16,185,129,0.07)' : saveState === 'error' ? 'rgba(239,68,68,0.06)' : '#111117',
+            borderColor: saveState === 'saved' ? 'rgba(16,185,129,0.25)' : saveState === 'error' ? 'rgba(239,68,68,0.25)' : 'rgba(255,255,255,0.06)',
+          }}
+          transition={{ duration: 0.3 }}
+          className="rounded-2xl p-5 mb-6 flex flex-col sm:flex-row sm:items-center gap-3"
+          style={{ border: '1px solid rgba(255,255,255,0.06)' }}
+        >
           <div className="flex-1 min-w-0">
-            {saveState === 'saving' && <span className="text-xs text-[#9CA3AF]">Enregistrement…</span>}
-            {saveState === 'saved' && <span className="text-xs font-semibold inline-flex items-center gap-1.5" style={{ color: '#10B981' }}><CheckIcon size={13} strokeWidth={2.5} /> Enregistré — vos informations et disponibilités sont à jour.</span>}
-            {saveState === 'error' && <span className="text-xs font-semibold inline-flex items-center gap-1.5" style={{ color: '#F87171' }}><AlertCircleIcon size={13} /> {saveError}</span>}
-            {saveState === 'idle' && !canSave && <span className="text-xs text-[#6B7280]">Renseignez un nom d&apos;activité et un lien valide pour enregistrer.</span>}
-            {saveState === 'idle' && canSave && isOnboarding && <span className="text-xs text-[#6B7280]">Dernière étape : enregistrez pour activer votre page de réservation.</span>}
+            <AnimatePresence mode="wait">
+              {saveState === 'saving' && (
+                <motion.span key="saving" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="text-xs text-[#9CA3AF] inline-flex items-center gap-1.5">
+                  <motion.span className="w-2.5 h-2.5 rounded-full border-2 border-t-transparent border-[#9CA3AF]" animate={{ rotate: 360 }} transition={{ duration: 0.7, repeat: Infinity, ease: 'linear' }} />
+                  Enregistrement…
+                </motion.span>
+              )}
+              {saveState === 'saved' && (
+                <motion.span key="saved" initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 4 }} className="text-xs font-semibold inline-flex items-center gap-1.5" style={{ color: '#10B981' }}>
+                  <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 500, damping: 15 }}><CheckIcon size={13} strokeWidth={2.5} /></motion.span>
+                  Enregistré — vos informations et disponibilités sont à jour.
+                </motion.span>
+              )}
+              {saveState === 'error' && (
+                <motion.span key="error" initial={{ opacity: 0, x: -4 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} className="text-xs font-semibold inline-flex items-center gap-1.5" style={{ color: '#F87171' }}>
+                  <AlertCircleIcon size={13} /> {saveError}
+                </motion.span>
+              )}
+              {saveState === 'idle' && !canSave && <motion.span key="idle-nosave" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="text-xs text-[#6B7280]">Renseignez un nom d&apos;activité et un lien valide pour enregistrer.</motion.span>}
+              {saveState === 'idle' && canSave && isOnboarding && <motion.span key="idle-onboarding" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="text-xs text-[#6B7280]">Dernière étape : enregistrez pour activer votre page de réservation.</motion.span>}
+            </AnimatePresence>
           </div>
           <div className="shrink-0 w-full sm:w-auto">
             <GradientButton onClick={handleSave} disabled={!canSave || saveState === 'saving'} fullWidth={false} className="px-5 py-2.5 text-xs">
@@ -1327,10 +1476,10 @@ function ConfigSidebar({
           <span className="text-xs font-bold text-[#FAFAFA] flex items-center gap-1.5"><EyeIcon size={14} /> Aperçu en direct</span>
           {savedSlug && (
             <div className="flex items-center gap-2.5">
-              <a href={publicUrl} target="_blank" rel="noopener noreferrer" className="text-[#9CA3AF] hover:text-[#FAFAFA] text-[10px] font-semibold inline-flex items-center gap-1" title="Ouvrir en grand">
+              <a href={publicUrl} target="_blank" rel="noopener noreferrer" className="text-[#9CA3AF] hover:text-[#FAFAFA] text-[10px] font-semibold inline-flex items-center gap-1 transition-all duration-150 hover:scale-105" title="Ouvrir en grand">
                 <ExternalLinkIcon size={12} /> Ouvrir en grand
               </a>
-              <motion.button whileTap={{ scale: 0.9, rotate: 180 }} onClick={() => setPreviewKey((k) => k + 1)} className="text-[#9CA3AF] hover:text-[#FAFAFA]" title="Actualiser l'aperçu">
+              <motion.button whileHover={{ scale: 1.15, color: '#FAFAFA' }} whileTap={{ scale: 0.9, rotate: 180 }} onClick={() => setPreviewKey((k) => k + 1)} className="text-[#9CA3AF]" title="Actualiser l'aperçu">
                 <RefreshIcon size={13} />
               </motion.button>
             </div>
@@ -1362,12 +1511,16 @@ function ConfigSidebar({
         </div>
         <div className="flex flex-col gap-2">
           {checklist.map((c) => (
-            <div key={c.label} className="flex items-center gap-2 text-xs">
-              <span className="w-4 h-4 rounded-full flex items-center justify-center shrink-0" style={{ background: c.done ? 'rgba(16,185,129,0.15)' : 'rgba(255,255,255,0.06)', color: c.done ? '#10B981' : '#6B7280' }}>
+            <motion.div key={c.label} animate={{ opacity: 1 }} className="flex items-center gap-2 text-xs">
+              <motion.span
+                animate={{ background: c.done ? 'rgba(16,185,129,0.15)' : 'rgba(255,255,255,0.06)', color: c.done ? '#10B981' : '#6B7280', scale: c.done ? [1, 1.25, 1] : 1 }}
+                transition={{ duration: 0.3 }}
+                className="w-4 h-4 rounded-full flex items-center justify-center shrink-0"
+              >
                 {c.done ? <CheckIcon size={9} strokeWidth={3} /> : <span className="w-1 h-1 rounded-full" style={{ background: 'currentColor' }} />}
-              </span>
-              <span style={{ color: c.done ? '#FAFAFA' : '#9CA3AF' }}>{c.label}</span>
-            </div>
+              </motion.span>
+              <span style={{ color: c.done ? '#FAFAFA' : '#9CA3AF', transition: 'color 0.2s' }}>{c.label}</span>
+            </motion.div>
           ))}
         </div>
       </motion.div>

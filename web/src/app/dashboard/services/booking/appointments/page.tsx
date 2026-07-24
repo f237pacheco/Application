@@ -85,7 +85,6 @@ export default function AppointmentsPage() {
       .eq('user_id', user.id)
       .order('booking_date', { ascending: true })
       .order('booking_time', { ascending: true })
-    console.log('[appointments/date-trace] réservations chargées depuis la base (telles quelles, aucune transformation) ->', (data ?? []).map((b: { id: string; booking_date: string; booking_time: string }) => `${b.id.slice(0, 8)}: ${b.booking_date} ${b.booking_time}`))
     setBookings((data ?? []) as Booking[])
     setLoading(false)
   }, [user?.id])
@@ -248,12 +247,14 @@ export default function AppointmentsPage() {
                 {justUpdated && (
                   <motion.span
                     initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
+                    animate={{ opacity: 1, scale: 1, boxShadow: ['0 0 0 0 rgba(16,185,129,0.4)', '0 0 0 6px rgba(16,185,129,0)'] }}
                     exit={{ opacity: 0, scale: 0.8 }}
-                    className="text-[11px] font-semibold px-2 py-1 rounded-full"
+                    transition={{ boxShadow: { duration: 1, repeat: Infinity } }}
+                    className="text-[11px] font-semibold px-2 py-1 rounded-full inline-flex items-center gap-1.5"
                     style={{ background: 'rgba(16,185,129,0.15)', color: '#10B981' }}
                   >
-                    ● Mis à jour
+                    <span className="w-1.5 h-1.5 rounded-full" style={{ background: '#10B981' }} />
+                    Mis à jour
                   </motion.span>
                 )}
               </AnimatePresence>
@@ -262,10 +263,10 @@ export default function AppointmentsPage() {
           </div>
           <div className="flex gap-1.5 p-1 rounded-xl" style={{ background: '#111117', border: '1px solid rgba(255,255,255,0.06)' }}>
             {(['list', 'calendar'] as ViewMode[]).map((v) => (
-              <button key={v} onClick={() => setView(v)} className="relative px-3 py-1.5 rounded-lg text-xs font-semibold" style={{ color: view === v ? '#fff' : '#9CA3AF' }}>
+              <motion.button key={v} onClick={() => setView(v)} whileHover={view !== v ? { color: '#FAFAFA' } : undefined} whileTap={{ scale: 0.95 }} className="relative px-3 py-1.5 rounded-lg text-xs font-semibold" style={{ color: view === v ? '#fff' : '#9CA3AF' }}>
                 {view === v && <motion.div layoutId="view-pill" className="absolute inset-0 rounded-lg" style={{ background: '#10B981' }} transition={{ type: 'spring', stiffness: 400, damping: 30 }} />}
                 <span className="relative inline-flex items-center gap-1.5">{v === 'list' ? <ListIcon size={13} /> : <GridIcon size={13} />}{v === 'list' ? 'Liste' : 'Calendrier'}</span>
-              </button>
+              </motion.button>
             ))}
           </div>
         </motion.div>
@@ -282,15 +283,17 @@ export default function AppointmentsPage() {
 
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="flex flex-wrap items-center gap-2 mb-6">
           {FILTERS.map((f) => (
-            <button
+            <motion.button
               key={f.key}
               onClick={() => setFilter(f.key)}
+              whileHover={filter !== f.key ? { borderColor: 'rgba(255,255,255,0.18)', color: '#FAFAFA' } : undefined}
+              whileTap={{ scale: 0.95 }}
               className="relative px-3.5 py-1.5 rounded-full text-xs font-semibold"
               style={{ color: filter === f.key ? '#fff' : '#9CA3AF', border: filter === f.key ? 'none' : '1px solid rgba(255,255,255,0.06)' }}
             >
               {filter === f.key && <motion.div layoutId="filter-pill" className="absolute inset-0 rounded-full" style={{ background: '#10B981' }} transition={{ type: 'spring', stiffness: 400, damping: 30 }} />}
               <span className="relative">{f.label} <span style={{ opacity: 0.7 }}>({counts[f.key]})</span></span>
-            </button>
+            </motion.button>
           ))}
           <div className="relative ml-auto w-full sm:w-56">
             <SearchIcon size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#6B7280] pointer-events-none" />
@@ -298,7 +301,7 @@ export default function AppointmentsPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Rechercher un client…"
-              className="w-full pl-8 pr-3.5 py-1.5 rounded-full text-xs text-[#FAFAFA] placeholder-gray-600 outline-none transition-shadow"
+              className="w-full pl-8 pr-3.5 py-1.5 rounded-full text-xs text-[#FAFAFA] placeholder-gray-600 outline-none focus:shadow-[0_0_0_3px_rgba(16,185,129,0.15)] transition-shadow duration-150"
               style={{ background: '#111117', border: '1px solid rgba(255,255,255,0.06)' }}
             />
           </div>
@@ -322,7 +325,7 @@ export default function AppointmentsPage() {
                 : filter === 'upcoming' ? 'Vos prochaines réservations apparaîtront ici.' : 'Changez de filtre pour voir d\'autres rendez-vous.'}
             </p>
             {bookings.length === 0 && (
-              <Link href="/dashboard/services/booking" className="inline-flex items-center gap-1.5 mt-4 text-xs font-bold px-4 py-2 rounded-xl" style={{ background: 'rgba(16,185,129,0.1)', color: '#10B981', border: '1px solid rgba(16,185,129,0.25)' }}>
+              <Link href="/dashboard/services/booking" className="inline-flex items-center gap-1.5 mt-4 text-xs font-bold px-4 py-2 rounded-xl transition-all duration-150 hover:scale-105 hover:shadow-[0_6px_20px_rgba(16,185,129,0.25)]" style={{ background: 'rgba(16,185,129,0.1)', color: '#10B981', border: '1px solid rgba(16,185,129,0.25)' }}>
                 <ArrowLeftIcon size={12} /> Aller chercher mon lien de réservation
               </Link>
             )}
@@ -348,13 +351,13 @@ export default function AppointmentsPage() {
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0 }}
                           transition={{ duration: 0.25, delay: Math.min(idx * 0.03, 0.15) }}
-                          whileHover={{ borderColor: 'rgba(255,255,255,0.12)' }}
+                          whileHover={{ borderColor: 'rgba(255,255,255,0.12)', background: '#15151C', y: -1 }}
                           className="rounded-xl p-4 flex items-center gap-3.5 flex-wrap"
                           style={{ background: '#111117', border: '1px solid rgba(255,255,255,0.06)', borderLeft: `3px solid ${badge.border}` }}
                         >
-                          <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-extrabold shrink-0" style={{ background: avatar.bg, color: avatar.color }}>
+                          <motion.div whileHover={{ scale: 1.1 }} transition={{ type: 'spring', stiffness: 400, damping: 15 }} className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-extrabold shrink-0" style={{ background: avatar.bg, color: avatar.color }}>
                             {b.client_name.charAt(0).toUpperCase()}
-                          </div>
+                          </motion.div>
                           <div className="text-sm font-bold text-[#FAFAFA] w-16 shrink-0">{formatHourFR(b.booking_time)}</div>
                           <div className="flex-1 min-w-[160px]">
                             <p className="text-sm font-semibold text-[#FAFAFA]">{b.client_name}</p>
@@ -376,13 +379,13 @@ export default function AppointmentsPage() {
                               {confirmCancelId === b.id ? (
                                 <motion.div key="confirm" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="flex items-center gap-2">
                                   <span className="text-xs text-[#9CA3AF]">Confirmer ?</span>
-                                  <button onClick={() => handleCancel(b.id)} disabled={cancellingId === b.id} className="text-xs font-bold px-2.5 py-1 rounded-lg" style={{ background: '#EF4444', color: '#fff' }}>
+                                  <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.94 }} onClick={() => handleCancel(b.id)} disabled={cancellingId === b.id} className="text-xs font-bold px-2.5 py-1 rounded-lg" style={{ background: '#EF4444', color: '#fff' }}>
                                     {cancellingId === b.id ? '…' : 'Oui'}
-                                  </button>
-                                  <button onClick={() => setConfirmCancelId(null)} className="text-xs px-2 py-1 rounded-lg text-[#9CA3AF]">Non</button>
+                                  </motion.button>
+                                  <motion.button whileHover={{ color: '#FAFAFA' }} whileTap={{ scale: 0.94 }} onClick={() => setConfirmCancelId(null)} className="text-xs px-2 py-1 rounded-lg text-[#9CA3AF]">Non</motion.button>
                                 </motion.div>
                               ) : (
-                                <motion.button key="cancel" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setConfirmCancelId(b.id)} className="text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors" style={{ background: 'rgba(239,68,68,0.08)', color: '#F87171', border: '1px solid rgba(239,68,68,0.2)' }}>
+                                <motion.button key="cancel" initial={{ opacity: 0 }} animate={{ opacity: 1 }} whileHover={{ scale: 1.04, background: 'rgba(239,68,68,0.14)' }} whileTap={{ scale: 0.95 }} exit={{ opacity: 0 }} onClick={() => setConfirmCancelId(b.id)} className="text-xs font-semibold px-3 py-1.5 rounded-lg" style={{ background: 'rgba(239,68,68,0.08)', color: '#F87171', border: '1px solid rgba(239,68,68,0.2)' }}>
                                   Annuler
                                 </motion.button>
                               )}
@@ -431,20 +434,22 @@ function Sparkline({ data, accent }: { data: number[]; accent: string }) {
   )
 }
 
-function StatCard({ icon, label, value, suffix = '', sparkline, accent, gradient, delay = 0 }: {
-  icon: React.ReactNode; label: string; value: number | null; suffix?: string; sparkline?: number[]; accent: string; gradient?: string; delay?: number
+function StatCard({ icon, label, value, suffix = '', sparkline, accent, delay = 0 }: {
+  icon: React.ReactNode; label: string; value: number | null; suffix?: string; sparkline?: number[]; accent: string; delay?: number
 }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, delay }}
-      whileHover={{ borderColor: 'rgba(255,255,255,0.12)', y: -2 }}
+      whileHover={{ borderColor: `${accent}55`, y: -3, boxShadow: `0 10px 28px ${accent}22` }}
       className="rounded-2xl p-5"
       style={{ background: '#111117', border: '1px solid rgba(255,255,255,0.06)', boxShadow: SHADOW_SOFT }}
     >
       <div className="flex items-center justify-between mb-3">
-        <GradientIconBadge icon={icon} gradient={gradient ?? `linear-gradient(135deg, ${accent}, ${accent})`} size={32} radius={10} />
+        <motion.div whileHover={{ scale: 1.1, rotate: -4 }} transition={{ type: 'spring', stiffness: 400, damping: 15 }}>
+          <GradientIconBadge icon={icon} gradient={accent} size={32} radius={10} />
+        </motion.div>
       </div>
       <p className="text-2xl font-extrabold text-[#FAFAFA] mb-0.5">
         {value === null ? '—' : <AnimatedCounter value={value} suffix={suffix} />}
@@ -496,9 +501,9 @@ function CalendarView({ bookings }: { bookings: Booking[] }) {
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="rounded-2xl p-6" style={{ background: '#111117', border: '1px solid rgba(255,255,255,0.06)' }}>
       <div className="flex items-center justify-between mb-5">
-        <motion.button whileTap={{ scale: 0.9 }} onClick={() => setMonthOffset((o) => o - 1)} className="w-7 h-7 rounded-lg text-[#9CA3AF] flex items-center justify-center" style={{ border: '1px solid rgba(255,255,255,0.06)' }}><ChevronLeftIcon size={14} /></motion.button>
-        <span className="text-sm font-bold text-[#FAFAFA] capitalize">{MONTH_NAMES[month.getMonth()]} {month.getFullYear()}</span>
-        <motion.button whileTap={{ scale: 0.9 }} onClick={() => setMonthOffset((o) => o + 1)} className="w-7 h-7 rounded-lg text-[#9CA3AF] flex items-center justify-center" style={{ border: '1px solid rgba(255,255,255,0.06)' }}><ChevronRightIcon size={14} /></motion.button>
+        <motion.button whileHover={{ scale: 1.1, borderColor: 'rgba(255,255,255,0.18)', color: '#FAFAFA' }} whileTap={{ scale: 0.9 }} onClick={() => setMonthOffset((o) => o - 1)} className="w-7 h-7 rounded-lg text-[#9CA3AF] flex items-center justify-center" style={{ border: '1px solid rgba(255,255,255,0.06)' }}><ChevronLeftIcon size={14} /></motion.button>
+        <motion.span key={monthOffset} initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }} className="text-sm font-bold text-[#FAFAFA] capitalize">{MONTH_NAMES[month.getMonth()]} {month.getFullYear()}</motion.span>
+        <motion.button whileHover={{ scale: 1.1, borderColor: 'rgba(255,255,255,0.18)', color: '#FAFAFA' }} whileTap={{ scale: 0.9 }} onClick={() => setMonthOffset((o) => o + 1)} className="w-7 h-7 rounded-lg text-[#9CA3AF] flex items-center justify-center" style={{ border: '1px solid rgba(255,255,255,0.06)' }}><ChevronRightIcon size={14} /></motion.button>
       </div>
       <div className="grid grid-cols-7 gap-1.5 mb-2">
         {WEEK_SHORT.map((d) => <div key={d} className="text-center text-[10px] font-semibold text-[#6B7280]">{d}</div>)}
@@ -542,14 +547,22 @@ function CalendarView({ bookings }: { bookings: Booking[] }) {
             <div className="mt-5 pt-5" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
               <p className="text-xs font-semibold text-[#FAFAFA] mb-3 capitalize">{formatDateFR(selectedDate)}</p>
               <div className="flex flex-col gap-2">
-                {selectedItems.map((b) => {
+                {selectedItems.map((b, idx) => {
                   const badge = STATUS_BADGE[b.status]
                   return (
-                    <div key={b.id} className="flex items-center gap-3 text-xs rounded-lg p-2.5" style={{ background: '#111117', border: '1px solid rgba(255,255,255,0.06)' }}>
+                    <motion.div
+                      key={b.id}
+                      initial={{ opacity: 0, x: -6 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ duration: 0.2, delay: idx * 0.04 }}
+                      whileHover={{ borderColor: 'rgba(255,255,255,0.14)', background: '#15151C' }}
+                      className="flex items-center gap-3 text-xs rounded-lg p-2.5"
+                      style={{ background: '#111117', border: '1px solid rgba(255,255,255,0.06)' }}
+                    >
                       <span className="font-bold text-[#FAFAFA] w-14 shrink-0">{formatHourFR(b.booking_time)}</span>
                       <span className="flex-1 text-[#9CA3AF] truncate">{b.client_name}</span>
                       <span className="font-semibold px-2 py-0.5 rounded-full shrink-0" style={{ color: badge.color, background: badge.bg }}>{badge.label}</span>
-                    </div>
+                    </motion.div>
                   )
                 })}
               </div>
@@ -578,14 +591,29 @@ function StatsSidebar({ bookings, today }: { bookings: Booking[]; today: string 
     <div className="flex flex-col gap-5 lg:sticky lg:top-6">
 
       {/* ── Next appointment ──────────────────────────────────────────────── */}
-      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="rounded-2xl p-5" style={{ background: next ? 'rgba(16,185,129,0.06)' : '#111117', border: next ? '1px solid rgba(16,185,129,0.25)' : '1px solid rgba(255,255,255,0.06)' }}>
-        <p className="text-xs font-bold mb-3" style={{ color: '#10B981' }}>Prochain rendez-vous</p>
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        whileHover={next ? { borderColor: 'rgba(16,185,129,0.4)', y: -2, boxShadow: '0 10px 28px rgba(16,185,129,0.15)' } : undefined}
+        transition={{ duration: 0.4 }}
+        className="rounded-2xl p-5"
+        style={{ background: next ? 'rgba(16,185,129,0.06)' : '#111117', border: next ? '1px solid rgba(16,185,129,0.25)' : '1px solid rgba(255,255,255,0.06)' }}
+      >
+        <p className="text-xs font-bold mb-3 flex items-center gap-1.5" style={{ color: '#10B981' }}>
+          {next && (
+            <span className="relative inline-flex w-1.5 h-1.5">
+              <motion.span className="absolute inset-0 rounded-full" style={{ background: '#10B981' }} animate={{ scale: [1, 2.2], opacity: [0.7, 0] }} transition={{ duration: 1.8, repeat: Infinity, ease: 'easeOut' }} />
+              <span className="relative w-1.5 h-1.5 rounded-full" style={{ background: '#10B981' }} />
+            </span>
+          )}
+          Prochain rendez-vous
+        </p>
         {next && nextAvatar ? (
           <div>
             <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-extrabold shrink-0" style={{ background: nextAvatar.bg, color: nextAvatar.color }}>
+              <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 400, damping: 15 }} className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-extrabold shrink-0" style={{ background: nextAvatar.bg, color: nextAvatar.color }}>
                 {next.client_name.charAt(0).toUpperCase()}
-              </div>
+              </motion.div>
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-[#FAFAFA] truncate">{next.client_name}</p>
                 <p className="text-xs text-[#9CA3AF] truncate">{next.client_email}</p>
