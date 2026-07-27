@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getAvailableSlotsForDate } from '@/lib/availability';
 import { sendBookingConfirmationToClient, sendBookingNotificationToPro } from '@/lib/email';
+import { generateManageToken } from '@/lib/token';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -60,6 +61,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Ce créneau n'est plus disponible" }, { status: 409 });
     }
 
+    const manageToken = generateManageToken();
     const { data: newBooking, error: insertError } = await supabase.from('bookings').insert({
       user_id: settings.user_id,
       client_name: clientName,
@@ -69,6 +71,7 @@ export async function POST(request: Request) {
       booking_date: date,
       booking_time: time,
       status: 'confirmed',
+      manage_token: manageToken,
     }).select('id').single();
 
     if (insertError) {
@@ -102,6 +105,7 @@ export async function POST(request: Request) {
       date,
       time,
       proEmail: proProfile?.email ?? undefined,
+      manageToken,
     };
 
     console.log(`[bookings/create] Appel des fonctions d'envoi d'email — destinataire client="${clientEmail}" | destinataire pro="${proProfile?.email ?? '(aucun, notification pro sautée)'}"`);

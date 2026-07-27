@@ -18,6 +18,7 @@ console.log(`[email] expéditeur (FROM) : ${FROM}`);
 const DEFAULT_ADDRESS = '12 rue de la Paix, 49000 Angers';
 const DEFAULT_PHONE = '02 41 00 00 00';
 const DEFAULT_DURATION = 30;
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
 type BookingEmailData = {
   bookingId?: string;
@@ -33,6 +34,9 @@ type BookingEmailData = {
   date: string; // YYYY-MM-DD
   time: string; // HH:MM[:SS]
   proEmail?: string;
+  manageToken?: string;
+  previousDate?: string; // set on reschedule emails only
+  previousTime?: string;
 };
 
 function escapeHtml(str: string): string {
@@ -110,6 +114,30 @@ function calendarNoticeBlock(): string {
       <tr>
         <td style="padding:12px 16px;background:#F4F4F5;border-radius:10px;text-align:center;">
           <span style="color:#3F3F46;font-size:13px;">📅 Un fichier <strong>.ics</strong> est joint à cet email — ouvrez-le pour ajouter ce RDV à votre agenda.</span>
+        </td>
+      </tr>
+    </table>`;
+}
+
+// "Modifier" / "Annuler" buttons pointing at the client's own manage page —
+// only rendered when a manage_token exists (bookings created before that
+// column existed have none, and simply don't get these links).
+function manageLinksBlock(manageToken: string | undefined): string {
+  if (!manageToken) return '';
+  const rescheduleUrl = `${APP_URL}/rdv/manage/${manageToken}?action=reschedule`;
+  const cancelUrl = `${APP_URL}/rdv/manage/${manageToken}?action=cancel`;
+  return `
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:20px;">
+      <tr>
+        <td style="padding-top:16px;border-top:1px solid #E4E4E7;" align="center">
+          <table role="presentation" cellpadding="0" cellspacing="0"><tr>
+            <td style="padding:0 6px;">
+              <a href="${rescheduleUrl}" style="display:inline-block;padding:10px 18px;border-radius:10px;background:#F4F4F5;color:#18181B;font-size:13px;font-weight:700;text-decoration:none;">Modifier mon rendez-vous</a>
+            </td>
+            <td style="padding:0 6px;">
+              <a href="${cancelUrl}" style="display:inline-block;padding:10px 18px;border-radius:10px;background:#FEF2F2;color:#B91C1C;font-size:13px;font-weight:700;text-decoration:none;">Annuler mon rendez-vous</a>
+            </td>
+          </tr></table>
         </td>
       </tr>
     </table>`;
@@ -228,8 +256,9 @@ export async function sendBookingConfirmationToClient(data: BookingEmailData): P
 
       ${contactBlock(data.businessName, address, phone)}
       ${ics ? calendarNoticeBlock() : ''}
+      ${manageLinksBlock(data.manageToken)}
     `,
-    `Confirmation envoyée automatiquement suite à votre réservation sur la page de ${escapeHtml(data.businessName)}. Pour annuler ou modifier ce rendez-vous, contactez directement ${escapeHtml(data.businessName)}.`
+    `Confirmation envoyée automatiquement suite à votre réservation sur la page de ${escapeHtml(data.businessName)}. ${data.manageToken ? 'Utilisez les liens ci-dessus pour modifier ou annuler ce rendez-vous.' : `Pour annuler ou modifier ce rendez-vous, contactez directement ${escapeHtml(data.businessName)}.`}`
   );
 
   const text = [
@@ -241,6 +270,8 @@ export async function sendBookingConfirmationToClient(data: BookingEmailData): P
     `Le ${dateLabel} à ${hourLabel}`,
     ``,
     data.serviceNote ? `Motif : ${data.serviceNote}` : '',
+    data.manageToken ? `Modifier : ${APP_URL}/rdv/manage/${data.manageToken}?action=reschedule` : '',
+    data.manageToken ? `Annuler : ${APP_URL}/rdv/manage/${data.manageToken}?action=cancel` : '',
     ``,
     `${data.businessName}`,
     `${address}`,
@@ -364,6 +395,207 @@ export async function sendBookingCancellationToClient(data: BookingEmailData): P
       text,
       replyTo: data.proEmail,
     },
-    'cancellation'
+    'cancellation (client)'
+  );
+}
+
+export async function sendBookingCancellationToPro(data: BookingEmailData): Promise<void> {
+  if (!data.proEmail) {
+    console.warn('[email] no pro email on file — skipping pro cancellation notification');
+    return;
+  }
+  const dateLabel = formatDateFR(data.date);
+  const hourLabel = formatHourFR(data.time);
+
+  const html = emailShell(
+    data.businessName,
+    data.businessLogoUrl,
+    '#09090B',
+    `
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#FEF2F2;border:1px solid #FECACA;border-radius:12px;margin-bottom:24px;">
+        <tr>
+          <td style="padding:20px 24px;text-align:center;">
+            <div style="color:#991B1B;font-size:16px;font-weight:700;">Rendez-vous annulé</div>
+          </td>
+        </tr>
+      </table>
+
+      <p style="margin:0 0 20px;color:#3F3F46;font-size:14px;line-height:1.6;">
+        <strong>${escapeHtml(data.clientName)}</strong> a annulé son rendez-vous du <strong style="text-transform:capitalize;">${dateLabel} à ${hourLabel}</strong>.
+      </p>
+
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;">
+        <tr><td style="padding:6px 0;color:#71717A;width:110px;">Client</td><td style="padding:6px 0;color:#18181B;font-weight:600;">${escapeHtml(data.clientName)}</td></tr>
+        <tr><td style="padding:6px 0;color:#71717A;">Email</td><td style="padding:6px 0;color:#18181B;">${escapeHtml(data.clientEmail)}</td></tr>
+        ${data.clientPhone ? `<tr><td style="padding:6px 0;color:#71717A;">Téléphone</td><td style="padding:6px 0;color:#18181B;">${escapeHtml(data.clientPhone)}</td></tr>` : ''}
+      </table>
+
+      <p style="margin:20px 0 0;color:#71717A;font-size:13px;">Ce créneau est de nouveau disponible sur votre page de réservation.</p>
+    `,
+    `Notification automatique de votre système de réservation ${escapeHtml(data.businessName)}.`
+  );
+
+  const text = [
+    `Rendez-vous annulé`,
+    ``,
+    `${data.clientName} a annulé son rendez-vous du ${dateLabel} à ${hourLabel}.`,
+    ``,
+    `Client : ${data.clientName}`,
+    `Email : ${data.clientEmail}`,
+    data.clientPhone ? `Téléphone : ${data.clientPhone}` : '',
+    ``,
+    `Ce créneau est de nouveau disponible sur votre page de réservation.`,
+  ].filter(Boolean).join('\n');
+
+  await send(
+    {
+      to: data.proEmail,
+      subject: `RDV annulé — ${data.clientName} (${dateLabel})`,
+      html,
+      text,
+      replyTo: data.clientEmail,
+    },
+    'cancellation (pro)'
+  );
+}
+
+export async function sendBookingRescheduledToClient(data: BookingEmailData): Promise<void> {
+  const dateLabel = formatDateFR(data.date);
+  const hourLabel = formatHourFR(data.time);
+  const address = data.businessAddress?.trim() || DEFAULT_ADDRESS;
+  const phone = data.businessPhone?.trim() || DEFAULT_PHONE;
+  const ics = buildICSAttachment(data);
+  const previousLabel = data.previousDate && data.previousTime
+    ? `${formatDateFR(data.previousDate)} à ${formatHourFR(data.previousTime)}`
+    : null;
+
+  const html = emailShell(
+    data.businessName,
+    data.businessLogoUrl,
+    '#09090B',
+    `
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:12px;margin-bottom:24px;">
+        <tr>
+          <td style="padding:20px 24px;text-align:center;">
+            <div style="color:#1D4ED8;font-size:16px;font-weight:700;">Votre rendez-vous a été déplacé</div>
+          </td>
+        </tr>
+      </table>
+
+      <p style="margin:0 0 4px;color:#3F3F46;font-size:14px;">Bonjour ${escapeHtml(data.clientName)},</p>
+      <p style="margin:0 0 20px;color:#3F3F46;font-size:14px;line-height:1.6;">Votre rendez-vous avec <strong>${escapeHtml(data.businessName)}</strong> a été reprogrammé :</p>
+
+      ${previousLabel ? `<p style="margin:0 0 12px;color:#A1A1AA;font-size:13px;text-decoration:line-through;text-transform:capitalize;">Anciennement : ${previousLabel}</p>` : ''}
+
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#FAFAFA;border-radius:12px;margin-bottom:24px;">
+        <tr>
+          <td style="padding:20px 24px;text-align:center;">
+            <div style="color:#71717A;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">Nouveau créneau</div>
+            <div style="color:#18181B;font-size:17px;font-weight:700;text-transform:capitalize;">Le ${dateLabel}</div>
+            <div style="color:#3B82F6;font-size:26px;font-weight:800;margin-top:6px;">à ${hourLabel}</div>
+            ${data.slotDuration ? `<div style="color:#71717A;font-size:12px;margin-top:4px;">Durée : ${data.slotDuration} min</div>` : ''}
+          </td>
+        </tr>
+      </table>
+
+      ${contactBlock(data.businessName, address, phone)}
+      ${ics ? calendarNoticeBlock() : ''}
+      ${manageLinksBlock(data.manageToken)}
+    `,
+    `Confirmation de modification envoyée automatiquement suite à un changement de créneau sur votre réservation avec ${escapeHtml(data.businessName)}.`
+  );
+
+  const text = [
+    `Rendez-vous déplacé`,
+    ``,
+    `Bonjour ${data.clientName},`,
+    ``,
+    previousLabel ? `Anciennement : ${previousLabel}` : '',
+    `Nouveau créneau : le ${dateLabel} à ${hourLabel}`,
+    ``,
+    data.manageToken ? `Modifier : ${APP_URL}/rdv/manage/${data.manageToken}?action=reschedule` : '',
+    data.manageToken ? `Annuler : ${APP_URL}/rdv/manage/${data.manageToken}?action=cancel` : '',
+    ``,
+    `${data.businessName}`,
+    `${address}`,
+    `${phone}`,
+  ].filter(Boolean).join('\n');
+
+  await send(
+    {
+      to: data.clientEmail,
+      subject: `Votre RDV a été déplacé au ${dateLabel}`,
+      html,
+      text,
+      replyTo: data.proEmail,
+      attachments: ics ? [ics] : undefined,
+    },
+    'reschedule (client)'
+  );
+}
+
+export async function sendBookingRescheduledToPro(data: BookingEmailData): Promise<void> {
+  if (!data.proEmail) {
+    console.warn('[email] no pro email on file — skipping pro reschedule notification');
+    return;
+  }
+  const dateLabel = formatDateFR(data.date);
+  const hourLabel = formatHourFR(data.time);
+  const previousLabel = data.previousDate && data.previousTime
+    ? `${formatDateFR(data.previousDate)} à ${formatHourFR(data.previousTime)}`
+    : null;
+  const ics = buildICSAttachment(data);
+
+  const html = emailShell(
+    data.businessName,
+    data.businessLogoUrl,
+    '#3B82F6',
+    `
+      <p style="margin:0 0 4px;color:#18181B;font-size:15px;font-weight:700;">Rendez-vous déplacé</p>
+      <p style="margin:0 0 20px;color:#71717A;font-size:13px;">${escapeHtml(data.clientName)} a changé de créneau.</p>
+
+      ${previousLabel ? `<p style="margin:0 0 12px;color:#A1A1AA;font-size:13px;text-decoration:line-through;text-transform:capitalize;">Anciennement : ${previousLabel}</p>` : ''}
+
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#FAFAFA;border-radius:12px;margin-bottom:20px;">
+        <tr>
+          <td style="padding:18px 22px;text-align:center;">
+            <div style="color:#18181B;font-size:16px;font-weight:700;text-transform:capitalize;">Le ${dateLabel}</div>
+            <div style="color:#3B82F6;font-size:22px;font-weight:800;margin-top:4px;">à ${hourLabel}</div>
+          </td>
+        </tr>
+      </table>
+
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;">
+        <tr><td style="padding:6px 0;color:#71717A;width:110px;">Client</td><td style="padding:6px 0;color:#18181B;font-weight:600;">${escapeHtml(data.clientName)}</td></tr>
+        <tr><td style="padding:6px 0;color:#71717A;">Email</td><td style="padding:6px 0;color:#18181B;">${escapeHtml(data.clientEmail)}</td></tr>
+        ${data.clientPhone ? `<tr><td style="padding:6px 0;color:#71717A;">Téléphone</td><td style="padding:6px 0;color:#18181B;">${escapeHtml(data.clientPhone)}</td></tr>` : ''}
+      </table>
+      ${ics ? calendarNoticeBlock() : ''}
+    `,
+    `Notification automatique de votre système de réservation ${escapeHtml(data.businessName)}.`
+  );
+
+  const text = [
+    `Rendez-vous déplacé`,
+    ``,
+    `${data.clientName} a changé de créneau.`,
+    previousLabel ? `Anciennement : ${previousLabel}` : '',
+    `Nouveau créneau : le ${dateLabel} à ${hourLabel}`,
+    ``,
+    `Client : ${data.clientName}`,
+    `Email : ${data.clientEmail}`,
+    data.clientPhone ? `Téléphone : ${data.clientPhone}` : '',
+  ].filter(Boolean).join('\n');
+
+  await send(
+    {
+      to: data.proEmail,
+      subject: `RDV déplacé — ${data.clientName} (${dateLabel})`,
+      html,
+      text,
+      replyTo: data.clientEmail,
+      attachments: ics ? [ics] : undefined,
+    },
+    'reschedule (pro)'
   );
 }

@@ -10,10 +10,11 @@ import { getAvailableSlotsForDate } from '@/lib/availability'
 import {
   CalendarIcon, ListIcon, GridIcon, SearchIcon, TrendingUpIcon, UsersIcon, ClockIcon,
   ChevronLeftIcon, ChevronRightIcon, PhoneIcon, MailIcon, SparklesIcon, ArrowLeftIcon,
+  CheckCircleIcon, RefreshIcon, AlertCircleIcon, TrashIcon,
 } from '@/components/booking/icons'
 import { EmptyInboxIllustration } from '@/components/booking/illustrations'
-import { MeshBackground, GradientIconBadge, AnimatedCounter } from '@/components/booking/decorative'
-import { EMERALD, BLUE, AMBER, MUTED, SHADOW_SOFT } from '@/components/booking/theme'
+import { MeshBackground, GradientIconBadge, AnimatedCounter, Toast } from '@/components/booking/decorative'
+import { EMERALD, BLUE, AMBER, MUTED, SHADOW_SOFT, CARD, BORDER, INK, SECTION_BG, SHADOW_MODAL } from '@/components/booking/theme'
 
 type Status = 'confirmed' | 'cancelled' | 'completed'
 type Booking = {
@@ -71,10 +72,21 @@ export default function AppointmentsPage() {
   const [filter, setFilter] = useState<FilterKey>('upcoming')
   const [search, setSearch] = useState('')
   const [view, setView] = useState<ViewMode>('list')
-  const [cancellingId, setCancellingId] = useState<string | null>(null)
-  const [confirmCancelId, setConfirmCancelId] = useState<string | null>(null)
+  const [cancelTarget, setCancelTarget] = useState<Booking | null>(null)
+  const [cancelling, setCancelling] = useState(false)
+  const [completingId, setCompletingId] = useState<string | null>(null)
+  const [rescheduleTarget, setRescheduleTarget] = useState<Booking | null>(null)
   const [justUpdated, setJustUpdated] = useState(false)
   const [fillRate, setFillRate] = useState<number | null>(null)
+  const [slug, setSlug] = useState<string | null>(null)
+  const [toast, setToast] = useState('')
+  const [toastTone, setToastTone] = useState<'success' | 'info' | 'error'>('success')
+
+  const showToast = useCallback((message: string, tone: 'success' | 'info' | 'error' = 'success') => {
+    setToast(message)
+    setToastTone(tone)
+    setTimeout(() => setToast(''), 2500)
+  }, [])
 
   const loadBookings = useCallback(async () => {
     if (!user?.id) return
@@ -124,10 +136,11 @@ export default function AppointmentsPage() {
       const supabase = createClient()
       const { data: settings } = await supabase
         .from('booking_settings')
-        .select('slot_duration, buffer_time, advance_booking_days')
+        .select('slug, slot_duration, buffer_time, advance_booking_days')
         .eq('user_id', user.id)
         .maybeSingle()
       if (cancelled || !settings) return
+      setSlug(settings.slug ?? null)
 
       const days: string[] = []
       const base = getParisNow()
@@ -185,21 +198,56 @@ export default function AppointmentsPage() {
     return Array.from(map.entries())
   }, [filtered])
 
-  const handleCancel = async (id: string) => {
-    setCancellingId(id)
+  const handleCancelConfirmed = async () => {
+    if (!cancelTarget) return
+    setCancelling(true)
     try {
       const res = await fetch('/api/bookings/cancel', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookingId: cancelTarget.id }),
+      })
+      const json = await res.json() as { success?: boolean; error?: string }
+      if (res.ok && json.success) {
+        setBookings((prev) => prev.map((b) => (b.id === cancelTarget.id ? { ...b, status: 'cancelled' } : b)))
+        showToast('Rendez-vous annulé — le client a été notifié par email.')
+        setCancelTarget(null)
+      } else {
+        showToast(json.error ?? "Impossible d'annuler ce rendez-vous.", 'error')
+      }
+    } catch {
+      showToast('Erreur réseau, veuillez réessayer.', 'error')
+    } finally {
+      setCancelling(false)
+    }
+  }
+
+  const handleComplete = async (id: string) => {
+    setCompletingId(id)
+    try {
+      const res = await fetch('/api/bookings/complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ bookingId: id }),
       })
-      if (res.ok) {
-        setBookings((prev) => prev.map((b) => (b.id === id ? { ...b, status: 'cancelled' } : b)))
+      const json = await res.json() as { success?: boolean; error?: string }
+      if (res.ok && json.success) {
+        setBookings((prev) => prev.map((b) => (b.id === id ? { ...b, status: 'completed' } : b)))
+        showToast('Rendez-vous marqué comme terminé.')
+      } else {
+        showToast(json.error ?? 'Impossible de mettre à jour ce rendez-vous.', 'error')
       }
+    } catch {
+      showToast('Erreur réseau, veuillez réessayer.', 'error')
     } finally {
-      setCancellingId(null)
-      setConfirmCancelId(null)
+      setCompletingId(null)
     }
+  }
+
+  const handleRescheduled = (id: string, date: string, time: string) => {
+    setBookings((prev) => prev.map((b) => (b.id === id ? { ...b, booking_date: date, booking_time: time } : b)))
+    showToast('Rendez-vous reprogrammé — le client a été notifié par email.')
+    setRescheduleTarget(null)
   }
 
   const counts = useMemo(() => ({
@@ -375,21 +423,42 @@ export default function AppointmentsPage() {
                           </div>
                           <span className="text-[11px] font-semibold px-2 py-1 rounded-full" style={{ color: badge.color, background: badge.bg }}>{badge.label}</span>
                           {b.status === 'confirmed' && (
-                            <AnimatePresence mode="wait">
-                              {confirmCancelId === b.id ? (
-                                <motion.div key="confirm" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="flex items-center gap-2">
-                                  <span className="text-xs text-[#9CA3AF]">Confirmer ?</span>
-                                  <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.94 }} onClick={() => handleCancel(b.id)} disabled={cancellingId === b.id} className="text-xs font-bold px-2.5 py-1 rounded-lg" style={{ background: '#EF4444', color: '#fff' }}>
-                                    {cancellingId === b.id ? '…' : 'Oui'}
-                                  </motion.button>
-                                  <motion.button whileHover={{ color: '#FAFAFA' }} whileTap={{ scale: 0.94 }} onClick={() => setConfirmCancelId(null)} className="text-xs px-2 py-1 rounded-lg text-[#9CA3AF]">Non</motion.button>
-                                </motion.div>
-                              ) : (
-                                <motion.button key="cancel" initial={{ opacity: 0 }} animate={{ opacity: 1 }} whileHover={{ scale: 1.04, background: 'rgba(239,68,68,0.14)' }} whileTap={{ scale: 0.95 }} exit={{ opacity: 0 }} onClick={() => setConfirmCancelId(b.id)} className="text-xs font-semibold px-3 py-1.5 rounded-lg" style={{ background: 'rgba(239,68,68,0.08)', color: '#F87171', border: '1px solid rgba(239,68,68,0.2)' }}>
-                                  Annuler
-                                </motion.button>
-                              )}
-                            </AnimatePresence>
+                            <div className="flex items-center gap-1.5">
+                              <motion.button
+                                whileHover={{ scale: 1.04, background: 'rgba(16,185,129,0.14)' }}
+                                whileTap={{ scale: 0.95 }}
+                                disabled={completingId === b.id}
+                                onClick={() => handleComplete(b.id)}
+                                title="Marquer comme terminé"
+                                className="w-8 h-8 rounded-lg inline-flex items-center justify-center disabled:opacity-50"
+                                style={{ background: 'rgba(16,185,129,0.08)', color: '#10B981', border: '1px solid rgba(16,185,129,0.2)' }}
+                              >
+                                {completingId === b.id ? (
+                                  <motion.span className="w-3 h-3 rounded-full border-2 border-current border-t-transparent inline-block" animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 0.7, ease: 'linear' }} />
+                                ) : (
+                                  <CheckCircleIcon size={14} />
+                                )}
+                              </motion.button>
+                              <motion.button
+                                whileHover={{ scale: 1.04, background: 'rgba(59,130,246,0.14)' }}
+                                whileTap={{ scale: 0.95 }}
+                                onClick={() => setRescheduleTarget(b)}
+                                title="Reprogrammer"
+                                className="w-8 h-8 rounded-lg inline-flex items-center justify-center"
+                                style={{ background: 'rgba(59,130,246,0.08)', color: '#3B82F6', border: '1px solid rgba(59,130,246,0.2)' }}
+                              >
+                                <RefreshIcon size={13} />
+                              </motion.button>
+                              <motion.button
+                                whileHover={{ scale: 1.04, background: 'rgba(239,68,68,0.14)' }}
+                                whileTap={{ scale: 0.95 }}
+                                onClick={() => setCancelTarget(b)}
+                                className="text-xs font-semibold px-3 py-1.5 rounded-lg"
+                                style={{ background: 'rgba(239,68,68,0.08)', color: '#F87171', border: '1px solid rgba(239,68,68,0.2)' }}
+                              >
+                                Annuler
+                              </motion.button>
+                            </div>
                           )}
                         </motion.div>
                       )
@@ -410,7 +479,291 @@ export default function AppointmentsPage() {
         </div>
 
       </div>
+
+      <CancelModal
+        booking={cancelTarget}
+        cancelling={cancelling}
+        onClose={() => !cancelling && setCancelTarget(null)}
+        onConfirm={handleCancelConfirmed}
+      />
+
+      {rescheduleTarget && slug && (
+        <RescheduleModal
+          booking={rescheduleTarget}
+          slug={slug}
+          onClose={() => setRescheduleTarget(null)}
+          onSuccess={(date, time) => handleRescheduled(rescheduleTarget.id, date, time)}
+        />
+      )}
+
+      <Toast message={toast} tone={toastTone} />
     </div>
+  )
+}
+
+// ─── Modal shell ────────────────────────────────────────────────────────────────
+
+function Modal({ open, onClose, accentHeader, children }: { open: boolean; onClose?: () => void; accentHeader?: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <AnimatePresence>
+      {open && (
+        <motion.div className="fixed inset-0 z-50 flex items-center justify-center px-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
+          <motion.div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }} onClick={onClose} />
+          <motion.div
+            className="relative w-full max-w-sm rounded-2xl overflow-hidden max-h-[85vh] flex flex-col"
+            style={{ background: CARD, border: `1px solid ${BORDER}`, boxShadow: SHADOW_MODAL }}
+            initial={{ opacity: 0, scale: 0.92, y: 16 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 8 }}
+            transition={{ type: 'spring', stiffness: 340, damping: 28 }}
+          >
+            {accentHeader && <div className="px-6 pt-6 pb-4 shrink-0" style={{ borderBottom: `1px solid ${BORDER}` }}>{accentHeader}</div>}
+            <div className="p-6 overflow-y-auto">{children}</div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  )
+}
+
+// ─── Cancel confirmation modal ──────────────────────────────────────────────────
+
+function CancelModal({ booking, cancelling, onClose, onConfirm }: {
+  booking: Booking | null; cancelling: boolean; onClose: () => void; onConfirm: () => void
+}) {
+  return (
+    <Modal
+      open={!!booking}
+      onClose={onClose}
+      accentHeader={
+        <div className="text-center">
+          <div className="w-11 h-11 mx-auto mb-2 rounded-full flex items-center justify-center" style={{ background: 'rgba(239,68,68,0.1)', color: '#F87171' }}><TrashIcon size={20} /></div>
+          <p className="text-sm font-bold" style={{ color: INK }}>Annuler ce rendez-vous ?</p>
+        </div>
+      }
+    >
+      {booking && (
+        <>
+          <p className="text-sm text-center mb-5" style={{ color: '#9CA3AF' }}>
+            Le rendez-vous de <strong style={{ color: INK }}>{booking.client_name}</strong> du <strong style={{ color: INK }}>{formatDateFR(booking.booking_date)} à {formatHourFR(booking.booking_time)}</strong> sera annulé et le créneau redeviendra disponible. Le client sera notifié par email.
+          </p>
+          <div className="flex gap-2">
+            <button disabled={cancelling} onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-40" style={{ background: SECTION_BG, color: '#9CA3AF' }}>Retour</button>
+            <motion.button
+              whileTap={{ scale: 0.97 }}
+              disabled={cancelling}
+              onClick={onConfirm}
+              className="flex-1 py-2.5 rounded-xl text-sm font-bold inline-flex items-center justify-center gap-2 disabled:opacity-60"
+              style={{ background: '#EF4444', color: '#fff' }}
+            >
+              {cancelling && <motion.span className="w-3.5 h-3.5 rounded-full border-2 border-white/40 border-t-white inline-block" animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 0.7, ease: 'linear' }} />}
+              {cancelling ? 'Annulation…' : 'Oui, annuler'}
+            </motion.button>
+          </div>
+        </>
+      )}
+    </Modal>
+  )
+}
+
+// ─── Reschedule modal — compact calendar + slot picker ──────────────────────────
+
+function RescheduleModal({ booking, slug, onClose, onSuccess }: {
+  booking: Booking; slug: string; onClose: () => void; onSuccess: (date: string, time: string) => void
+}) {
+  const MONTH_NAMES = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre']
+  const WEEK_SHORT = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
+
+  const [monthOffset, setMonthOffset] = useState(0)
+  const [availableDates, setAvailableDates] = useState<Set<string>>(new Set())
+  const [calendarLoading, setCalendarLoading] = useState(false)
+  const [selectedDate, setSelectedDate] = useState<string | null>(null)
+  const [slots, setSlots] = useState<string[]>([])
+  const [slotsLoading, setSlotsLoading] = useState(false)
+  const [selectedTime, setSelectedTime] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState('')
+
+  const month = useMemo(() => {
+    const base = getParisNow()
+    base.setDate(1)
+    base.setMonth(base.getMonth() + monthOffset)
+    return base
+  }, [monthOffset])
+
+  useEffect(() => {
+    let cancelled = false
+    setCalendarLoading(true)
+    ;(async () => {
+      try {
+        const year = month.getFullYear()
+        const m = month.getMonth() + 1
+        const res = await fetch(`/api/bookings/calendar?slug=${encodeURIComponent(slug)}&year=${year}&month=${m}`)
+        if (cancelled) return
+        if (res.ok) {
+          const json = await res.json() as { availableDates: string[] }
+          setAvailableDates(new Set(json.availableDates))
+        }
+      } finally {
+        if (!cancelled) setCalendarLoading(false)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [slug, month])
+
+  const cells = useMemo(() => {
+    const year = month.getFullYear()
+    const m = month.getMonth()
+    const firstDay = new Date(year, m, 1)
+    const daysInMonth = new Date(year, m + 1, 0).getDate()
+    const offset = (firstDay.getDay() + 6) % 7
+    const result: (Date | null)[] = Array(offset).fill(null)
+    for (let d = 1; d <= daysInMonth; d++) result.push(new Date(year, m, d))
+    return result
+  }, [month])
+
+  const today = useMemo(() => { const d = getParisNow(); d.setHours(0, 0, 0, 0); return d }, [])
+
+  const handlePickDate = async (date: Date) => {
+    const key = toDateKey(date)
+    if (!availableDates.has(key)) return
+    setSelectedDate(key)
+    setSelectedTime(null)
+    setSlots([])
+    setSlotsLoading(true)
+    try {
+      const res = await fetch(`/api/bookings/availability?slug=${encodeURIComponent(slug)}&date=${key}`)
+      const json = await res.json() as { slots?: string[] }
+      setSlots(json.slots ?? [])
+    } finally {
+      setSlotsLoading(false)
+    }
+  }
+
+  const handleConfirm = async () => {
+    if (!selectedDate || !selectedTime) return
+    setSubmitting(true)
+    setError('')
+    try {
+      const res = await fetch('/api/bookings/reschedule', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookingId: booking.id, date: selectedDate, time: selectedTime }),
+      })
+      const json = await res.json() as { success?: boolean; date?: string; time?: string; error?: string }
+      if (!res.ok || !json.success) {
+        setError(json.error ?? "Ce créneau n'est plus disponible.")
+        setSubmitting(false)
+        return
+      }
+      onSuccess(json.date ?? selectedDate, json.time ?? selectedTime)
+    } catch {
+      setError('Erreur réseau, veuillez réessayer.')
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <Modal
+      open
+      onClose={submitting ? undefined : onClose}
+      accentHeader={
+        <div>
+          <p className="text-xs font-semibold mb-0.5" style={{ color: '#6B7280' }}>Reprogrammer</p>
+          <p className="text-sm font-bold" style={{ color: INK }}>{booking.client_name} — actuellement le {formatDateFR(booking.booking_date)} à {formatHourFR(booking.booking_time)}</p>
+        </div>
+      }
+    >
+      <div className="flex items-center justify-between mb-4">
+        <motion.button whileTap={{ scale: 0.9 }} onClick={() => setMonthOffset((o) => Math.max(0, o - 1))} disabled={monthOffset === 0} className="w-7 h-7 rounded-lg flex items-center justify-center disabled:opacity-30" style={{ color: '#9CA3AF', border: `1px solid ${BORDER}` }}><ChevronLeftIcon size={14} /></motion.button>
+        <span className="text-sm font-bold capitalize" style={{ color: INK }}>{MONTH_NAMES[month.getMonth()]} {month.getFullYear()}</span>
+        <motion.button whileTap={{ scale: 0.9 }} onClick={() => setMonthOffset((o) => Math.min(6, o + 1))} disabled={monthOffset === 6} className="w-7 h-7 rounded-lg flex items-center justify-center disabled:opacity-30" style={{ color: '#9CA3AF', border: `1px solid ${BORDER}` }}><ChevronRightIcon size={14} /></motion.button>
+      </div>
+
+      <div className="grid grid-cols-7 gap-1 mb-2">
+        {WEEK_SHORT.map((d) => <div key={d} className="text-center text-[9px] font-semibold" style={{ color: '#6B7280' }}>{d}</div>)}
+      </div>
+
+      <div className="grid grid-cols-7 gap-1 mb-4">
+        {calendarLoading ? (
+          Array.from({ length: 35 }).map((_, i) => <div key={i} className="aspect-square rounded-md animate-pulse" style={{ background: SECTION_BG }} />)
+        ) : (
+          cells.map((date, i) => {
+            if (!date) return <div key={i} />
+            const key = toDateKey(date)
+            const isPast = date < today
+            const isAvailable = !isPast && availableDates.has(key)
+            const isSelected = key === selectedDate
+            return (
+              <motion.button
+                key={i}
+                whileTap={isAvailable ? { scale: 0.9 } : undefined}
+                whileHover={isAvailable ? { scale: 1.08 } : undefined}
+                disabled={!isAvailable}
+                onClick={() => handlePickDate(date)}
+                className="aspect-square rounded-md text-[11px] font-semibold"
+                style={{
+                  background: isSelected ? '#10B981' : isAvailable ? 'rgba(16,185,129,0.08)' : 'transparent',
+                  color: isSelected ? '#0A0A0F' : isAvailable ? '#10B981' : 'rgba(255,255,255,0.18)',
+                }}
+              >
+                {date.getDate()}
+              </motion.button>
+            )
+          })
+        )}
+      </div>
+
+      <AnimatePresence>
+        {selectedDate && (
+          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+            <p className="text-xs font-bold mb-2 capitalize" style={{ color: INK }}>{formatDateFR(selectedDate)}</p>
+            {slotsLoading ? (
+              <div className="grid grid-cols-4 gap-1.5 mb-2">
+                {Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-8 rounded-lg animate-pulse" style={{ background: SECTION_BG }} />)}
+              </div>
+            ) : slots.length === 0 ? (
+              <p className="text-xs mb-2" style={{ color: '#9CA3AF' }}>Plus aucun créneau libre ce jour-là.</p>
+            ) : (
+              <div className="grid grid-cols-4 gap-1.5 mb-2">
+                {slots.map((s) => (
+                  <motion.button
+                    key={s}
+                    whileTap={{ scale: 0.92 }}
+                    whileHover={{ borderColor: '#10B981', background: 'rgba(16,185,129,0.1)', color: '#10B981' }}
+                    onClick={() => setSelectedTime(s)}
+                    className="px-1.5 py-2 rounded-lg text-xs font-semibold"
+                    style={{
+                      background: selectedTime === s ? '#10B981' : SECTION_BG,
+                      color: selectedTime === s ? '#0A0A0F' : INK,
+                      border: `1px solid ${selectedTime === s ? '#10B981' : BORDER}`,
+                    }}
+                  >
+                    {formatHourFR(s)}
+                  </motion.button>
+                ))}
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {error && <p className="text-xs font-medium mt-2 mb-1 flex items-center gap-1.5" style={{ color: '#F87171' }}><AlertCircleIcon size={13} />{error}</p>}
+
+      <div className="flex gap-2 mt-4">
+        <button disabled={submitting} onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-40" style={{ background: SECTION_BG, color: '#9CA3AF' }}>Annuler</button>
+        <motion.button
+          whileTap={{ scale: 0.97 }}
+          disabled={submitting || !selectedDate || !selectedTime}
+          onClick={handleConfirm}
+          className="flex-1 py-2.5 rounded-xl text-sm font-bold inline-flex items-center justify-center gap-2 disabled:opacity-40"
+          style={{ background: '#10B981', color: '#0A0A0F' }}
+        >
+          {submitting && <motion.span className="w-3.5 h-3.5 rounded-full border-2 border-black/30 border-t-black inline-block" animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 0.7, ease: 'linear' }} />}
+          {submitting ? 'Confirmation…' : 'Confirmer'}
+        </motion.button>
+      </div>
+    </Modal>
   )
 }
 
