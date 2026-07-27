@@ -29,7 +29,7 @@ export async function POST(request: Request) {
 
     const { data: booking, error: fetchError } = await supabase
       .from('bookings')
-      .select('id, client_name, client_email, client_phone, service_note, booking_date, booking_time, status')
+      .select('id, client_name, client_email, client_phone, service_note, booking_date, booking_time, status, manage_token')
       .eq('id', bookingId)
       .eq('user_id', user.id)
       .maybeSingle();
@@ -46,7 +46,7 @@ export async function POST(request: Request) {
 
     const { data: settings } = await supabase
       .from('booking_settings')
-      .select('business_name, address, phone, logo_url, slot_duration, buffer_time, advance_booking_days')
+      .select('business_name, address, phone, logo_url, services, instructions, payment_methods, slot_duration, buffer_time, advance_booking_days')
       .eq('user_id', user.id)
       .maybeSingle();
     if (!settings) return NextResponse.json({ error: 'Réglages introuvables' }, { status: 404 });
@@ -91,9 +91,13 @@ export async function POST(request: Request) {
       businessAddress: settings.address ?? undefined,
       businessPhone: settings.phone ?? undefined,
       businessLogoUrl: settings.logo_url ?? undefined,
+      businessServices: settings.services ?? undefined,
+      businessInstructions: settings.instructions ?? undefined,
+      businessPaymentMethods: settings.payment_methods ?? undefined,
       slotDuration: settings.slot_duration,
       date,
       time,
+      manageToken: booking.manage_token ?? undefined,
       previousDate,
       previousTime,
     });

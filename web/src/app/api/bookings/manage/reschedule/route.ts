@@ -46,7 +46,7 @@ export async function POST(request: Request) {
 
     const { data: settings } = await supabase
       .from('booking_settings')
-      .select('business_name, address, phone, logo_url, slot_duration, buffer_time, advance_booking_days')
+      .select('business_name, address, phone, logo_url, services, instructions, payment_methods, slot_duration, buffer_time, advance_booking_days')
       .eq('user_id', booking.user_id)
       .maybeSingle();
     if (!settings) return NextResponse.json({ error: 'Page de réservation introuvable' }, { status: 404 });
@@ -93,6 +93,9 @@ export async function POST(request: Request) {
       businessAddress: settings.address ?? undefined,
       businessPhone: settings.phone ?? undefined,
       businessLogoUrl: settings.logo_url ?? undefined,
+      businessServices: settings.services ?? undefined,
+      businessInstructions: settings.instructions ?? undefined,
+      businessPaymentMethods: settings.payment_methods ?? undefined,
       slotDuration: settings.slot_duration,
       date,
       time,

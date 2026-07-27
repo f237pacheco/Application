@@ -18,7 +18,22 @@ console.log(`[email] expéditeur (FROM) : ${FROM}`);
 const DEFAULT_ADDRESS = '12 rue de la Paix, 49000 Angers';
 const DEFAULT_PHONE = '02 41 00 00 00';
 const DEFAULT_DURATION = 30;
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+
+// A link built from a malformed base URL (missing protocol, stray trailing
+// slash) is exactly the kind of bug that looks fine in code review and only
+// shows up as "this site can't be reached" when a real person clicks it in
+// their inbox — so this is deliberately defensive, not just a straight read.
+function resolveAppUrl(): string {
+  let url = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000').trim();
+  if (!/^https?:\/\//i.test(url)) {
+    console.warn(`[email] NEXT_PUBLIC_APP_URL="${url}" ne commence pas par http:// ou https:// — un lien construit avec cette valeur telle quelle serait cassé dans un email (le client mail ne saurait pas vers quel serveur naviguer). Ajout automatique de "https://" en préfixe ; corrigez la variable d'environnement pour lever cet avertissement.`);
+    url = `https://${url}`;
+  }
+  url = url.replace(/\/+$/, '');
+  return url;
+}
+const APP_URL = resolveAppUrl();
+console.log(`[email] URL de base utilisée pour les liens "Modifier"/"Annuler" dans les emails (NEXT_PUBLIC_APP_URL) : "${APP_URL}"`);
 
 type BookingEmailData = {
   bookingId?: string;
@@ -30,6 +45,9 @@ type BookingEmailData = {
   businessAddress?: string;
   businessPhone?: string;
   businessLogoUrl?: string;
+  businessServices?: string;
+  businessInstructions?: string;
+  businessPaymentMethods?: string;
   slotDuration?: number;
   date: string; // YYYY-MM-DD
   time: string; // HH:MM[:SS]
@@ -39,39 +57,81 @@ type BookingEmailData = {
   previousTime?: string;
 };
 
+// ─── Shared palette (kept light — many email clients render dark-mode
+// backgrounds unreliably, so the shell stays light with the same brand
+// accents used in the app: emerald/blue/amber/red). ───────────────────────────
+const INK = '#18181B';
+const MUTED = '#52525B';
+const FAINT = '#A1A1AA';
+const CARD_BORDER = '#E4E4E7';
+const PAGE_BG = '#F4F4F5';
+
+const EMERALD = '#059669';
+const EMERALD_SOFT = '#ECFDF5';
+const EMERALD_BORDER = '#A7F3D0';
+const BLUE = '#2563EB';
+const BLUE_SOFT = '#EFF6FF';
+const BLUE_BORDER = '#BFDBFE';
+const RED = '#DC2626';
+const RED_SOFT = '#FEF2F2';
+const RED_BORDER = '#FECACA';
+const AMBER = '#D97706';
+const AMBER_SOFT = '#FFFBEB';
+const AMBER_BORDER = '#FDE68A';
+
 function escapeHtml(str: string): string {
   const map: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
   return str.replace(/[&<>"']/g, (c) => map[c]);
 }
 
-// Table-based layout (not flexbox/grid) for compatibility across Gmail/Outlook/Apple Mail.
-function emailShell(businessName: string, logoUrl: string | undefined, headerBg: string, bodyHtml: string, footerText: string): string {
+function telHref(phone: string): string {
+  return `tel:${phone.replace(/[^\d+]/g, '')}`;
+}
+
+function mapsHref(address: string): string {
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
+}
+
+// ─── Shell: header (logo + business name), body slot, footer. Table-based
+// layout throughout — not flexbox/grid — for compatibility across Gmail,
+// Outlook, and Apple Mail. ──────────────────────────────────────────────────
+function emailShell(opts: { businessName: string; logoUrl?: string; accent: string; kicker: string; bodyHtml: string; footerNote: string }): string {
+  const { businessName, logoUrl, accent, kicker, bodyHtml, footerNote } = opts;
   const headerContent = logoUrl
     ? `<table role="presentation" cellpadding="0" cellspacing="0"><tr>
-         <td style="padding-right:10px;"><img src="${escapeHtml(logoUrl)}" width="32" height="32" alt="" style="display:block;border-radius:8px;object-fit:cover;" /></td>
-         <td style="vertical-align:middle;"><span style="color:#FFFFFF;font-size:17px;font-weight:700;">${escapeHtml(businessName)}</span></td>
+         <td style="padding-right:12px;"><img src="${escapeHtml(logoUrl)}" width="40" height="40" alt="" style="display:block;border-radius:10px;object-fit:cover;background:#ffffff;" /></td>
+         <td style="vertical-align:middle;">
+           <div style="color:#FFFFFF;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;opacity:0.75;">${escapeHtml(kicker)}</div>
+           <div style="color:#FFFFFF;font-size:18px;font-weight:800;">${escapeHtml(businessName)}</div>
+         </td>
        </tr></table>`
-    : `<span style="color:#FFFFFF;font-size:17px;font-weight:700;">${escapeHtml(businessName)}</span>`;
+    : `<div style="color:#FFFFFF;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;opacity:0.75;">${escapeHtml(kicker)}</div>
+       <div style="color:#FFFFFF;font-size:18px;font-weight:800;">${escapeHtml(businessName)}</div>`;
 
   return `<!doctype html>
 <html lang="fr">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="light" />
+  <title>${escapeHtml(businessName)}</title>
   <style>
+    body { margin: 0; padding: 0; background: ${PAGE_BG}; }
     @media (max-width: 480px) {
       .velona-card { border-radius: 0 !important; }
-      .velona-pad { padding: 24px 20px !important; }
+      .velona-pad { padding: 22px 18px !important; }
+      .velona-btn-cell { display: block !important; width: 100% !important; padding: 6px 0 !important; }
+      .velona-btn { display: block !important; text-align: center !important; }
     }
   </style>
 </head>
-<body style="margin:0;padding:0;background:#F4F4F5;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F4F4F5;padding:32px 12px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+<body style="margin:0;padding:0;background:${PAGE_BG};">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${PAGE_BG};padding:32px 12px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
     <tr>
       <td align="center">
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="velona-card" style="max-width:560px;background:#FFFFFF;border-radius:16px;overflow:hidden;border:1px solid #E4E4E7;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="velona-card" style="max-width:560px;background:#FFFFFF;border-radius:18px;overflow:hidden;border:1px solid ${CARD_BORDER};">
           <tr>
-            <td class="velona-pad" style="background:${headerBg};padding:22px 32px;">
+            <td class="velona-pad" style="background:${accent};padding:24px 32px;">
               ${headerContent}
             </td>
           </tr>
@@ -81,8 +141,9 @@ function emailShell(businessName: string, logoUrl: string | undefined, headerBg:
             </td>
           </tr>
           <tr>
-            <td class="velona-pad" style="padding:18px 32px;background:#FAFAFA;border-top:1px solid #E4E4E7;">
-              <p style="margin:0;color:#A1A1AA;font-size:12px;line-height:1.5;">${footerText}</p>
+            <td class="velona-pad" style="padding:20px 32px;background:#FAFAFA;border-top:1px solid ${CARD_BORDER};">
+              <p style="margin:0 0 6px;color:${MUTED};font-size:12px;line-height:1.6;">${footerNote}</p>
+              <p style="margin:0;color:${FAINT};font-size:11px;">Propulsé par <strong style="color:${MUTED};">Velona</strong> — système de réservation en ligne.</p>
             </td>
           </tr>
         </table>
@@ -93,49 +154,98 @@ function emailShell(businessName: string, logoUrl: string | undefined, headerBg:
 </html>`;
 }
 
-function contactBlock(businessName: string, address: string, phone: string): string {
+// ─── Hero: the one thing the reader must see in two seconds — full spelled-
+// out date + big time, tinted per situation (confirmed/moved/cancelled). ─────
+function heroBlock(opts: { eyebrow: string; dateLabel: string; hourLabel: string; duration?: number; accent: string; soft: string; border: string; strike?: boolean }): string {
+  const { eyebrow, dateLabel, hourLabel, duration, accent, soft, border, strike } = opts;
   return `
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid #E4E4E7;margin-top:8px;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${soft};border:1px solid ${border};border-radius:14px;margin-bottom:24px;">
       <tr>
-        <td style="padding-top:20px;">
-          <div style="color:#18181B;font-size:14px;font-weight:700;margin-bottom:6px;">${escapeHtml(businessName)}</div>
-          <div style="color:#71717A;font-size:13px;line-height:1.7;">
-            📍 ${escapeHtml(address)}<br />
-            📞 ${escapeHtml(phone)}
-          </div>
+        <td style="padding:22px 24px;text-align:center;">
+          <div style="color:${accent};font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">${escapeHtml(eyebrow)}</div>
+          <div style="color:${INK};font-size:18px;font-weight:800;text-transform:capitalize;${strike ? 'text-decoration:line-through;color:' + FAINT + ';' : ''}">${dateLabel}</div>
+          <div style="color:${accent};font-size:${strike ? '20px' : '30px'};font-weight:800;margin-top:4px;${strike ? 'text-decoration:line-through;' : ''}">${hourLabel}</div>
+          ${duration && !strike ? `<div style="color:${MUTED};font-size:12px;margin-top:6px;">Durée estimée : ${duration} min</div>` : ''}
         </td>
       </tr>
     </table>`;
+}
+
+// ─── Practical info: everything the client needs to actually show up
+// prepared, without contacting anyone — address (with a Maps link), phone
+// (tappable), services, and pre-appointment instructions. ────────────────────
+function detailsBlock(opts: {
+  businessName: string; address: string; phone: string;
+  services?: string; instructions?: string; paymentMethods?: string;
+}): string {
+  const { businessName, address, phone, services, instructions, paymentMethods } = opts;
+  const row = (label: string, valueHtml: string) => `
+      <tr>
+        <td style="padding:10px 0;border-top:1px solid ${CARD_BORDER};vertical-align:top;width:120px;">
+          <span style="color:${FAINT};font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;">${label}</span>
+        </td>
+        <td style="padding:10px 0;border-top:1px solid ${CARD_BORDER};vertical-align:top;">
+          ${valueHtml}
+        </td>
+      </tr>`;
+
+  return `
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:4px;">
+      <tr>
+        <td colspan="2" style="padding-bottom:10px;">
+          <div style="color:${INK};font-size:15px;font-weight:700;">${escapeHtml(businessName)}</div>
+        </td>
+      </tr>
+      ${row('Adresse', `<a href="${mapsHref(address)}" style="color:${BLUE};font-size:13px;text-decoration:none;line-height:1.5;">${escapeHtml(address)} ↗</a>`)}
+      ${row('Téléphone', `<a href="${telHref(phone)}" style="color:${BLUE};font-size:13px;text-decoration:none;">${escapeHtml(phone)}</a>`)}
+      ${services ? row('Prestations', `<span style="color:${MUTED};font-size:13px;line-height:1.5;">${escapeHtml(services)}</span>`) : ''}
+      ${paymentMethods ? row('Paiement', `<span style="color:${MUTED};font-size:13px;line-height:1.5;">${escapeHtml(paymentMethods)}</span>`) : ''}
+    </table>
+    ${instructions ? `
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:16px;">
+      <tr>
+        <td style="padding:14px 16px;background:${AMBER_SOFT};border:1px solid ${AMBER_BORDER};border-radius:10px;">
+          <div style="color:${AMBER};font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:4px;">À savoir avant votre RDV</div>
+          <div style="color:${INK};font-size:13px;line-height:1.6;">${escapeHtml(instructions)}</div>
+        </td>
+      </tr>
+    </table>` : ''}`;
 }
 
 function calendarNoticeBlock(): string {
   return `
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:16px;">
       <tr>
-        <td style="padding:12px 16px;background:#F4F4F5;border-radius:10px;text-align:center;">
-          <span style="color:#3F3F46;font-size:13px;">📅 Un fichier <strong>.ics</strong> est joint à cet email — ouvrez-le pour ajouter ce RDV à votre agenda.</span>
+        <td style="padding:12px 16px;background:${PAGE_BG};border-radius:10px;text-align:center;">
+          <span style="color:${MUTED};font-size:12px;">Un fichier <strong style="color:${INK};">.ics</strong> est joint à cet email — ouvrez-le pour l'ajouter à votre agenda.</span>
         </td>
       </tr>
     </table>`;
 }
 
+function manageBaseUrl(manageToken: string): string {
+  return `${APP_URL}/rdv/manage/${manageToken}`;
+}
+
 // "Modifier" / "Annuler" buttons pointing at the client's own manage page —
 // only rendered when a manage_token exists (bookings created before that
 // column existed have none, and simply don't get these links).
-function manageLinksBlock(manageToken: string | undefined): string {
+function manageLinksBlock(manageToken: string | undefined, context: string): string {
   if (!manageToken) return '';
-  const rescheduleUrl = `${APP_URL}/rdv/manage/${manageToken}?action=reschedule`;
-  const cancelUrl = `${APP_URL}/rdv/manage/${manageToken}?action=cancel`;
+  const base = manageBaseUrl(manageToken);
+  const rescheduleUrl = `${base}?action=reschedule`;
+  const cancelUrl = `${base}?action=cancel`;
+  console.log(`[email] liens de gestion générés (${context}) -> Modifier: ${rescheduleUrl} | Annuler: ${cancelUrl}`);
   return `
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:20px;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:24px;padding-top:20px;border-top:1px solid ${CARD_BORDER};">
       <tr>
-        <td style="padding-top:16px;border-top:1px solid #E4E4E7;" align="center">
+        <td align="center">
           <table role="presentation" cellpadding="0" cellspacing="0"><tr>
-            <td style="padding:0 6px;">
-              <a href="${rescheduleUrl}" style="display:inline-block;padding:10px 18px;border-radius:10px;background:#F4F4F5;color:#18181B;font-size:13px;font-weight:700;text-decoration:none;">Modifier mon rendez-vous</a>
+            <td class="velona-btn-cell" style="padding:0 5px;">
+              <a href="${rescheduleUrl}" class="velona-btn" style="display:inline-block;padding:12px 20px;border-radius:10px;background:${INK};color:#FFFFFF;font-size:13px;font-weight:700;text-decoration:none;">Modifier mon rendez-vous</a>
             </td>
-            <td style="padding:0 6px;">
-              <a href="${cancelUrl}" style="display:inline-block;padding:10px 18px;border-radius:10px;background:#FEF2F2;color:#B91C1C;font-size:13px;font-weight:700;text-decoration:none;">Annuler mon rendez-vous</a>
+            <td class="velona-btn-cell" style="padding:0 5px;">
+              <a href="${cancelUrl}" class="velona-btn" style="display:inline-block;padding:12px 20px;border-radius:10px;background:${RED_SOFT};border:1px solid ${RED_BORDER};color:${RED};font-size:13px;font-weight:700;text-decoration:none;">Annuler mon rendez-vous</a>
             </td>
           </tr></table>
         </td>
@@ -218,6 +328,8 @@ async function send(
   }
 }
 
+// ─── Client: booking confirmed ──────────────────────────────────────────────
+
 export async function sendBookingConfirmationToClient(data: BookingEmailData): Promise<void> {
   const dateLabel = formatDateFR(data.date);
   const hourLabel = formatHourFR(data.time);
@@ -225,41 +337,28 @@ export async function sendBookingConfirmationToClient(data: BookingEmailData): P
   const phone = data.businessPhone?.trim() || DEFAULT_PHONE;
   const ics = buildICSAttachment(data);
 
-  const html = emailShell(
-    data.businessName,
-    data.businessLogoUrl,
-    '#09090B',
-    `
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#ECFDF5;border:1px solid #A7F3D0;border-radius:12px;margin-bottom:24px;">
-        <tr>
-          <td style="padding:20px 24px;text-align:center;">
-            <div style="font-size:26px;line-height:1;margin-bottom:8px;">✅</div>
-            <div style="color:#065F46;font-size:16px;font-weight:700;">Votre rendez-vous est confirmé</div>
-          </td>
-        </tr>
-      </table>
+  const html = emailShell({
+    businessName: data.businessName,
+    logoUrl: data.businessLogoUrl,
+    accent: EMERALD,
+    kicker: 'Rendez-vous confirmé',
+    bodyHtml: `
+      <p style="margin:0 0 4px;color:${INK};font-size:15px;font-weight:700;">Bonjour ${escapeHtml(data.clientName)},</p>
+      <p style="margin:0 0 22px;color:${MUTED};font-size:14px;line-height:1.6;">Votre rendez-vous avec <strong style="color:${INK};">${escapeHtml(data.businessName)}</strong> est confirmé. Voici tout ce qu'il vous faut pour vous y rendre :</p>
 
-      <p style="margin:0 0 4px;color:#3F3F46;font-size:14px;">Bonjour ${escapeHtml(data.clientName)},</p>
-      <p style="margin:0 0 20px;color:#3F3F46;font-size:14px;line-height:1.6;">Nous confirmons votre rendez-vous avec <strong>${escapeHtml(data.businessName)}</strong> :</p>
+      ${heroBlock({ eyebrow: 'Votre rendez-vous', dateLabel, hourLabel, duration: data.slotDuration, accent: EMERALD, soft: EMERALD_SOFT, border: EMERALD_BORDER })}
 
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#FAFAFA;border-radius:12px;margin-bottom:24px;">
-        <tr>
-          <td style="padding:20px 24px;text-align:center;">
-            <div style="color:#18181B;font-size:17px;font-weight:700;text-transform:capitalize;">Le ${dateLabel}</div>
-            <div style="color:#10B981;font-size:26px;font-weight:800;margin-top:6px;">à ${hourLabel}</div>
-            ${data.slotDuration ? `<div style="color:#71717A;font-size:12px;margin-top:4px;">Durée : ${data.slotDuration} min</div>` : ''}
-          </td>
-        </tr>
-      </table>
+      ${data.serviceNote ? `<p style="margin:0 0 20px;color:${MUTED};font-size:13px;line-height:1.6;"><strong style="color:${INK};">Votre demande :</strong> ${escapeHtml(data.serviceNote)}</p>` : ''}
 
-      ${data.serviceNote ? `<p style="margin:0 0 20px;color:#3F3F46;font-size:14px;"><strong style="color:#18181B;">Motif :</strong> ${escapeHtml(data.serviceNote)}</p>` : ''}
+      ${detailsBlock({ businessName: data.businessName, address, phone, services: data.businessServices, instructions: data.businessInstructions, paymentMethods: data.businessPaymentMethods })}
 
-      ${contactBlock(data.businessName, address, phone)}
       ${ics ? calendarNoticeBlock() : ''}
-      ${manageLinksBlock(data.manageToken)}
+      ${manageLinksBlock(data.manageToken, 'confirmation client')}
     `,
-    `Confirmation envoyée automatiquement suite à votre réservation sur la page de ${escapeHtml(data.businessName)}. ${data.manageToken ? 'Utilisez les liens ci-dessus pour modifier ou annuler ce rendez-vous.' : `Pour annuler ou modifier ce rendez-vous, contactez directement ${escapeHtml(data.businessName)}.`}`
-  );
+    footerNote: data.manageToken
+      ? 'Besoin de changer quelque chose ? Utilisez les boutons ci-dessus pour modifier ou annuler ce rendez-vous vous-même, à tout moment.'
+      : `Pour annuler ou modifier ce rendez-vous, contactez directement ${escapeHtml(data.businessName)}.`,
+  });
 
   const text = [
     `Rendez-vous confirmé`,
@@ -267,15 +366,19 @@ export async function sendBookingConfirmationToClient(data: BookingEmailData): P
     `Bonjour ${data.clientName},`,
     ``,
     `Votre rendez-vous avec ${data.businessName} est confirmé :`,
-    `Le ${dateLabel} à ${hourLabel}`,
+    `${dateLabel} à ${hourLabel}${data.slotDuration ? ` (durée : ${data.slotDuration} min)` : ''}`,
     ``,
-    data.serviceNote ? `Motif : ${data.serviceNote}` : '',
-    data.manageToken ? `Modifier : ${APP_URL}/rdv/manage/${data.manageToken}?action=reschedule` : '',
-    data.manageToken ? `Annuler : ${APP_URL}/rdv/manage/${data.manageToken}?action=cancel` : '',
+    data.serviceNote ? `Votre demande : ${data.serviceNote}` : '',
     ``,
     `${data.businessName}`,
     `${address}`,
     `${phone}`,
+    data.businessServices ? `Prestations : ${data.businessServices}` : '',
+    data.businessPaymentMethods ? `Paiement : ${data.businessPaymentMethods}` : '',
+    data.businessInstructions ? `À savoir avant votre RDV : ${data.businessInstructions}` : '',
+    data.manageToken ? `` : '',
+    data.manageToken ? `Modifier : ${manageBaseUrl(data.manageToken)}?action=reschedule` : '',
+    data.manageToken ? `Annuler : ${manageBaseUrl(data.manageToken)}?action=cancel` : '',
   ].filter(Boolean).join('\n');
 
   await send(
@@ -287,9 +390,11 @@ export async function sendBookingConfirmationToClient(data: BookingEmailData): P
       replyTo: data.proEmail,
       attachments: ics ? [ics] : undefined,
     },
-    'client confirmation'
+    'confirmation client'
   );
 }
+
+// ─── Pro: new booking ────────────────────────────────────────────────────────
 
 export async function sendBookingNotificationToPro(data: BookingEmailData): Promise<void> {
   if (!data.proEmail) {
@@ -300,38 +405,49 @@ export async function sendBookingNotificationToPro(data: BookingEmailData): Prom
   const hourLabel = formatHourFR(data.time);
   const ics = buildICSAttachment(data);
 
-  const html = emailShell(
-    data.businessName,
-    data.businessLogoUrl,
-    '#10B981',
-    `
-      <p style="margin:0 0 4px;color:#18181B;font-size:15px;font-weight:700;">📅 Nouveau rendez-vous</p>
-      <p style="margin:0 0 20px;color:#71717A;font-size:13px;">Un client vient de réserver un créneau.</p>
+  const html = emailShell({
+    businessName: data.businessName,
+    logoUrl: data.businessLogoUrl,
+    accent: EMERALD,
+    kicker: 'Nouveau rendez-vous',
+    bodyHtml: `
+      <p style="margin:0 0 22px;color:${MUTED};font-size:14px;line-height:1.6;"><strong style="color:${INK};">${escapeHtml(data.clientName)}</strong> vient de réserver un créneau.</p>
 
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#FAFAFA;border-radius:12px;margin-bottom:20px;">
+      ${heroBlock({ eyebrow: 'Créneau réservé', dateLabel, hourLabel, duration: data.slotDuration, accent: EMERALD, soft: EMERALD_SOFT, border: EMERALD_BORDER })}
+
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
         <tr>
-          <td style="padding:18px 22px;text-align:center;">
-            <div style="color:#18181B;font-size:16px;font-weight:700;text-transform:capitalize;">Le ${dateLabel}</div>
-            <div style="color:#10B981;font-size:22px;font-weight:800;margin-top:4px;">à ${hourLabel}</div>
-          </td>
+          <td style="padding-bottom:8px;"><span style="color:${INK};font-size:15px;font-weight:700;">Coordonnées du client</span></td>
         </tr>
+        <tr>
+          <td style="padding:8px 0;border-top:1px solid ${CARD_BORDER};width:100px;"><span style="color:${FAINT};font-size:11px;font-weight:700;text-transform:uppercase;">Nom</span></td>
+        </tr>
+        <tr><td style="padding:0 0 8px;"><span style="color:${INK};font-size:14px;font-weight:600;">${escapeHtml(data.clientName)}</span></td></tr>
+        <tr>
+          <td style="padding:8px 0;border-top:1px solid ${CARD_BORDER};"><span style="color:${FAINT};font-size:11px;font-weight:700;text-transform:uppercase;">Email</span></td>
+        </tr>
+        <tr><td style="padding:0 0 8px;"><a href="mailto:${escapeHtml(data.clientEmail)}" style="color:${BLUE};font-size:14px;text-decoration:none;">${escapeHtml(data.clientEmail)}</a></td></tr>
+        ${data.clientPhone ? `
+        <tr>
+          <td style="padding:8px 0;border-top:1px solid ${CARD_BORDER};"><span style="color:${FAINT};font-size:11px;font-weight:700;text-transform:uppercase;">Téléphone</span></td>
+        </tr>
+        <tr><td style="padding:0 0 8px;"><a href="${telHref(data.clientPhone)}" style="color:${BLUE};font-size:14px;text-decoration:none;">${escapeHtml(data.clientPhone)}</a></td></tr>` : ''}
+        ${data.serviceNote ? `
+        <tr>
+          <td style="padding:8px 0;border-top:1px solid ${CARD_BORDER};"><span style="color:${FAINT};font-size:11px;font-weight:700;text-transform:uppercase;">Motif</span></td>
+        </tr>
+        <tr><td style="padding:0;"><span style="color:${INK};font-size:14px;line-height:1.5;">${escapeHtml(data.serviceNote)}</span></td></tr>` : ''}
       </table>
 
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;">
-        <tr><td style="padding:6px 0;color:#71717A;width:110px;">Client</td><td style="padding:6px 0;color:#18181B;font-weight:600;">${escapeHtml(data.clientName)}</td></tr>
-        <tr><td style="padding:6px 0;color:#71717A;">Email</td><td style="padding:6px 0;color:#18181B;">${escapeHtml(data.clientEmail)}</td></tr>
-        ${data.clientPhone ? `<tr><td style="padding:6px 0;color:#71717A;">Téléphone</td><td style="padding:6px 0;color:#18181B;">${escapeHtml(data.clientPhone)}</td></tr>` : ''}
-        ${data.serviceNote ? `<tr><td style="padding:6px 0;color:#71717A;vertical-align:top;">Motif</td><td style="padding:6px 0;color:#18181B;">${escapeHtml(data.serviceNote)}</td></tr>` : ''}
-      </table>
       ${ics ? calendarNoticeBlock() : ''}
     `,
-    `Notification automatique de votre système de réservation ${escapeHtml(data.businessName)}.`
-  );
+    footerNote: `Notification automatique de votre système de réservation ${escapeHtml(data.businessName)}.`,
+  });
 
   const text = [
     `Nouveau rendez-vous`,
     ``,
-    `Le ${dateLabel} à ${hourLabel}`,
+    `${dateLabel} à ${hourLabel}${data.slotDuration ? ` (durée : ${data.slotDuration} min)` : ''}`,
     ``,
     `Client : ${data.clientName}`,
     `Email : ${data.clientEmail}`,
@@ -348,35 +464,45 @@ export async function sendBookingNotificationToPro(data: BookingEmailData): Prom
       replyTo: data.clientEmail,
       attachments: ics ? [ics] : undefined,
     },
-    'pro notification'
+    'notification pro'
   );
 }
+
+// ─── Client: booking cancelled ──────────────────────────────────────────────
 
 export async function sendBookingCancellationToClient(data: BookingEmailData): Promise<void> {
   const dateLabel = formatDateFR(data.date);
   const hourLabel = formatHourFR(data.time);
+  const address = data.businessAddress?.trim() || DEFAULT_ADDRESS;
+  const phone = data.businessPhone?.trim() || DEFAULT_PHONE;
 
-  const html = emailShell(
-    data.businessName,
-    data.businessLogoUrl,
-    '#09090B',
-    `
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#FEF2F2;border:1px solid #FECACA;border-radius:12px;margin-bottom:24px;">
+  const html = emailShell({
+    businessName: data.businessName,
+    logoUrl: data.businessLogoUrl,
+    accent: '#3F3F46',
+    kicker: 'Rendez-vous annulé',
+    bodyHtml: `
+      <p style="margin:0 0 4px;color:${INK};font-size:15px;font-weight:700;">Bonjour ${escapeHtml(data.clientName)},</p>
+      <p style="margin:0 0 22px;color:${MUTED};font-size:14px;line-height:1.6;">Votre rendez-vous avec <strong style="color:${INK};">${escapeHtml(data.businessName)}</strong> a été annulé.</p>
+
+      ${heroBlock({ eyebrow: 'Rendez-vous annulé', dateLabel, hourLabel, accent: RED, soft: RED_SOFT, border: RED_BORDER, strike: true })}
+
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:4px;">
+        <tr><td colspan="2" style="padding-bottom:10px;"><div style="color:${INK};font-size:15px;font-weight:700;">${escapeHtml(data.businessName)}</div></td></tr>
         <tr>
-          <td style="padding:20px 24px;text-align:center;">
-            <div style="color:#991B1B;font-size:16px;font-weight:700;">Rendez-vous annulé</div>
-          </td>
+          <td style="padding:10px 0;border-top:1px solid ${CARD_BORDER};vertical-align:top;width:100px;"><span style="color:${FAINT};font-size:11px;font-weight:700;text-transform:uppercase;">Adresse</span></td>
+          <td style="padding:10px 0;border-top:1px solid ${CARD_BORDER};vertical-align:top;"><a href="${mapsHref(address)}" style="color:${BLUE};font-size:13px;text-decoration:none;">${escapeHtml(address)} ↗</a></td>
+        </tr>
+        <tr>
+          <td style="padding:10px 0;border-top:1px solid ${CARD_BORDER};vertical-align:top;"><span style="color:${FAINT};font-size:11px;font-weight:700;text-transform:uppercase;">Téléphone</span></td>
+          <td style="padding:10px 0;border-top:1px solid ${CARD_BORDER};vertical-align:top;"><a href="${telHref(phone)}" style="color:${BLUE};font-size:13px;text-decoration:none;">${escapeHtml(phone)}</a></td>
         </tr>
       </table>
 
-      <p style="margin:0 0 4px;color:#3F3F46;font-size:14px;">Bonjour ${escapeHtml(data.clientName)},</p>
-      <p style="margin:0 0 20px;color:#3F3F46;font-size:14px;line-height:1.6;">
-        Votre rendez-vous du <strong style="text-transform:capitalize;">${dateLabel} à ${hourLabel}</strong> avec ${escapeHtml(data.businessName)} a été annulé.
-      </p>
-      <p style="margin:0;color:#71717A;font-size:13px;">Vous pouvez reprendre un nouveau créneau à tout moment via leur lien de réservation.</p>
+      <p style="margin:20px 0 0;color:${MUTED};font-size:13px;line-height:1.6;">Vous pouvez reprendre un nouveau créneau à tout moment sur leur page de réservation en ligne.</p>
     `,
-    `Notification automatique envoyée suite à l'annulation de votre rendez-vous avec ${escapeHtml(data.businessName)}.`
-  );
+    footerNote: `Notification automatique envoyée suite à l'annulation de votre rendez-vous avec ${escapeHtml(data.businessName)}.`,
+  });
 
   const text = [
     `Rendez-vous annulé`,
@@ -384,6 +510,11 @@ export async function sendBookingCancellationToClient(data: BookingEmailData): P
     `Bonjour ${data.clientName},`,
     ``,
     `Votre rendez-vous du ${dateLabel} à ${hourLabel} avec ${data.businessName} a été annulé.`,
+    ``,
+    `${data.businessName}`,
+    `${address}`,
+    `${phone}`,
+    ``,
     `Vous pouvez reprendre un nouveau créneau à tout moment via leur lien de réservation.`,
   ].join('\n');
 
@@ -395,9 +526,11 @@ export async function sendBookingCancellationToClient(data: BookingEmailData): P
       text,
       replyTo: data.proEmail,
     },
-    'cancellation (client)'
+    'annulation client'
   );
 }
+
+// ─── Pro: booking cancelled by the client ───────────────────────────────────
 
 export async function sendBookingCancellationToPro(data: BookingEmailData): Promise<void> {
   if (!data.proEmail) {
@@ -407,33 +540,37 @@ export async function sendBookingCancellationToPro(data: BookingEmailData): Prom
   const dateLabel = formatDateFR(data.date);
   const hourLabel = formatHourFR(data.time);
 
-  const html = emailShell(
-    data.businessName,
-    data.businessLogoUrl,
-    '#09090B',
-    `
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#FEF2F2;border:1px solid #FECACA;border-radius:12px;margin-bottom:24px;">
+  const html = emailShell({
+    businessName: data.businessName,
+    logoUrl: data.businessLogoUrl,
+    accent: '#3F3F46',
+    kicker: 'Rendez-vous annulé',
+    bodyHtml: `
+      <p style="margin:0 0 22px;color:${MUTED};font-size:14px;line-height:1.6;"><strong style="color:${INK};">${escapeHtml(data.clientName)}</strong> a annulé son rendez-vous.</p>
+
+      ${heroBlock({ eyebrow: 'Créneau libéré', dateLabel, hourLabel, accent: RED, soft: RED_SOFT, border: RED_BORDER, strike: true })}
+
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+        <tr><td colspan="2" style="padding-bottom:8px;"><span style="color:${INK};font-size:15px;font-weight:700;">Client</span></td></tr>
         <tr>
-          <td style="padding:20px 24px;text-align:center;">
-            <div style="color:#991B1B;font-size:16px;font-weight:700;">Rendez-vous annulé</div>
-          </td>
+          <td style="padding:8px 0;border-top:1px solid ${CARD_BORDER};width:100px;"><span style="color:${FAINT};font-size:11px;font-weight:700;text-transform:uppercase;">Nom</span></td>
+          <td style="padding:8px 0;border-top:1px solid ${CARD_BORDER};"><span style="color:${INK};font-size:14px;font-weight:600;">${escapeHtml(data.clientName)}</span></td>
         </tr>
+        <tr>
+          <td style="padding:8px 0;border-top:1px solid ${CARD_BORDER};"><span style="color:${FAINT};font-size:11px;font-weight:700;text-transform:uppercase;">Email</span></td>
+          <td style="padding:8px 0;border-top:1px solid ${CARD_BORDER};"><a href="mailto:${escapeHtml(data.clientEmail)}" style="color:${BLUE};font-size:14px;text-decoration:none;">${escapeHtml(data.clientEmail)}</a></td>
+        </tr>
+        ${data.clientPhone ? `
+        <tr>
+          <td style="padding:8px 0;border-top:1px solid ${CARD_BORDER};"><span style="color:${FAINT};font-size:11px;font-weight:700;text-transform:uppercase;">Téléphone</span></td>
+          <td style="padding:8px 0;border-top:1px solid ${CARD_BORDER};"><a href="${telHref(data.clientPhone)}" style="color:${BLUE};font-size:14px;text-decoration:none;">${escapeHtml(data.clientPhone)}</a></td>
+        </tr>` : ''}
       </table>
 
-      <p style="margin:0 0 20px;color:#3F3F46;font-size:14px;line-height:1.6;">
-        <strong>${escapeHtml(data.clientName)}</strong> a annulé son rendez-vous du <strong style="text-transform:capitalize;">${dateLabel} à ${hourLabel}</strong>.
-      </p>
-
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;">
-        <tr><td style="padding:6px 0;color:#71717A;width:110px;">Client</td><td style="padding:6px 0;color:#18181B;font-weight:600;">${escapeHtml(data.clientName)}</td></tr>
-        <tr><td style="padding:6px 0;color:#71717A;">Email</td><td style="padding:6px 0;color:#18181B;">${escapeHtml(data.clientEmail)}</td></tr>
-        ${data.clientPhone ? `<tr><td style="padding:6px 0;color:#71717A;">Téléphone</td><td style="padding:6px 0;color:#18181B;">${escapeHtml(data.clientPhone)}</td></tr>` : ''}
-      </table>
-
-      <p style="margin:20px 0 0;color:#71717A;font-size:13px;">Ce créneau est de nouveau disponible sur votre page de réservation.</p>
+      <p style="margin:20px 0 0;color:${MUTED};font-size:13px;">Ce créneau est de nouveau disponible sur votre page de réservation.</p>
     `,
-    `Notification automatique de votre système de réservation ${escapeHtml(data.businessName)}.`
-  );
+    footerNote: `Notification automatique de votre système de réservation ${escapeHtml(data.businessName)}.`,
+  });
 
   const text = [
     `Rendez-vous annulé`,
@@ -455,9 +592,11 @@ export async function sendBookingCancellationToPro(data: BookingEmailData): Prom
       text,
       replyTo: data.clientEmail,
     },
-    'cancellation (pro)'
+    'annulation pro'
   );
 }
+
+// ─── Client: booking rescheduled ────────────────────────────────────────────
 
 export async function sendBookingRescheduledToClient(data: BookingEmailData): Promise<void> {
   const dateLabel = formatDateFR(data.date);
@@ -465,60 +604,51 @@ export async function sendBookingRescheduledToClient(data: BookingEmailData): Pr
   const address = data.businessAddress?.trim() || DEFAULT_ADDRESS;
   const phone = data.businessPhone?.trim() || DEFAULT_PHONE;
   const ics = buildICSAttachment(data);
-  const previousLabel = data.previousDate && data.previousTime
-    ? `${formatDateFR(data.previousDate)} à ${formatHourFR(data.previousTime)}`
-    : null;
+  const hasPrevious = !!(data.previousDate && data.previousTime);
+  const previousDateLabel = data.previousDate ? formatDateFR(data.previousDate) : '';
+  const previousHourLabel = data.previousTime ? formatHourFR(data.previousTime) : '';
 
-  const html = emailShell(
-    data.businessName,
-    data.businessLogoUrl,
-    '#09090B',
-    `
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:12px;margin-bottom:24px;">
-        <tr>
-          <td style="padding:20px 24px;text-align:center;">
-            <div style="color:#1D4ED8;font-size:16px;font-weight:700;">Votre rendez-vous a été déplacé</div>
-          </td>
-        </tr>
-      </table>
+  const html = emailShell({
+    businessName: data.businessName,
+    logoUrl: data.businessLogoUrl,
+    accent: BLUE,
+    kicker: 'Rendez-vous déplacé',
+    bodyHtml: `
+      <p style="margin:0 0 4px;color:${INK};font-size:15px;font-weight:700;">Bonjour ${escapeHtml(data.clientName)},</p>
+      <p style="margin:0 0 22px;color:${MUTED};font-size:14px;line-height:1.6;">Votre rendez-vous avec <strong style="color:${INK};">${escapeHtml(data.businessName)}</strong> a été reprogrammé. Voici les nouvelles informations :</p>
 
-      <p style="margin:0 0 4px;color:#3F3F46;font-size:14px;">Bonjour ${escapeHtml(data.clientName)},</p>
-      <p style="margin:0 0 20px;color:#3F3F46;font-size:14px;line-height:1.6;">Votre rendez-vous avec <strong>${escapeHtml(data.businessName)}</strong> a été reprogrammé :</p>
+      ${hasPrevious ? heroBlock({ eyebrow: 'Ancien créneau', dateLabel: previousDateLabel, hourLabel: previousHourLabel, accent: FAINT, soft: '#FAFAFA', border: CARD_BORDER, strike: true }) : ''}
+      ${heroBlock({ eyebrow: 'Nouveau créneau', dateLabel, hourLabel, duration: data.slotDuration, accent: BLUE, soft: BLUE_SOFT, border: BLUE_BORDER })}
 
-      ${previousLabel ? `<p style="margin:0 0 12px;color:#A1A1AA;font-size:13px;text-decoration:line-through;text-transform:capitalize;">Anciennement : ${previousLabel}</p>` : ''}
+      ${data.serviceNote ? `<p style="margin:0 0 20px;color:${MUTED};font-size:13px;line-height:1.6;"><strong style="color:${INK};">Votre demande :</strong> ${escapeHtml(data.serviceNote)}</p>` : ''}
 
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#FAFAFA;border-radius:12px;margin-bottom:24px;">
-        <tr>
-          <td style="padding:20px 24px;text-align:center;">
-            <div style="color:#71717A;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">Nouveau créneau</div>
-            <div style="color:#18181B;font-size:17px;font-weight:700;text-transform:capitalize;">Le ${dateLabel}</div>
-            <div style="color:#3B82F6;font-size:26px;font-weight:800;margin-top:6px;">à ${hourLabel}</div>
-            ${data.slotDuration ? `<div style="color:#71717A;font-size:12px;margin-top:4px;">Durée : ${data.slotDuration} min</div>` : ''}
-          </td>
-        </tr>
-      </table>
+      ${detailsBlock({ businessName: data.businessName, address, phone, services: data.businessServices, instructions: data.businessInstructions, paymentMethods: data.businessPaymentMethods })}
 
-      ${contactBlock(data.businessName, address, phone)}
       ${ics ? calendarNoticeBlock() : ''}
-      ${manageLinksBlock(data.manageToken)}
+      ${manageLinksBlock(data.manageToken, 'modification client')}
     `,
-    `Confirmation de modification envoyée automatiquement suite à un changement de créneau sur votre réservation avec ${escapeHtml(data.businessName)}.`
-  );
+    footerNote: data.manageToken
+      ? 'Besoin de changer à nouveau ? Utilisez les boutons ci-dessus pour modifier ou annuler ce rendez-vous vous-même, à tout moment.'
+      : `Pour annuler ou modifier ce rendez-vous, contactez directement ${escapeHtml(data.businessName)}.`,
+  });
 
   const text = [
     `Rendez-vous déplacé`,
     ``,
     `Bonjour ${data.clientName},`,
     ``,
-    previousLabel ? `Anciennement : ${previousLabel}` : '',
-    `Nouveau créneau : le ${dateLabel} à ${hourLabel}`,
-    ``,
-    data.manageToken ? `Modifier : ${APP_URL}/rdv/manage/${data.manageToken}?action=reschedule` : '',
-    data.manageToken ? `Annuler : ${APP_URL}/rdv/manage/${data.manageToken}?action=cancel` : '',
+    hasPrevious ? `Ancien créneau : ${previousDateLabel} à ${previousHourLabel}` : '',
+    `Nouveau créneau : ${dateLabel} à ${hourLabel}${data.slotDuration ? ` (durée : ${data.slotDuration} min)` : ''}`,
     ``,
     `${data.businessName}`,
     `${address}`,
     `${phone}`,
+    data.businessServices ? `Prestations : ${data.businessServices}` : '',
+    data.businessPaymentMethods ? `Paiement : ${data.businessPaymentMethods}` : '',
+    data.businessInstructions ? `À savoir avant votre RDV : ${data.businessInstructions}` : '',
+    data.manageToken ? `` : '',
+    data.manageToken ? `Modifier : ${manageBaseUrl(data.manageToken)}?action=reschedule` : '',
+    data.manageToken ? `Annuler : ${manageBaseUrl(data.manageToken)}?action=cancel` : '',
   ].filter(Boolean).join('\n');
 
   await send(
@@ -530,9 +660,11 @@ export async function sendBookingRescheduledToClient(data: BookingEmailData): Pr
       replyTo: data.proEmail,
       attachments: ics ? [ics] : undefined,
     },
-    'reschedule (client)'
+    'modification client'
   );
 }
+
+// ─── Pro: booking rescheduled ────────────────────────────────────────────────
 
 export async function sendBookingRescheduledToPro(data: BookingEmailData): Promise<void> {
   if (!data.proEmail) {
@@ -541,46 +673,50 @@ export async function sendBookingRescheduledToPro(data: BookingEmailData): Promi
   }
   const dateLabel = formatDateFR(data.date);
   const hourLabel = formatHourFR(data.time);
-  const previousLabel = data.previousDate && data.previousTime
-    ? `${formatDateFR(data.previousDate)} à ${formatHourFR(data.previousTime)}`
-    : null;
+  const hasPrevious = !!(data.previousDate && data.previousTime);
+  const previousDateLabel = data.previousDate ? formatDateFR(data.previousDate) : '';
+  const previousHourLabel = data.previousTime ? formatHourFR(data.previousTime) : '';
   const ics = buildICSAttachment(data);
 
-  const html = emailShell(
-    data.businessName,
-    data.businessLogoUrl,
-    '#3B82F6',
-    `
-      <p style="margin:0 0 4px;color:#18181B;font-size:15px;font-weight:700;">Rendez-vous déplacé</p>
-      <p style="margin:0 0 20px;color:#71717A;font-size:13px;">${escapeHtml(data.clientName)} a changé de créneau.</p>
+  const html = emailShell({
+    businessName: data.businessName,
+    logoUrl: data.businessLogoUrl,
+    accent: BLUE,
+    kicker: 'Rendez-vous déplacé',
+    bodyHtml: `
+      <p style="margin:0 0 22px;color:${MUTED};font-size:14px;line-height:1.6;"><strong style="color:${INK};">${escapeHtml(data.clientName)}</strong> a changé de créneau.</p>
 
-      ${previousLabel ? `<p style="margin:0 0 12px;color:#A1A1AA;font-size:13px;text-decoration:line-through;text-transform:capitalize;">Anciennement : ${previousLabel}</p>` : ''}
+      ${hasPrevious ? heroBlock({ eyebrow: 'Ancien créneau', dateLabel: previousDateLabel, hourLabel: previousHourLabel, accent: FAINT, soft: '#FAFAFA', border: CARD_BORDER, strike: true }) : ''}
+      ${heroBlock({ eyebrow: 'Nouveau créneau', dateLabel, hourLabel, duration: data.slotDuration, accent: BLUE, soft: BLUE_SOFT, border: BLUE_BORDER })}
 
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#FAFAFA;border-radius:12px;margin-bottom:20px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+        <tr><td colspan="2" style="padding-bottom:8px;"><span style="color:${INK};font-size:15px;font-weight:700;">Client</span></td></tr>
         <tr>
-          <td style="padding:18px 22px;text-align:center;">
-            <div style="color:#18181B;font-size:16px;font-weight:700;text-transform:capitalize;">Le ${dateLabel}</div>
-            <div style="color:#3B82F6;font-size:22px;font-weight:800;margin-top:4px;">à ${hourLabel}</div>
-          </td>
+          <td style="padding:8px 0;border-top:1px solid ${CARD_BORDER};width:100px;"><span style="color:${FAINT};font-size:11px;font-weight:700;text-transform:uppercase;">Nom</span></td>
+          <td style="padding:8px 0;border-top:1px solid ${CARD_BORDER};"><span style="color:${INK};font-size:14px;font-weight:600;">${escapeHtml(data.clientName)}</span></td>
         </tr>
+        <tr>
+          <td style="padding:8px 0;border-top:1px solid ${CARD_BORDER};"><span style="color:${FAINT};font-size:11px;font-weight:700;text-transform:uppercase;">Email</span></td>
+          <td style="padding:8px 0;border-top:1px solid ${CARD_BORDER};"><a href="mailto:${escapeHtml(data.clientEmail)}" style="color:${BLUE};font-size:14px;text-decoration:none;">${escapeHtml(data.clientEmail)}</a></td>
+        </tr>
+        ${data.clientPhone ? `
+        <tr>
+          <td style="padding:8px 0;border-top:1px solid ${CARD_BORDER};"><span style="color:${FAINT};font-size:11px;font-weight:700;text-transform:uppercase;">Téléphone</span></td>
+          <td style="padding:8px 0;border-top:1px solid ${CARD_BORDER};"><a href="${telHref(data.clientPhone)}" style="color:${BLUE};font-size:14px;text-decoration:none;">${escapeHtml(data.clientPhone)}</a></td>
+        </tr>` : ''}
       </table>
 
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;">
-        <tr><td style="padding:6px 0;color:#71717A;width:110px;">Client</td><td style="padding:6px 0;color:#18181B;font-weight:600;">${escapeHtml(data.clientName)}</td></tr>
-        <tr><td style="padding:6px 0;color:#71717A;">Email</td><td style="padding:6px 0;color:#18181B;">${escapeHtml(data.clientEmail)}</td></tr>
-        ${data.clientPhone ? `<tr><td style="padding:6px 0;color:#71717A;">Téléphone</td><td style="padding:6px 0;color:#18181B;">${escapeHtml(data.clientPhone)}</td></tr>` : ''}
-      </table>
       ${ics ? calendarNoticeBlock() : ''}
     `,
-    `Notification automatique de votre système de réservation ${escapeHtml(data.businessName)}.`
-  );
+    footerNote: `Notification automatique de votre système de réservation ${escapeHtml(data.businessName)}.`,
+  });
 
   const text = [
     `Rendez-vous déplacé`,
     ``,
     `${data.clientName} a changé de créneau.`,
-    previousLabel ? `Anciennement : ${previousLabel}` : '',
-    `Nouveau créneau : le ${dateLabel} à ${hourLabel}`,
+    hasPrevious ? `Ancien créneau : ${previousDateLabel} à ${previousHourLabel}` : '',
+    `Nouveau créneau : ${dateLabel} à ${hourLabel}`,
     ``,
     `Client : ${data.clientName}`,
     `Email : ${data.clientEmail}`,
@@ -596,6 +732,6 @@ export async function sendBookingRescheduledToPro(data: BookingEmailData): Promi
       replyTo: data.clientEmail,
       attachments: ics ? [ics] : undefined,
     },
-    'reschedule (pro)'
+    'modification pro'
   );
 }
