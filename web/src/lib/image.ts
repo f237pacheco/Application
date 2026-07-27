@@ -2,7 +2,7 @@
 // and re-encodes it, so even a large phone photo uploads quickly. Keeps the
 // original format for png/webp (to preserve transparency), otherwise re-encodes
 // as jpeg.
-export async function compressImage(file: File, maxDim = 800, quality = 0.85): Promise<Blob> {
+export async function compressImage(file: File, maxDim = 1600, quality = 0.92): Promise<Blob> {
   const bitmap = await createImageBitmap(file);
   const scale = Math.min(1, maxDim / Math.max(bitmap.width, bitmap.height));
   const width = Math.round(bitmap.width * scale);

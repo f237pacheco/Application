@@ -165,14 +165,23 @@ async function send(
 
     // Full Resend response, logged unconditionally — this is what tells us
     // definitively whether Resend accepted or rejected the send, and why.
-    console.log(`[email] RÉPONSE RESEND COMPLÈTE (${context}):`, JSON.stringify({ data, error }));
+    console.log(`[email] RÉPONSE RESEND COMPLÈTE (${context}) vers ${payload.to}:`, JSON.stringify({ data, error }));
 
     if (error) {
-      console.error(`[email] ÉCHEC EMAIL (${context}) vers ${payload.to}: ${JSON.stringify(error)}`);
-      const msg = (error as { message?: string }).message ?? '';
+      console.error(`[email] ============ ÉCHEC EMAIL (${context}) vers ${payload.to} ============`);
+      console.error(`[email] Détail de l'erreur Resend : ${JSON.stringify(error)}`);
+      const msg = (error as { message?: string; name?: string }).message ?? '';
       if (/only send testing emails|verify a domain/i.test(msg)) {
-        console.error(`[email] CAUSE PROBABLE : compte Resend en mode bac à sable (aucun domaine vérifié) — Resend n'autorise l'envoi qu'à l'adresse email du compte Resend lui-même, quel que soit le destinataire demandé. Vérifiez un domaine sur https://resend.com/domains puis définissez RESEND_FROM_EMAIL pour débloquer l'envoi vers de vrais clients.`);
+        console.error(
+          `[email] CAUSE : compte Resend en mode bac à sable (aucun domaine vérifié). ` +
+          `Avec l'expéditeur "onboarding@resend.dev", Resend n'autorise l'envoi QUE vers l'adresse email de votre propre compte Resend — ` +
+          `tout autre destinataire (comme l'adresse d'un vrai client) est automatiquement rejeté, quel que soit le code. ` +
+          `C'est très probablement pour ça que "${context}" échoue alors que d'autres envois vers votre propre adresse réussissent. ` +
+          `Solution : vérifiez un domaine sur https://resend.com/domains, puis définissez la variable d'environnement RESEND_FROM_EMAIL ` +
+          `avec une adresse de ce domaine (ex: "Velona <reservations@votredomaine.com>") pour pouvoir envoyer à n'importe quel destinataire.`
+        );
       }
+      console.error(`[email] ============================================================`);
       return;
     }
     console.log(`[email] EMAIL ENVOYÉ (${context}) id=${data?.id} vers ${payload.to}`);

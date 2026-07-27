@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { formatDateFR, formatHourFR, getParisNow, timeToMinutes } from '@/lib/booking'
 import { downloadICS } from '@/lib/ics'
 import { NotFoundIllustration, SuccessBurstIllustration } from '@/components/booking/illustrations'
-import { PageBackdrop, GradientIconBadge, GradientButton, ConfettiBurst, Toast, Glow } from '@/components/booking/decorative'
+import { PageBackdrop, GradientIconBadge, GradientButton, ConfettiBurst, Toast, Glow, AdaptiveLogo } from '@/components/booking/decorative'
 import {
   INK, MUTED, FAINT, BORDER, BORDER_HOVER, CARD, SECTION_BG, PAGE_BG, SHADOW_SOFT, SHADOW_MODAL,
   EMERALD, EMERALD_SOFT, EMERALD_BORDER, AMBER, AMBER_SOFT, RED, RED_SOFT, BLUE, BLUE_SOFT,
@@ -153,10 +153,11 @@ function BusinessCard({ info }: { info: Info }) {
     <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }}>
       <div className="relative rounded-2xl p-6 overflow-hidden" style={{ background: CARD, border: `1px solid ${BORDER}`, boxShadow: SHADOW_SOFT }}>
         {info.logoUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={info.logoUrl} alt={info.businessName} className="w-16 h-16 rounded-2xl object-cover mb-4 relative" style={{ border: `1px solid ${BORDER_HOVER}` }} />
+          <div className="mb-4 relative">
+            <AdaptiveLogo src={info.logoUrl} alt={info.businessName} maxSize={132} radius={20} background={CARD} border={`1px solid ${BORDER_HOVER}`} />
+          </div>
         ) : (
-          <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-2xl font-extrabold mb-4 relative" style={{ background: EMERALD_SOFT, color: EMERALD, border: `1px solid ${EMERALD_BORDER}` }}>
+          <div className="w-20 h-20 rounded-2xl flex items-center justify-center text-3xl font-extrabold mb-4 relative" style={{ background: EMERALD_SOFT, color: EMERALD, border: `1px solid ${EMERALD_BORDER}` }}>
             {info.businessName?.charAt(0).toUpperCase() ?? '?'}
           </div>
         )}
@@ -712,8 +713,7 @@ export default function PublicBookingPage() {
                 <div className="rounded-xl p-4 mb-5 text-left" style={{ background: SECTION_BG, border: `1px solid ${BORDER}` }}>
                   <div className="flex items-center gap-3 mb-3">
                     {info.logoUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={info.logoUrl} alt={info.businessName} className="w-10 h-10 rounded-xl object-cover" />
+                      <AdaptiveLogo src={info.logoUrl} alt={info.businessName} maxSize={56} radius={14} background={CARD} />
                     ) : (
                       <div className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-extrabold" style={{ background: EMERALD_SOFT, color: EMERALD }}>
                         {info.businessName.charAt(0).toUpperCase()}

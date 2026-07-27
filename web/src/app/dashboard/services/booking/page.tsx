@@ -13,7 +13,7 @@ import {
   ChevronLeftIcon, ChevronRightIcon, TrashIcon, AlertCircleIcon, ArrowLeftIcon, ArrowRightIcon,
   ZapIcon, CheckCircleIcon, MailIcon,
 } from '@/components/booking/icons'
-import { MeshBackground, GradientIconBadge, GradientButton, AnimatedCounter, Toast } from '@/components/booking/decorative'
+import { MeshBackground, GradientIconBadge, GradientButton, AnimatedCounter, Toast, AdaptiveLogo } from '@/components/booking/decorative'
 import { INK, MUTED, FAINT, BORDER, BORDER_STRONG, CARD, PAGE_BG, GRADIENT_BRAND, INDIGO, VIOLET, PINK, AMBER, SHADOW_SOFT, TINTS } from '@/components/booking/theme'
 
 const MAX_LOGO_SIZE = 50 * 1024 * 1024 // 50 MB — image is compressed to ~800x800 client-side before upload anyway
@@ -556,7 +556,7 @@ export default function BookingSettingsPage() {
     setLogoUploading(true)
     setLogoProgress(15)
     try {
-      const compressed = await compressImage(logoPendingFile, 800, 0.85)
+      const compressed = await compressImage(logoPendingFile, 1600, 0.92)
       console.log(`[logo-upload] ÉTAPE 2/4 — compression OK : ${(logoPendingFile.size / 1024).toFixed(0)}Ko → ${(compressed.size / 1024).toFixed(0)}Ko, type="${compressed.type}"`)
       setLogoProgress(50)
 
@@ -947,8 +947,7 @@ export default function BookingSettingsPage() {
 
               {logoPreview ? (
                 <div className="flex items-center gap-4">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={logoPreview} alt="Aperçu" className="w-16 h-16 rounded-2xl object-cover" style={{ border: '1px solid rgba(255,255,255,0.06)' }} />
+                  <AdaptiveLogo src={logoPreview} alt="Aperçu" maxSize={112} radius={18} />
                   <div className="flex-1">
                     <p className="text-xs text-[#9CA3AF] mb-2">Aperçu — confirmez pour envoyer.</p>
                     {logoUploading && (
@@ -984,10 +983,9 @@ export default function BookingSettingsPage() {
               ) : (
                 <div className="flex items-center gap-4">
                   {logoUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={logoUrl} alt="Logo" className="w-16 h-16 rounded-2xl object-cover" style={{ border: '1px solid rgba(255,255,255,0.06)' }} />
+                    <AdaptiveLogo src={logoUrl} alt="Logo" maxSize={112} radius={18} />
                   ) : (
-                    <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-xl font-bold" style={{ background: 'rgba(16,185,129,0.1)', color: '#10B981', border: '1px solid rgba(255,255,255,0.06)' }}>
+                    <div className="w-28 h-28 rounded-2xl flex items-center justify-center text-3xl font-bold shrink-0" style={{ background: 'rgba(16,185,129,0.1)', color: '#10B981', border: '1px solid rgba(255,255,255,0.06)' }}>
                       {businessName.charAt(0).toUpperCase() || '?'}
                     </div>
                   )}

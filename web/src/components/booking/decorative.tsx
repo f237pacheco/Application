@@ -55,6 +55,31 @@ export function GradientIconBadge({ icon, gradient = EMERALD, size = 40, radius 
   )
 }
 
+// ─── Adaptive logo — sizes itself to the image's own aspect ratio (a wide
+// logo renders wide-and-short, a tall one narrow-and-tall) capped by
+// maxSize, instead of forcing every logo into a fixed square crop. ───────────
+
+export function AdaptiveLogo({
+  src, alt, maxSize = 96, radius = 16, background = 'rgba(255,255,255,0.03)', border,
+}: { src: string; alt: string; maxSize?: number; radius?: number; background?: string; border?: string }) {
+  // No fixed width/height: the box shrink-wraps to the image's own rendered
+  // size (which follows its intrinsic ratio), so a wide logo gets a wide
+  // frame and a tall logo a tall one — never a forced square crop.
+  return (
+    <div
+      className="inline-flex items-center justify-center shrink-0 overflow-hidden"
+      style={{ maxWidth: maxSize, maxHeight: maxSize, minWidth: maxSize * 0.4, minHeight: maxSize * 0.4, borderRadius: radius, background, border: border ?? '1px solid rgba(255,255,255,0.06)' }}
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={src}
+        alt={alt}
+        style={{ maxWidth: maxSize - 16, maxHeight: maxSize - 16, width: 'auto', height: 'auto', objectFit: 'contain', display: 'block' }}
+      />
+    </div>
+  )
+}
+
 // ─── Animated counter — counts up from 0 to value on mount/change. ────────────
 
 export function AnimatedCounter({ value, suffix = '' }: { value: number; suffix?: string }) {

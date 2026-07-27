@@ -104,7 +104,7 @@ export async function POST(request: Request) {
       proEmail: proProfile?.email ?? undefined,
     };
 
-    console.log('[bookings/create] Appel des fonctions d\'envoi d\'email (confirmation client + notification pro)...');
+    console.log(`[bookings/create] Appel des fonctions d'envoi d'email — destinataire client="${clientEmail}" | destinataire pro="${proProfile?.email ?? '(aucun, notification pro sautée)'}"`);
     // allSettled, pas all : un échec/exception sur l'un des deux envois ne doit
     // jamais empêcher l'autre de partir (avant ce correctif, Promise.all pouvait
     // faire échouer silencieusement les DEUX emails si un seul levait une exception).
