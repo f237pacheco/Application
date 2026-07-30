@@ -123,7 +123,7 @@ export async function POST(request: Request) {
     if (proResult.status === 'rejected') console.error('[bookings/create] EXCEPTION email pro (non rattrapée par lib/email.ts):', proResult.reason);
     console.log('[bookings/create] Envoi des emails terminé (voir logs [email] ci-dessus pour le résultat de chacun).');
 
-    return NextResponse.json({ success: true, date, time, bookingId: newBooking.id });
+    return NextResponse.json({ success: true, date, time, bookingId: newBooking.id, manageToken });
   } catch (err) {
     console.error('[bookings/create]', err);
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });

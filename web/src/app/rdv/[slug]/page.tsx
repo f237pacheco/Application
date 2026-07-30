@@ -58,12 +58,23 @@ function ProgressSteps({ current }: { current: number }) {
                   borderColor: done || active ? EMERALD : BORDER,
                   color: done || active ? '#0A0A0F' : MUTED,
                   scale: active ? 1.08 : 1,
+                  boxShadow: active
+                    ? [`0 0 0 4px ${EMERALD_SOFT}`, `0 0 0 7px rgba(16,185,129,0.06)`, `0 0 0 4px ${EMERALD_SOFT}`]
+                    : '0 0 0 0px rgba(16,185,129,0)',
                 }}
-                transition={{ duration: 0.25 }}
+                transition={active ? { boxShadow: { duration: 2, repeat: Infinity, ease: 'easeInOut' }, default: { duration: 0.25 } } : { duration: 0.25 }}
                 className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
-                style={{ border: '1.5px solid', boxShadow: active ? `0 0 0 4px ${EMERALD_SOFT}` : 'none' }}
+                style={{ border: '1.5px solid' }}
               >
-                {done ? <CheckIcon size={14} strokeWidth={2.5} /> : n}
+                <AnimatePresence mode="wait" initial={false}>
+                  {done ? (
+                    <motion.span key="done" initial={{ scale: 0, rotate: -90 }} animate={{ scale: 1, rotate: 0 }} transition={{ type: 'spring', stiffness: 500, damping: 20 }}>
+                      <CheckIcon size={14} strokeWidth={2.5} />
+                    </motion.span>
+                  ) : (
+                    <motion.span key="num" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>{n}</motion.span>
+                  )}
+                </AnimatePresence>
               </motion.div>
               <span className="hidden sm:block text-[10px] font-semibold text-center whitespace-nowrap" style={{ color: active ? INK : FAINT }}>{label}</span>
             </div>
@@ -166,10 +177,18 @@ function BusinessCard({ info }: { info: Info }) {
         {info.description && <p className="text-sm leading-relaxed mb-4 relative" style={{ color: MUTED }}>{info.description}</p>}
 
         <div className="flex flex-wrap gap-1.5 mb-1 relative">
-          {TRUST_BADGES.map((b) => (
-            <span key={b.label} className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full w-fit" style={{ background: b.soft, color: b.accent }}>
+          {TRUST_BADGES.map((b, i) => (
+            <motion.span
+              key={b.label}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: 0.15 + i * 0.06 }}
+              whileHover={{ scale: 1.05, y: -1 }}
+              className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full w-fit"
+              style={{ background: b.soft, color: b.accent }}
+            >
               {b.icon} {b.label}
-            </span>
+            </motion.span>
           ))}
         </div>
 
@@ -257,7 +276,7 @@ export default function PublicBookingPage() {
   const [emailTouched, setEmailTouched] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState('')
-  const [confirmedAt, setConfirmedAt] = useState<{ date: string; time: string; bookingUid: string } | null>(null)
+  const [confirmedAt, setConfirmedAt] = useState<{ date: string; time: string; bookingUid: string; manageToken?: string } | null>(null)
   const [toast, setToast] = useState('')
   const [confettiFired, setConfettiFired] = useState(false)
 
@@ -400,7 +419,7 @@ export default function PublicBookingPage() {
           serviceNote: serviceNote.trim(),
         }),
       })
-      const data = await res.json() as { success?: boolean; date?: string; time?: string; bookingId?: string; error?: string }
+      const data = await res.json() as { success?: boolean; date?: string; time?: string; bookingId?: string; manageToken?: string; error?: string }
       if (!res.ok || !data.success) {
         setShowRecapModal(false)
         setFormError(data.error ?? "Ce créneau n'est plus disponible.")
@@ -408,7 +427,7 @@ export default function PublicBookingPage() {
         return
       }
       setShowRecapModal(false)
-      setConfirmedAt({ date: data.date ?? selectedDate, time: data.time ?? selectedTime, bookingUid: data.bookingId ?? `${slug}-${data.date}-${data.time}` })
+      setConfirmedAt({ date: data.date ?? selectedDate, time: data.time ?? selectedTime, bookingUid: data.bookingId ?? `${slug}-${data.date}-${data.time}`, manageToken: data.manageToken })
       setStep('confirmed')
       setConfettiFired(true)
       setTimeout(() => setConfettiFired(false), 1500)
@@ -492,9 +511,10 @@ export default function PublicBookingPage() {
             {/* ── Calendar + slots ─────────────────────────────────────────── */}
             {step === 'calendar' && (
               <motion.div key="calendar" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.3, delay: 0.1 }} className="rounded-2xl p-6" style={{ background: CARD, border: `1px solid ${BORDER}`, boxShadow: SHADOW_SOFT }}>
-                <p className="text-sm font-bold mb-4 flex items-center gap-2" style={{ color: INK }}>
+                <p className="text-sm font-bold mb-1.5 flex items-center gap-2" style={{ color: INK }}>
                   <GradientIconBadge icon={<CalendarIcon size={13} />} gradient={EMERALD} size={26} radius={8} /> Choisissez une date
                 </p>
+                <p className="text-xs mb-5 ml-9" style={{ color: FAINT }}>Confirmation immédiate par email — aucune carte requise.</p>
 
                 <div className="flex items-center justify-between mb-5">
                   <motion.button whileTap={{ scale: 0.9 }} whileHover={{ borderColor: BORDER_HOVER }} onClick={() => goMonth(-1)} disabled={monthOffset === 0} className="w-8 h-8 rounded-lg flex items-center justify-center disabled:opacity-30" style={{ color: MUTED, border: `1px solid ${BORDER}` }}><ChevronLeftIcon size={16} /></motion.button>
@@ -685,6 +705,9 @@ export default function PublicBookingPage() {
                   <div className="mt-1">
                     <GradientButton type="submit">Vérifier et confirmer</GradientButton>
                   </div>
+                  <p className="text-[11px] text-center flex items-center justify-center gap-1.5" style={{ color: FAINT }}>
+                    <ShieldCheckIcon size={12} /> Vos données ne servent qu&apos;à ce rendez-vous — annulation gratuite à tout moment.
+                  </p>
                 </form>
               </motion.div>
             )}
@@ -707,10 +730,10 @@ export default function PublicBookingPage() {
                     <CheckIcon size={26} strokeWidth={3} style={{ color: '#0A0A0F', marginTop: 2 }} />
                   </motion.div>
                 </div>
-                <h2 className="text-xl font-extrabold mb-2 mt-1" style={{ color: INK }}>Rendez-vous confirmé</h2>
-                <p className="text-sm mb-4" style={{ color: MUTED }}>Un email de confirmation vous a été envoyé à {clientEmail}.</p>
+                <motion.h2 initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3, duration: 0.3 }} className="text-xl font-extrabold mb-2 mt-1" style={{ color: INK }}>Rendez-vous confirmé</motion.h2>
+                <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.38, duration: 0.3 }} className="text-sm mb-4" style={{ color: MUTED }}>Un email de confirmation vous a été envoyé à {clientEmail}.</motion.p>
 
-                <div className="rounded-xl p-4 mb-5 text-left" style={{ background: SECTION_BG, border: `1px solid ${BORDER}` }}>
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.46, duration: 0.3 }} className="rounded-xl p-4 mb-5 text-left" style={{ background: SECTION_BG, border: `1px solid ${BORDER}` }}>
                   <div className="flex items-center gap-3 mb-3">
                     {info.logoUrl ? (
                       <AdaptiveLogo src={info.logoUrl} alt={info.businessName} maxSize={56} radius={14} background={CARD} />
@@ -733,28 +756,43 @@ export default function PublicBookingPage() {
                     <span className="text-[11px] font-semibold" style={{ color: MUTED }}>{info.slotDuration} min</span>
                   </div>
                   {info.phone && <p className="text-xs mt-2" style={{ color: MUTED }}>{info.phone}</p>}
-                </div>
+                </motion.div>
 
-                <GradientButton onClick={handleAddToCalendar} gradient={EMERALD}>
-                  <DownloadIcon size={16} /> Ajouter à mon agenda
-                </GradientButton>
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.54, duration: 0.3 }}>
+                  <GradientButton onClick={handleAddToCalendar} gradient={EMERALD}>
+                    <DownloadIcon size={16} /> Ajouter à mon agenda
+                  </GradientButton>
+                </motion.div>
 
                 {info.instructions && (
-                  <div className="pt-4 mt-4 text-left" style={{ borderTop: `1px solid ${BORDER}` }}>
+                  <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6, duration: 0.3 }} className="pt-4 mt-4 text-left" style={{ borderTop: `1px solid ${BORDER}` }}>
                     <p className="text-[11px] font-bold uppercase tracking-wide mb-1" style={{ color: MUTED }}>À savoir avant votre RDV</p>
                     <p className="text-sm leading-relaxed" style={{ color: INK }}>{info.instructions}</p>
-                  </div>
+                  </motion.div>
                 )}
 
-                <div className="flex items-center gap-2 mt-4 p-3 rounded-lg" style={{ background: EMERALD_SOFT }}>
+                <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.66, duration: 0.3 }} className="flex items-center gap-2 mt-4 p-3 rounded-lg" style={{ background: EMERALD_SOFT }}>
                   <ShieldCheckIcon size={14} style={{ color: EMERALD }} className="shrink-0" />
                   <p className="text-[11px] text-left" style={{ color: MUTED }}>Annulation gratuite jusqu&apos;à votre rendez-vous.</p>
-                </div>
+                </motion.div>
 
-                {(info.phone || info.address) && (
-                  <p className="text-xs mt-3" style={{ color: MUTED }}>
+                {confirmedAt.manageToken ? (
+                  <motion.a
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.72, duration: 0.3 }}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    href={`/rdv/manage/${confirmedAt.manageToken}`}
+                    className="block text-xs font-bold mt-3 py-2.5 rounded-lg text-center"
+                    style={{ color: MUTED, border: `1px solid ${BORDER}` }}
+                  >
+                    Modifier ou annuler ce rendez-vous
+                  </motion.a>
+                ) : (info.phone || info.address) && (
+                  <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.72, duration: 0.3 }} className="text-xs mt-3" style={{ color: MUTED }}>
                     Besoin de modifier ou d&apos;annuler ? {info.phone ? <>Contactez {info.businessName} au <a href={`tel:${info.phone.replace(/\s+/g, '')}`} className="font-semibold" style={{ color: EMERALD }}>{info.phone}</a>.</> : `Contactez directement ${info.businessName}.`}
-                  </p>
+                  </motion.p>
                 )}
               </motion.div>
             )}

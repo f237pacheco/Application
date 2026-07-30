@@ -1,16 +1,17 @@
 'use client'
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
 import { createClient } from '@/lib/supabase/client'
-import { slugify, SLUG_REGEX, getParisNow } from '@/lib/booking'
+import { slugify, SLUG_REGEX, getParisNow, formatHourFR } from '@/lib/booking'
 import { compressImage, extensionForMimeType } from '@/lib/image'
 import {
   StoreIcon, LinkIcon, MessageSquareIcon, ImageIcon, FileTextIcon, CreditCardIcon, InfoIcon,
   ClockIcon, CalendarIcon, SparklesIcon, EyeIcon, ExternalLinkIcon, RefreshIcon, CheckIcon,
-  ChevronLeftIcon, ChevronRightIcon, TrashIcon, AlertCircleIcon, ArrowLeftIcon, ArrowRightIcon,
+  ChevronLeftIcon, ChevronRightIcon, ChevronDownIcon, TrashIcon, AlertCircleIcon, ArrowLeftIcon, ArrowRightIcon,
   ZapIcon, CheckCircleIcon, MailIcon,
 } from '@/components/booking/icons'
 import { MeshBackground, GradientIconBadge, GradientButton, AnimatedCounter, Toast, AdaptiveLogo } from '@/components/booking/decorative'
@@ -65,6 +66,145 @@ function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
     >
       <motion.div animate={{ x: on ? 18 : 2 }} transition={{ type: 'spring', stiffness: 500, damping: 30 }} className="absolute top-0.5 w-4 h-4 rounded-full" style={{ background: '#FAFAFA' }} />
     </motion.button>
+  )
+}
+
+// 15-minute increments, 00:00 through 23:45 — matches the granularity a
+// pro would actually want when setting opening hours.
+const TIME_OPTIONS = Array.from({ length: 24 * 4 }, (_, i) => {
+  const h = Math.floor(i / 4).toString().padStart(2, '0')
+  const m = ((i % 4) * 15).toString().padStart(2, '0')
+  return `${h}:${m}`
+})
+
+// Custom dropdown standing in for a native <input type="time"> — the native
+// picker UI can't be restyled (only the closed-state field can), so a fully
+// custom list is the only way to get a result that matches the dark theme.
+function TimeSelect({ value, onChange, disabled, accent = '#10B981' }: {
+  value: string; onChange: (v: string) => void; disabled?: boolean; accent?: string
+}) {
+  const [open, setOpen] = useState(false)
+  const [mounted, setMounted] = useState(false)
+  const [coords, setCoords] = useState({ top: 0, left: 0 })
+  const buttonRef = useRef<HTMLButtonElement>(null)
+  const listRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => { setMounted(true) }, [])
+
+  // Rendered through a portal (see below) — several ancestors use
+  // `overflow: hidden` for the day-row's rounded corners and its height
+  // reveal animation, which would otherwise clip this dropdown the moment
+  // it tried to open below the row's visible bounds.
+  const openMenu = () => {
+    const rect = buttonRef.current?.getBoundingClientRect()
+    if (rect) setCoords({ top: rect.bottom + window.scrollY + 6, left: rect.left + window.scrollX })
+    setOpen(true)
+  }
+
+  useEffect(() => {
+    if (!open) return
+    const onClickOutside = (e: MouseEvent) => {
+      if (buttonRef.current?.contains(e.target as Node)) return
+      if (listRef.current?.contains(e.target as Node)) return
+      setOpen(false)
+    }
+    const onScrollOrResize = () => setOpen(false)
+    document.addEventListener('mousedown', onClickOutside)
+    window.addEventListener('scroll', onScrollOrResize, true)
+    window.addEventListener('resize', onScrollOrResize)
+    return () => {
+      document.removeEventListener('mousedown', onClickOutside)
+      window.removeEventListener('scroll', onScrollOrResize, true)
+      window.removeEventListener('resize', onScrollOrResize)
+    }
+  }, [open])
+
+  useEffect(() => {
+    if (!open || !listRef.current) return
+    const selected = listRef.current.querySelector('[data-selected="true"]') as HTMLElement | null
+    selected?.scrollIntoView({ block: 'center' })
+  }, [open])
+
+  return (
+    <>
+      <motion.button
+        ref={buttonRef}
+        type="button"
+        disabled={disabled}
+        onClick={() => (open ? setOpen(false) : openMenu())}
+        whileHover={!disabled ? { borderColor: 'rgba(255,255,255,0.16)' } : undefined}
+        whileTap={!disabled ? { scale: 0.97 } : undefined}
+        className="flex items-center gap-1.5 pl-2.5 pr-2 py-1.5 rounded-lg text-xs font-bold disabled:opacity-40"
+        style={{ background: '#0A0A0F', border: `1px solid ${open ? accent : 'rgba(255,255,255,0.08)'}`, color: disabled ? '#6B7280' : '#FAFAFA', transition: 'border-color 0.15s' }}
+      >
+        {formatHourFR(value)}
+        <motion.span animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.15 }} style={{ color: '#6B7280' }}>
+          <ChevronDownIcon size={12} />
+        </motion.span>
+      </motion.button>
+      {mounted && createPortal(
+        <AnimatePresence>
+          {open && (
+            <motion.div
+              ref={listRef}
+              initial={{ opacity: 0, scale: 0.95, y: -4 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: -4 }}
+              transition={{ duration: 0.12 }}
+              className="fixed z-[100] w-24 max-h-52 overflow-y-auto rounded-xl p-1"
+              style={{ top: coords.top, left: coords.left, background: '#1D1D26', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 16px 40px rgba(0,0,0,0.5)' }}
+            >
+              {TIME_OPTIONS.map((t) => {
+                const isSelected = t === value
+                return (
+                  <button
+                    key={t}
+                    type="button"
+                    data-selected={isSelected}
+                    onClick={() => { onChange(t); setOpen(false) }}
+                    className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-semibold"
+                    style={{ background: isSelected ? `${accent}22` : 'transparent', color: isSelected ? accent : '#D4D4D8' }}
+                    onMouseEnter={(e) => { if (!isSelected) e.currentTarget.style.background = 'rgba(255,255,255,0.06)' }}
+                    onMouseLeave={(e) => { if (!isSelected) e.currentTarget.style.background = 'transparent' }}
+                  >
+                    {formatHourFR(t)}
+                  </button>
+                )
+              })}
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
+    </>
+  )
+}
+
+// At-a-glance 24h bar showing exactly when a day is open — morning/afternoon
+// ranges rendered as emerald segments positioned by their share of the day.
+function DayTimeline({ day }: { day: DayState }) {
+  const toPct = (t: string) => {
+    const [h, m] = t.split(':').map(Number)
+    return ((h * 60 + m) / (24 * 60)) * 100
+  }
+  const segments = (['morning', 'afternoon'] as const).filter((p) => day[p].enabled && day[p].start < day[p].end)
+  return (
+    <div className="relative h-1.5 rounded-full overflow-hidden mt-3" style={{ background: 'rgba(255,255,255,0.05)' }}>
+      {segments.map((p) => {
+        const left = toPct(day[p].start)
+        const width = toPct(day[p].end) - left
+        return (
+          <motion.div
+            key={p}
+            className="absolute top-0 h-full rounded-full"
+            style={{ left: `${left}%`, background: '#10B981' }}
+            initial={{ width: 0 }}
+            animate={{ width: `${width}%` }}
+            transition={{ duration: 0.35, ease: 'easeOut' }}
+          />
+        )
+      })}
+    </div>
   )
 }
 
@@ -1248,55 +1388,95 @@ export default function BookingSettingsPage() {
           <div className="flex flex-col gap-2.5">
             {WEEK_ORDER.map((dayKey, idx) => {
               const day = week[dayKey]
+              const activePeriods = (['morning', 'afternoon'] as const).filter((p) => day[p].enabled)
               return (
                 <motion.div
                   key={dayKey}
+                  layout
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3, delay: idx * 0.03 }}
-                  whileHover={{ borderColor: day.dayActive ? 'rgba(16,185,129,0.4)' : 'rgba(255,255,255,0.12)' }}
-                  className="rounded-xl p-3.5"
-                  style={{ background: '#111117', border: '1px solid rgba(255,255,255,0.06)', borderLeft: `3px solid ${day.dayActive ? '#10B981' : 'rgba(255,255,255,0.06)'}`, transition: 'border-color 0.2s' }}
+                  whileHover={{ borderColor: day.dayActive ? 'rgba(16,185,129,0.35)' : 'rgba(255,255,255,0.12)' }}
+                  className="rounded-xl p-4 overflow-hidden"
+                  style={{
+                    background: day.dayActive ? 'rgba(16,185,129,0.04)' : '#111117',
+                    border: '1px solid rgba(255,255,255,0.06)',
+                    borderLeft: `3px solid ${day.dayActive ? '#10B981' : 'rgba(255,255,255,0.06)'}`,
+                    transition: 'border-color 0.2s, background 0.25s',
+                  }}
                 >
-                  <div className="flex items-center gap-3 mb-2.5">
+                  <div className="flex items-center gap-3">
                     <Toggle on={day.dayActive} onToggle={() => updateDay(dayKey, { dayActive: !day.dayActive })} />
-                    <span className="text-sm font-semibold w-24 shrink-0" style={{ color: day.dayActive ? INK : '#6B7280' }}>{WEEK_LABELS[dayKey]}</span>
+                    <span className="text-sm font-bold w-24 shrink-0" style={{ color: day.dayActive ? INK : '#6B7280' }}>{WEEK_LABELS[dayKey]}</span>
 
+                    <AnimatePresence mode="wait">
+                      {day.dayActive ? (
+                        <motion.span
+                          key="open"
+                          initial={{ opacity: 0, scale: 0.9 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.9 }}
+                          className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0"
+                          style={{ background: 'rgba(16,185,129,0.12)', color: '#10B981' }}
+                        >
+                          {activePeriods.length === 0 ? 'Aucun horaire' : `${activePeriods.length} plage${activePeriods.length > 1 ? 's' : ''}`}
+                        </motion.span>
+                      ) : (
+                        <motion.span key="closed" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="text-[10px] font-semibold shrink-0" style={{ color: '#6B7280' }}>
+                          Fermé
+                        </motion.span>
+                      )}
+                    </AnimatePresence>
+                  </div>
+
+                  <AnimatePresence initial={false}>
                     {day.dayActive && (
-                      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }} className="flex flex-wrap items-center gap-3 flex-1">
-                        {(['morning', 'afternoon'] as const).map((period) => (
-                          <div key={period} className="flex items-center gap-1.5">
-                            <button
-                              onClick={() => updateRange(dayKey, period, { enabled: !day[period].enabled })}
-                              className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md"
-                              style={{ color: day[period].enabled ? '#10B981' : '#6B7280', background: day[period].enabled ? 'rgba(16,185,129,0.1)' : 'transparent' }}
-                            >
-                              {period === 'morning' ? 'Matin' : 'Après-midi'}
-                            </button>
-                            <input
-                              type="time"
-                              disabled={!day[period].enabled}
-                              value={day[period].start}
-                              onChange={(e) => updateRange(dayKey, period, { start: e.target.value })}
-                              className="px-1.5 py-1 rounded-md text-xs text-[#FAFAFA] outline-none focus:shadow-[0_0_0_3px_rgba(16,185,129,0.15)] transition-shadow duration-150"
-                              style={{ background: '#111117', border: '1px solid rgba(255,255,255,0.06)', opacity: day[period].enabled ? 1 : 0.4, colorScheme: 'dark' }}
-                            />
-                            <span className="text-[#6B7280] text-xs">–</span>
-                            <input
-                              type="time"
-                              disabled={!day[period].enabled}
-                              value={day[period].end}
-                              onChange={(e) => updateRange(dayKey, period, { end: e.target.value })}
-                              className="px-1.5 py-1 rounded-md text-xs text-[#FAFAFA] outline-none focus:shadow-[0_0_0_3px_rgba(16,185,129,0.15)] transition-shadow duration-150"
-                              style={{ background: '#111117', border: '1px solid rgba(255,255,255,0.06)', opacity: day[period].enabled ? 1 : 0.4, colorScheme: 'dark' }}
-                            />
-                          </div>
-                        ))}
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.25, ease: 'easeOut' }}
+                        className="overflow-hidden"
+                      >
+                        <div className="flex flex-col gap-2 mt-3.5 pl-1">
+                          {(['morning', 'afternoon'] as const).map((period) => (
+                            <div key={period} className="flex flex-wrap items-center gap-2.5">
+                              <button
+                                onClick={() => updateRange(dayKey, period, { enabled: !day[period].enabled })}
+                                className="flex items-center gap-1.5 text-[11px] font-bold px-2 py-1 rounded-lg w-[92px] shrink-0 justify-center"
+                                style={{
+                                  color: day[period].enabled ? '#10B981' : '#6B7280',
+                                  background: day[period].enabled ? 'rgba(16,185,129,0.1)' : 'rgba(255,255,255,0.04)',
+                                  border: `1px solid ${day[period].enabled ? 'rgba(16,185,129,0.25)' : 'rgba(255,255,255,0.06)'}`,
+                                  transition: 'background 0.15s, color 0.15s, border-color 0.15s',
+                                }}
+                              >
+                                <motion.span animate={{ scale: day[period].enabled ? 1 : 0.8, opacity: day[period].enabled ? 1 : 0.5 }} className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: 'currentColor' }} />
+                                {period === 'morning' ? 'Matin' : 'Après-midi'}
+                              </button>
+                              <AnimatePresence mode="wait">
+                                {day[period].enabled ? (
+                                  <motion.div key="pickers" initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }} className="flex items-center gap-2">
+                                    <TimeSelect value={day[period].start} onChange={(v) => updateRange(dayKey, period, { start: v })} />
+                                    <span className="w-3 h-px shrink-0" style={{ background: '#3F3F46' }} />
+                                    <TimeSelect value={day[period].end} onChange={(v) => updateRange(dayKey, period, { end: v })} />
+                                  </motion.div>
+                                ) : (
+                                  <motion.span key="off" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="text-xs" style={{ color: '#4B5563' }}>
+                                    Non proposé
+                                  </motion.span>
+                                )}
+                              </AnimatePresence>
+                            </div>
+                          ))}
+                        </div>
+                        {activePeriods.length > 0 && <DayTimeline day={day} />}
                       </motion.div>
                     )}
-                  </div>
+                  </AnimatePresence>
+
                   {dayErrors[dayKey] && (
-                    <p className="text-[11px] mt-1 flex items-center gap-1" style={{ color: '#F87171' }}><AlertCircleIcon size={12} /> Erreur d&apos;enregistrement pour ce jour — réessayez.</p>
+                    <p className="text-[11px] mt-2 flex items-center gap-1" style={{ color: '#F87171' }}><AlertCircleIcon size={12} /> Erreur d&apos;enregistrement pour ce jour — réessayez.</p>
                   )}
                 </motion.div>
               )

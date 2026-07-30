@@ -97,16 +97,26 @@ function mapsHref(address: string): string {
 // Outlook, and Apple Mail. ──────────────────────────────────────────────────
 function emailShell(opts: { businessName: string; logoUrl?: string; accent: string; kicker: string; bodyHtml: string; footerNote: string }): string {
   const { businessName, logoUrl, accent, kicker, bodyHtml, footerNote } = opts;
+  // Fixed-width, auto-height sizing (not object-fit, which old Outlook
+  // ignores entirely) is the one logo-scaling technique that actually keeps
+  // the original aspect ratio across every mail client — a wide logo stays
+  // wide, a tall one stays tall, nothing gets stretched into a square. The
+  // white backing card keeps it legible regardless of the header's accent
+  // color, and gives transparent PNGs a clean, intentional-looking frame.
   const headerContent = logoUrl
     ? `<table role="presentation" cellpadding="0" cellspacing="0"><tr>
-         <td style="padding-right:12px;"><img src="${escapeHtml(logoUrl)}" width="40" height="40" alt="" style="display:block;border-radius:10px;object-fit:cover;background:#ffffff;" /></td>
+         <td style="padding-right:16px;">
+           <table role="presentation" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;">
+             <tr><td style="padding:6px;"><img src="${escapeHtml(logoUrl)}" width="52" alt="" style="display:block;width:52px;height:auto;max-height:52px;border-radius:8px;" /></td></tr>
+           </table>
+         </td>
          <td style="vertical-align:middle;">
-           <div style="color:#FFFFFF;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;opacity:0.75;">${escapeHtml(kicker)}</div>
-           <div style="color:#FFFFFF;font-size:18px;font-weight:800;">${escapeHtml(businessName)}</div>
+           <div style="color:#FFFFFF;font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;opacity:0.75;">${escapeHtml(kicker)}</div>
+           <div style="color:#FFFFFF;font-size:23px;font-weight:800;">${escapeHtml(businessName)}</div>
          </td>
        </tr></table>`
-    : `<div style="color:#FFFFFF;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;opacity:0.75;">${escapeHtml(kicker)}</div>
-       <div style="color:#FFFFFF;font-size:18px;font-weight:800;">${escapeHtml(businessName)}</div>`;
+    : `<div style="color:#FFFFFF;font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;opacity:0.75;">${escapeHtml(kicker)}</div>
+       <div style="color:#FFFFFF;font-size:23px;font-weight:800;">${escapeHtml(businessName)}</div>`;
 
   return `<!doctype html>
 <html lang="fr">
@@ -126,24 +136,24 @@ function emailShell(opts: { businessName: string; logoUrl?: string; accent: stri
   </style>
 </head>
 <body style="margin:0;padding:0;background:${PAGE_BG};">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${PAGE_BG};padding:32px 12px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${PAGE_BG};padding:40px 16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
     <tr>
       <td align="center">
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="velona-card" style="max-width:560px;background:#FFFFFF;border-radius:18px;overflow:hidden;border:1px solid ${CARD_BORDER};">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="velona-card" style="max-width:600px;background:#FFFFFF;border-radius:18px;overflow:hidden;border:1px solid ${CARD_BORDER};">
           <tr>
-            <td class="velona-pad" style="background:${accent};padding:24px 32px;">
+            <td class="velona-pad" style="background:${accent};padding:28px 40px;">
               ${headerContent}
             </td>
           </tr>
           <tr>
-            <td class="velona-pad" style="padding:32px;">
+            <td class="velona-pad" style="padding:40px;">
               ${bodyHtml}
             </td>
           </tr>
           <tr>
-            <td class="velona-pad" style="padding:20px 32px;background:#FAFAFA;border-top:1px solid ${CARD_BORDER};">
-              <p style="margin:0 0 6px;color:${MUTED};font-size:12px;line-height:1.6;">${footerNote}</p>
-              <p style="margin:0;color:${FAINT};font-size:11px;">Propulsé par <strong style="color:${MUTED};">Velona</strong> — système de réservation en ligne.</p>
+            <td class="velona-pad" style="padding:22px 40px;background:#FAFAFA;border-top:1px solid ${CARD_BORDER};">
+              <p style="margin:0 0 6px;color:${MUTED};font-size:13px;line-height:1.6;">${footerNote}</p>
+              <p style="margin:0;color:${FAINT};font-size:12px;">Propulsé par <strong style="color:${MUTED};">Velona</strong> — système de réservation en ligne.</p>
             </td>
           </tr>
         </table>
@@ -162,10 +172,10 @@ function heroBlock(opts: { eyebrow: string; dateLabel: string; hourLabel: string
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${soft};border:1px solid ${border};border-radius:14px;margin-bottom:24px;">
       <tr>
         <td style="padding:22px 24px;text-align:center;">
-          <div style="color:${accent};font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">${escapeHtml(eyebrow)}</div>
-          <div style="color:${INK};font-size:18px;font-weight:800;text-transform:capitalize;${strike ? 'text-decoration:line-through;color:' + FAINT + ';' : ''}">${dateLabel}</div>
-          <div style="color:${accent};font-size:${strike ? '20px' : '30px'};font-weight:800;margin-top:4px;${strike ? 'text-decoration:line-through;' : ''}">${hourLabel}</div>
-          ${duration && !strike ? `<div style="color:${MUTED};font-size:12px;margin-top:6px;">Durée estimée : ${duration} min</div>` : ''}
+          <div style="color:${accent};font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">${escapeHtml(eyebrow)}</div>
+          <div style="color:${INK};font-size:21px;font-weight:800;text-transform:capitalize;${strike ? 'text-decoration:line-through;color:' + FAINT + ';' : ''}">${dateLabel}</div>
+          <div style="color:${accent};font-size:${strike ? '24px' : '36px'};font-weight:800;margin-top:4px;${strike ? 'text-decoration:line-through;' : ''}">${hourLabel}</div>
+          ${duration && !strike ? `<div style="color:${MUTED};font-size:13px;margin-top:6px;">Durée estimée : ${duration} min</div>` : ''}
         </td>
       </tr>
     </table>`;
@@ -182,7 +192,7 @@ function detailsBlock(opts: {
   const row = (label: string, valueHtml: string) => `
       <tr>
         <td style="padding:10px 0;border-top:1px solid ${CARD_BORDER};vertical-align:top;width:120px;">
-          <span style="color:${FAINT};font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;">${label}</span>
+          <span style="color:${FAINT};font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;">${label}</span>
         </td>
         <td style="padding:10px 0;border-top:1px solid ${CARD_BORDER};vertical-align:top;">
           ${valueHtml}
@@ -193,20 +203,20 @@ function detailsBlock(opts: {
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:4px;">
       <tr>
         <td colspan="2" style="padding-bottom:10px;">
-          <div style="color:${INK};font-size:15px;font-weight:700;">${escapeHtml(businessName)}</div>
+          <div style="color:${INK};font-size:17px;font-weight:700;">${escapeHtml(businessName)}</div>
         </td>
       </tr>
-      ${row('Adresse', `<a href="${mapsHref(address)}" style="color:${BLUE};font-size:13px;text-decoration:none;line-height:1.5;">${escapeHtml(address)} ↗</a>`)}
-      ${row('Téléphone', `<a href="${telHref(phone)}" style="color:${BLUE};font-size:13px;text-decoration:none;">${escapeHtml(phone)}</a>`)}
-      ${services ? row('Prestations', `<span style="color:${MUTED};font-size:13px;line-height:1.5;">${escapeHtml(services)}</span>`) : ''}
-      ${paymentMethods ? row('Paiement', `<span style="color:${MUTED};font-size:13px;line-height:1.5;">${escapeHtml(paymentMethods)}</span>`) : ''}
+      ${row('Adresse', `<a href="${mapsHref(address)}" style="color:${BLUE};font-size:15px;text-decoration:none;line-height:1.5;">${escapeHtml(address)} ↗</a>`)}
+      ${row('Téléphone', `<a href="${telHref(phone)}" style="color:${BLUE};font-size:15px;text-decoration:none;">${escapeHtml(phone)}</a>`)}
+      ${services ? row('Prestations', `<span style="color:${MUTED};font-size:15px;line-height:1.5;">${escapeHtml(services)}</span>`) : ''}
+      ${paymentMethods ? row('Paiement', `<span style="color:${MUTED};font-size:15px;line-height:1.5;">${escapeHtml(paymentMethods)}</span>`) : ''}
     </table>
     ${instructions ? `
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:16px;">
       <tr>
         <td style="padding:14px 16px;background:${AMBER_SOFT};border:1px solid ${AMBER_BORDER};border-radius:10px;">
-          <div style="color:${AMBER};font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:4px;">À savoir avant votre RDV</div>
-          <div style="color:${INK};font-size:13px;line-height:1.6;">${escapeHtml(instructions)}</div>
+          <div style="color:${AMBER};font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:4px;">À savoir avant votre RDV</div>
+          <div style="color:${INK};font-size:15px;line-height:1.6;">${escapeHtml(instructions)}</div>
         </td>
       </tr>
     </table>` : ''}`;
@@ -217,7 +227,7 @@ function calendarNoticeBlock(): string {
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:16px;">
       <tr>
         <td style="padding:12px 16px;background:${PAGE_BG};border-radius:10px;text-align:center;">
-          <span style="color:${MUTED};font-size:12px;">Un fichier <strong style="color:${INK};">.ics</strong> est joint à cet email — ouvrez-le pour l'ajouter à votre agenda.</span>
+          <span style="color:${MUTED};font-size:13px;">Un fichier <strong style="color:${INK};">.ics</strong> est joint à cet email — ouvrez-le pour l'ajouter à votre agenda.</span>
         </td>
       </tr>
     </table>`;
@@ -242,10 +252,10 @@ function manageLinksBlock(manageToken: string | undefined, context: string): str
         <td align="center">
           <table role="presentation" cellpadding="0" cellspacing="0"><tr>
             <td class="velona-btn-cell" style="padding:0 5px;">
-              <a href="${rescheduleUrl}" class="velona-btn" style="display:inline-block;padding:12px 20px;border-radius:10px;background:${INK};color:#FFFFFF;font-size:13px;font-weight:700;text-decoration:none;">Modifier mon rendez-vous</a>
+              <a href="${rescheduleUrl}" class="velona-btn" style="display:inline-block;padding:12px 20px;border-radius:10px;background:${INK};color:#FFFFFF;font-size:15px;font-weight:700;text-decoration:none;">Modifier mon rendez-vous</a>
             </td>
             <td class="velona-btn-cell" style="padding:0 5px;">
-              <a href="${cancelUrl}" class="velona-btn" style="display:inline-block;padding:12px 20px;border-radius:10px;background:${RED_SOFT};border:1px solid ${RED_BORDER};color:${RED};font-size:13px;font-weight:700;text-decoration:none;">Annuler mon rendez-vous</a>
+              <a href="${cancelUrl}" class="velona-btn" style="display:inline-block;padding:12px 20px;border-radius:10px;background:${RED_SOFT};border:1px solid ${RED_BORDER};color:${RED};font-size:15px;font-weight:700;text-decoration:none;">Annuler mon rendez-vous</a>
             </td>
           </tr></table>
         </td>
@@ -343,12 +353,12 @@ export async function sendBookingConfirmationToClient(data: BookingEmailData): P
     accent: EMERALD,
     kicker: 'Rendez-vous confirmé',
     bodyHtml: `
-      <p style="margin:0 0 4px;color:${INK};font-size:15px;font-weight:700;">Bonjour ${escapeHtml(data.clientName)},</p>
-      <p style="margin:0 0 22px;color:${MUTED};font-size:14px;line-height:1.6;">Votre rendez-vous avec <strong style="color:${INK};">${escapeHtml(data.businessName)}</strong> est confirmé. Voici tout ce qu'il vous faut pour vous y rendre :</p>
+      <p style="margin:0 0 4px;color:${INK};font-size:17px;font-weight:700;">Bonjour ${escapeHtml(data.clientName)},</p>
+      <p style="margin:0 0 22px;color:${MUTED};font-size:16px;line-height:1.6;">Votre rendez-vous avec <strong style="color:${INK};">${escapeHtml(data.businessName)}</strong> est confirmé. Voici tout ce qu'il vous faut pour vous y rendre :</p>
 
       ${heroBlock({ eyebrow: 'Votre rendez-vous', dateLabel, hourLabel, duration: data.slotDuration, accent: EMERALD, soft: EMERALD_SOFT, border: EMERALD_BORDER })}
 
-      ${data.serviceNote ? `<p style="margin:0 0 20px;color:${MUTED};font-size:13px;line-height:1.6;"><strong style="color:${INK};">Votre demande :</strong> ${escapeHtml(data.serviceNote)}</p>` : ''}
+      ${data.serviceNote ? `<p style="margin:0 0 20px;color:${MUTED};font-size:15px;line-height:1.6;"><strong style="color:${INK};">Votre demande :</strong> ${escapeHtml(data.serviceNote)}</p>` : ''}
 
       ${detailsBlock({ businessName: data.businessName, address, phone, services: data.businessServices, instructions: data.businessInstructions, paymentMethods: data.businessPaymentMethods })}
 
@@ -411,32 +421,32 @@ export async function sendBookingNotificationToPro(data: BookingEmailData): Prom
     accent: EMERALD,
     kicker: 'Nouveau rendez-vous',
     bodyHtml: `
-      <p style="margin:0 0 22px;color:${MUTED};font-size:14px;line-height:1.6;"><strong style="color:${INK};">${escapeHtml(data.clientName)}</strong> vient de réserver un créneau.</p>
+      <p style="margin:0 0 22px;color:${MUTED};font-size:16px;line-height:1.6;"><strong style="color:${INK};">${escapeHtml(data.clientName)}</strong> vient de réserver un créneau.</p>
 
       ${heroBlock({ eyebrow: 'Créneau réservé', dateLabel, hourLabel, duration: data.slotDuration, accent: EMERALD, soft: EMERALD_SOFT, border: EMERALD_BORDER })}
 
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
         <tr>
-          <td style="padding-bottom:8px;"><span style="color:${INK};font-size:15px;font-weight:700;">Coordonnées du client</span></td>
+          <td style="padding-bottom:8px;"><span style="color:${INK};font-size:17px;font-weight:700;">Coordonnées du client</span></td>
         </tr>
         <tr>
-          <td style="padding:8px 0;border-top:1px solid ${CARD_BORDER};width:100px;"><span style="color:${FAINT};font-size:11px;font-weight:700;text-transform:uppercase;">Nom</span></td>
+          <td style="padding:8px 0;border-top:1px solid ${CARD_BORDER};width:100px;"><span style="color:${FAINT};font-size:12px;font-weight:700;text-transform:uppercase;">Nom</span></td>
         </tr>
-        <tr><td style="padding:0 0 8px;"><span style="color:${INK};font-size:14px;font-weight:600;">${escapeHtml(data.clientName)}</span></td></tr>
+        <tr><td style="padding:0 0 8px;"><span style="color:${INK};font-size:16px;font-weight:600;">${escapeHtml(data.clientName)}</span></td></tr>
         <tr>
-          <td style="padding:8px 0;border-top:1px solid ${CARD_BORDER};"><span style="color:${FAINT};font-size:11px;font-weight:700;text-transform:uppercase;">Email</span></td>
+          <td style="padding:8px 0;border-top:1px solid ${CARD_BORDER};"><span style="color:${FAINT};font-size:12px;font-weight:700;text-transform:uppercase;">Email</span></td>
         </tr>
-        <tr><td style="padding:0 0 8px;"><a href="mailto:${escapeHtml(data.clientEmail)}" style="color:${BLUE};font-size:14px;text-decoration:none;">${escapeHtml(data.clientEmail)}</a></td></tr>
+        <tr><td style="padding:0 0 8px;"><a href="mailto:${escapeHtml(data.clientEmail)}" style="color:${BLUE};font-size:16px;text-decoration:none;">${escapeHtml(data.clientEmail)}</a></td></tr>
         ${data.clientPhone ? `
         <tr>
-          <td style="padding:8px 0;border-top:1px solid ${CARD_BORDER};"><span style="color:${FAINT};font-size:11px;font-weight:700;text-transform:uppercase;">Téléphone</span></td>
+          <td style="padding:8px 0;border-top:1px solid ${CARD_BORDER};"><span style="color:${FAINT};font-size:12px;font-weight:700;text-transform:uppercase;">Téléphone</span></td>
         </tr>
-        <tr><td style="padding:0 0 8px;"><a href="${telHref(data.clientPhone)}" style="color:${BLUE};font-size:14px;text-decoration:none;">${escapeHtml(data.clientPhone)}</a></td></tr>` : ''}
+        <tr><td style="padding:0 0 8px;"><a href="${telHref(data.clientPhone)}" style="color:${BLUE};font-size:16px;text-decoration:none;">${escapeHtml(data.clientPhone)}</a></td></tr>` : ''}
         ${data.serviceNote ? `
         <tr>
-          <td style="padding:8px 0;border-top:1px solid ${CARD_BORDER};"><span style="color:${FAINT};font-size:11px;font-weight:700;text-transform:uppercase;">Motif</span></td>
+          <td style="padding:8px 0;border-top:1px solid ${CARD_BORDER};"><span style="color:${FAINT};font-size:12px;font-weight:700;text-transform:uppercase;">Motif</span></td>
         </tr>
-        <tr><td style="padding:0;"><span style="color:${INK};font-size:14px;line-height:1.5;">${escapeHtml(data.serviceNote)}</span></td></tr>` : ''}
+        <tr><td style="padding:0;"><span style="color:${INK};font-size:16px;line-height:1.5;">${escapeHtml(data.serviceNote)}</span></td></tr>` : ''}
       </table>
 
       ${ics ? calendarNoticeBlock() : ''}
@@ -482,24 +492,24 @@ export async function sendBookingCancellationToClient(data: BookingEmailData): P
     accent: '#3F3F46',
     kicker: 'Rendez-vous annulé',
     bodyHtml: `
-      <p style="margin:0 0 4px;color:${INK};font-size:15px;font-weight:700;">Bonjour ${escapeHtml(data.clientName)},</p>
-      <p style="margin:0 0 22px;color:${MUTED};font-size:14px;line-height:1.6;">Votre rendez-vous avec <strong style="color:${INK};">${escapeHtml(data.businessName)}</strong> a été annulé.</p>
+      <p style="margin:0 0 4px;color:${INK};font-size:17px;font-weight:700;">Bonjour ${escapeHtml(data.clientName)},</p>
+      <p style="margin:0 0 22px;color:${MUTED};font-size:16px;line-height:1.6;">Votre rendez-vous avec <strong style="color:${INK};">${escapeHtml(data.businessName)}</strong> a été annulé.</p>
 
       ${heroBlock({ eyebrow: 'Rendez-vous annulé', dateLabel, hourLabel, accent: RED, soft: RED_SOFT, border: RED_BORDER, strike: true })}
 
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:4px;">
-        <tr><td colspan="2" style="padding-bottom:10px;"><div style="color:${INK};font-size:15px;font-weight:700;">${escapeHtml(data.businessName)}</div></td></tr>
+        <tr><td colspan="2" style="padding-bottom:10px;"><div style="color:${INK};font-size:17px;font-weight:700;">${escapeHtml(data.businessName)}</div></td></tr>
         <tr>
-          <td style="padding:10px 0;border-top:1px solid ${CARD_BORDER};vertical-align:top;width:100px;"><span style="color:${FAINT};font-size:11px;font-weight:700;text-transform:uppercase;">Adresse</span></td>
-          <td style="padding:10px 0;border-top:1px solid ${CARD_BORDER};vertical-align:top;"><a href="${mapsHref(address)}" style="color:${BLUE};font-size:13px;text-decoration:none;">${escapeHtml(address)} ↗</a></td>
+          <td style="padding:10px 0;border-top:1px solid ${CARD_BORDER};vertical-align:top;width:100px;"><span style="color:${FAINT};font-size:12px;font-weight:700;text-transform:uppercase;">Adresse</span></td>
+          <td style="padding:10px 0;border-top:1px solid ${CARD_BORDER};vertical-align:top;"><a href="${mapsHref(address)}" style="color:${BLUE};font-size:15px;text-decoration:none;">${escapeHtml(address)} ↗</a></td>
         </tr>
         <tr>
-          <td style="padding:10px 0;border-top:1px solid ${CARD_BORDER};vertical-align:top;"><span style="color:${FAINT};font-size:11px;font-weight:700;text-transform:uppercase;">Téléphone</span></td>
-          <td style="padding:10px 0;border-top:1px solid ${CARD_BORDER};vertical-align:top;"><a href="${telHref(phone)}" style="color:${BLUE};font-size:13px;text-decoration:none;">${escapeHtml(phone)}</a></td>
+          <td style="padding:10px 0;border-top:1px solid ${CARD_BORDER};vertical-align:top;"><span style="color:${FAINT};font-size:12px;font-weight:700;text-transform:uppercase;">Téléphone</span></td>
+          <td style="padding:10px 0;border-top:1px solid ${CARD_BORDER};vertical-align:top;"><a href="${telHref(phone)}" style="color:${BLUE};font-size:15px;text-decoration:none;">${escapeHtml(phone)}</a></td>
         </tr>
       </table>
 
-      <p style="margin:20px 0 0;color:${MUTED};font-size:13px;line-height:1.6;">Vous pouvez reprendre un nouveau créneau à tout moment sur leur page de réservation en ligne.</p>
+      <p style="margin:20px 0 0;color:${MUTED};font-size:15px;line-height:1.6;">Vous pouvez reprendre un nouveau créneau à tout moment sur leur page de réservation en ligne.</p>
     `,
     footerNote: `Notification automatique envoyée suite à l'annulation de votre rendez-vous avec ${escapeHtml(data.businessName)}.`,
   });
@@ -546,28 +556,28 @@ export async function sendBookingCancellationToPro(data: BookingEmailData): Prom
     accent: '#3F3F46',
     kicker: 'Rendez-vous annulé',
     bodyHtml: `
-      <p style="margin:0 0 22px;color:${MUTED};font-size:14px;line-height:1.6;"><strong style="color:${INK};">${escapeHtml(data.clientName)}</strong> a annulé son rendez-vous.</p>
+      <p style="margin:0 0 22px;color:${MUTED};font-size:16px;line-height:1.6;"><strong style="color:${INK};">${escapeHtml(data.clientName)}</strong> a annulé son rendez-vous.</p>
 
       ${heroBlock({ eyebrow: 'Créneau libéré', dateLabel, hourLabel, accent: RED, soft: RED_SOFT, border: RED_BORDER, strike: true })}
 
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-        <tr><td colspan="2" style="padding-bottom:8px;"><span style="color:${INK};font-size:15px;font-weight:700;">Client</span></td></tr>
+        <tr><td colspan="2" style="padding-bottom:8px;"><span style="color:${INK};font-size:17px;font-weight:700;">Client</span></td></tr>
         <tr>
-          <td style="padding:8px 0;border-top:1px solid ${CARD_BORDER};width:100px;"><span style="color:${FAINT};font-size:11px;font-weight:700;text-transform:uppercase;">Nom</span></td>
-          <td style="padding:8px 0;border-top:1px solid ${CARD_BORDER};"><span style="color:${INK};font-size:14px;font-weight:600;">${escapeHtml(data.clientName)}</span></td>
+          <td style="padding:8px 0;border-top:1px solid ${CARD_BORDER};width:100px;"><span style="color:${FAINT};font-size:12px;font-weight:700;text-transform:uppercase;">Nom</span></td>
+          <td style="padding:8px 0;border-top:1px solid ${CARD_BORDER};"><span style="color:${INK};font-size:16px;font-weight:600;">${escapeHtml(data.clientName)}</span></td>
         </tr>
         <tr>
-          <td style="padding:8px 0;border-top:1px solid ${CARD_BORDER};"><span style="color:${FAINT};font-size:11px;font-weight:700;text-transform:uppercase;">Email</span></td>
-          <td style="padding:8px 0;border-top:1px solid ${CARD_BORDER};"><a href="mailto:${escapeHtml(data.clientEmail)}" style="color:${BLUE};font-size:14px;text-decoration:none;">${escapeHtml(data.clientEmail)}</a></td>
+          <td style="padding:8px 0;border-top:1px solid ${CARD_BORDER};"><span style="color:${FAINT};font-size:12px;font-weight:700;text-transform:uppercase;">Email</span></td>
+          <td style="padding:8px 0;border-top:1px solid ${CARD_BORDER};"><a href="mailto:${escapeHtml(data.clientEmail)}" style="color:${BLUE};font-size:16px;text-decoration:none;">${escapeHtml(data.clientEmail)}</a></td>
         </tr>
         ${data.clientPhone ? `
         <tr>
-          <td style="padding:8px 0;border-top:1px solid ${CARD_BORDER};"><span style="color:${FAINT};font-size:11px;font-weight:700;text-transform:uppercase;">Téléphone</span></td>
-          <td style="padding:8px 0;border-top:1px solid ${CARD_BORDER};"><a href="${telHref(data.clientPhone)}" style="color:${BLUE};font-size:14px;text-decoration:none;">${escapeHtml(data.clientPhone)}</a></td>
+          <td style="padding:8px 0;border-top:1px solid ${CARD_BORDER};"><span style="color:${FAINT};font-size:12px;font-weight:700;text-transform:uppercase;">Téléphone</span></td>
+          <td style="padding:8px 0;border-top:1px solid ${CARD_BORDER};"><a href="${telHref(data.clientPhone)}" style="color:${BLUE};font-size:16px;text-decoration:none;">${escapeHtml(data.clientPhone)}</a></td>
         </tr>` : ''}
       </table>
 
-      <p style="margin:20px 0 0;color:${MUTED};font-size:13px;">Ce créneau est de nouveau disponible sur votre page de réservation.</p>
+      <p style="margin:20px 0 0;color:${MUTED};font-size:15px;">Ce créneau est de nouveau disponible sur votre page de réservation.</p>
     `,
     footerNote: `Notification automatique de votre système de réservation ${escapeHtml(data.businessName)}.`,
   });
@@ -614,13 +624,13 @@ export async function sendBookingRescheduledToClient(data: BookingEmailData): Pr
     accent: BLUE,
     kicker: 'Rendez-vous déplacé',
     bodyHtml: `
-      <p style="margin:0 0 4px;color:${INK};font-size:15px;font-weight:700;">Bonjour ${escapeHtml(data.clientName)},</p>
-      <p style="margin:0 0 22px;color:${MUTED};font-size:14px;line-height:1.6;">Votre rendez-vous avec <strong style="color:${INK};">${escapeHtml(data.businessName)}</strong> a été reprogrammé. Voici les nouvelles informations :</p>
+      <p style="margin:0 0 4px;color:${INK};font-size:17px;font-weight:700;">Bonjour ${escapeHtml(data.clientName)},</p>
+      <p style="margin:0 0 22px;color:${MUTED};font-size:16px;line-height:1.6;">Votre rendez-vous avec <strong style="color:${INK};">${escapeHtml(data.businessName)}</strong> a été reprogrammé. Voici les nouvelles informations :</p>
 
       ${hasPrevious ? heroBlock({ eyebrow: 'Ancien créneau', dateLabel: previousDateLabel, hourLabel: previousHourLabel, accent: FAINT, soft: '#FAFAFA', border: CARD_BORDER, strike: true }) : ''}
       ${heroBlock({ eyebrow: 'Nouveau créneau', dateLabel, hourLabel, duration: data.slotDuration, accent: BLUE, soft: BLUE_SOFT, border: BLUE_BORDER })}
 
-      ${data.serviceNote ? `<p style="margin:0 0 20px;color:${MUTED};font-size:13px;line-height:1.6;"><strong style="color:${INK};">Votre demande :</strong> ${escapeHtml(data.serviceNote)}</p>` : ''}
+      ${data.serviceNote ? `<p style="margin:0 0 20px;color:${MUTED};font-size:15px;line-height:1.6;"><strong style="color:${INK};">Votre demande :</strong> ${escapeHtml(data.serviceNote)}</p>` : ''}
 
       ${detailsBlock({ businessName: data.businessName, address, phone, services: data.businessServices, instructions: data.businessInstructions, paymentMethods: data.businessPaymentMethods })}
 
@@ -684,25 +694,25 @@ export async function sendBookingRescheduledToPro(data: BookingEmailData): Promi
     accent: BLUE,
     kicker: 'Rendez-vous déplacé',
     bodyHtml: `
-      <p style="margin:0 0 22px;color:${MUTED};font-size:14px;line-height:1.6;"><strong style="color:${INK};">${escapeHtml(data.clientName)}</strong> a changé de créneau.</p>
+      <p style="margin:0 0 22px;color:${MUTED};font-size:16px;line-height:1.6;"><strong style="color:${INK};">${escapeHtml(data.clientName)}</strong> a changé de créneau.</p>
 
       ${hasPrevious ? heroBlock({ eyebrow: 'Ancien créneau', dateLabel: previousDateLabel, hourLabel: previousHourLabel, accent: FAINT, soft: '#FAFAFA', border: CARD_BORDER, strike: true }) : ''}
       ${heroBlock({ eyebrow: 'Nouveau créneau', dateLabel, hourLabel, duration: data.slotDuration, accent: BLUE, soft: BLUE_SOFT, border: BLUE_BORDER })}
 
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-        <tr><td colspan="2" style="padding-bottom:8px;"><span style="color:${INK};font-size:15px;font-weight:700;">Client</span></td></tr>
+        <tr><td colspan="2" style="padding-bottom:8px;"><span style="color:${INK};font-size:17px;font-weight:700;">Client</span></td></tr>
         <tr>
-          <td style="padding:8px 0;border-top:1px solid ${CARD_BORDER};width:100px;"><span style="color:${FAINT};font-size:11px;font-weight:700;text-transform:uppercase;">Nom</span></td>
-          <td style="padding:8px 0;border-top:1px solid ${CARD_BORDER};"><span style="color:${INK};font-size:14px;font-weight:600;">${escapeHtml(data.clientName)}</span></td>
+          <td style="padding:8px 0;border-top:1px solid ${CARD_BORDER};width:100px;"><span style="color:${FAINT};font-size:12px;font-weight:700;text-transform:uppercase;">Nom</span></td>
+          <td style="padding:8px 0;border-top:1px solid ${CARD_BORDER};"><span style="color:${INK};font-size:16px;font-weight:600;">${escapeHtml(data.clientName)}</span></td>
         </tr>
         <tr>
-          <td style="padding:8px 0;border-top:1px solid ${CARD_BORDER};"><span style="color:${FAINT};font-size:11px;font-weight:700;text-transform:uppercase;">Email</span></td>
-          <td style="padding:8px 0;border-top:1px solid ${CARD_BORDER};"><a href="mailto:${escapeHtml(data.clientEmail)}" style="color:${BLUE};font-size:14px;text-decoration:none;">${escapeHtml(data.clientEmail)}</a></td>
+          <td style="padding:8px 0;border-top:1px solid ${CARD_BORDER};"><span style="color:${FAINT};font-size:12px;font-weight:700;text-transform:uppercase;">Email</span></td>
+          <td style="padding:8px 0;border-top:1px solid ${CARD_BORDER};"><a href="mailto:${escapeHtml(data.clientEmail)}" style="color:${BLUE};font-size:16px;text-decoration:none;">${escapeHtml(data.clientEmail)}</a></td>
         </tr>
         ${data.clientPhone ? `
         <tr>
-          <td style="padding:8px 0;border-top:1px solid ${CARD_BORDER};"><span style="color:${FAINT};font-size:11px;font-weight:700;text-transform:uppercase;">Téléphone</span></td>
-          <td style="padding:8px 0;border-top:1px solid ${CARD_BORDER};"><a href="${telHref(data.clientPhone)}" style="color:${BLUE};font-size:14px;text-decoration:none;">${escapeHtml(data.clientPhone)}</a></td>
+          <td style="padding:8px 0;border-top:1px solid ${CARD_BORDER};"><span style="color:${FAINT};font-size:12px;font-weight:700;text-transform:uppercase;">Téléphone</span></td>
+          <td style="padding:8px 0;border-top:1px solid ${CARD_BORDER};"><a href="${telHref(data.clientPhone)}" style="color:${BLUE};font-size:16px;text-decoration:none;">${escapeHtml(data.clientPhone)}</a></td>
         </tr>` : ''}
       </table>
 
