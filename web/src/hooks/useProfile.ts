@@ -31,6 +31,11 @@ export function useProfile() {
         { headers: { Authorization: `Bearer ${session.access_token}` } }
       );
       if (res.ok) setProfile(await res.json());
+    } catch (err) {
+      // The backend (NEXT_PUBLIC_API_URL) can be down or unreachable —
+      // that shouldn't take the whole dashboard down with it, just leave
+      // profile as null and let callers fall back gracefully.
+      console.error('[useProfile] échec du fetch profil (backend indisponible ?)', err);
     } finally {
       setLoading(false);
     }

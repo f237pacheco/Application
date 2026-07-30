@@ -108,7 +108,16 @@ function TimeSelect({ value, onChange, disabled, accent = '#10B981' }: {
       if (listRef.current?.contains(e.target as Node)) return
       setOpen(false)
     }
-    const onScrollOrResize = () => setOpen(false)
+    // Capture phase, deliberately: the page scrolling underneath a fixed-
+    // position dropdown should close it. But scroll events don't bubble, and
+    // the dropdown's OWN internal list also scrolls itself to the selected
+    // time on open (see the effect below) — without excluding events whose
+    // target is that same list, that self-scroll closed the dropdown the
+    // instant it opened, making the whole picker look completely dead.
+    const onScrollOrResize = (e: Event) => {
+      if (listRef.current && e.target instanceof Node && listRef.current.contains(e.target)) return
+      setOpen(false)
+    }
     document.addEventListener('mousedown', onClickOutside)
     window.addEventListener('scroll', onScrollOrResize, true)
     window.addEventListener('resize', onScrollOrResize)
