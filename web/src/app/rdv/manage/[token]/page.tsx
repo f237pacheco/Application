@@ -221,34 +221,46 @@ export default function ManageBookingPage() {
   }, [availableDates, data])
 
   const handlePickTime = useCallback((time: string) => {
+    console.log(`[rdv/manage][reschedule] créneau sélectionné dans la liste -> time="${time}", date sélectionnée="${selectedDate}" -> ouverture de la modale de confirmation`)
     setSelectedTime(time)
     setRescheduleError('')
     setShowSlotModal(true)
-  }, [])
+  }, [selectedDate])
 
   const handleConfirmReschedule = async () => {
-    if (!selectedDate || !selectedTime) return
+    console.log(`[rdv/manage][reschedule] clic sur "Confirmer" -> selectedDate="${selectedDate}" selectedTime="${selectedTime}"`)
+    if (!selectedDate || !selectedTime) {
+      console.warn('[rdv/manage][reschedule] ANNULÉ : date ou heure manquante au moment du clic — aucun appel réseau ne sera fait. Ceci ne devrait jamais arriver si un créneau a bien été sélectionné avant.')
+      setRescheduleError('Veuillez resélectionner un créneau.')
+      return
+    }
     setRescheduling(true)
     setRescheduleError('')
     try {
+      console.log(`[rdv/manage][reschedule] appel POST /api/bookings/manage/reschedule — body: { token: "${token}", date: "${selectedDate}", time: "${selectedTime}" }`)
       const res = await fetch('/api/bookings/manage/reschedule', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token, date: selectedDate, time: selectedTime }),
       })
+      console.log(`[rdv/manage][reschedule] réponse HTTP reçue: status=${res.status} ok=${res.ok}`)
       const json = await res.json() as { success?: boolean; date?: string; time?: string; error?: string }
+      console.log('[rdv/manage][reschedule] corps de la réponse:', json)
       if (!res.ok || !json.success) {
+        console.warn(`[rdv/manage][reschedule] échec — affichage de l'erreur: "${json.error ?? "Ce créneau n'est plus disponible."}"`)
         setShowSlotModal(false)
         setRescheduleError(json.error ?? "Ce créneau n'est plus disponible.")
         setRescheduling(false)
         return
       }
+      console.log(`[rdv/manage][reschedule] succès -> passage à l'écran de confirmation (date=${json.date ?? selectedDate}, time=${json.time ?? selectedTime})`)
       setShowSlotModal(false)
       setConfirmedAt({ date: json.date ?? selectedDate, time: json.time ?? selectedTime })
       setView('reschedule-done')
       setConfettiFired(true)
       setTimeout(() => setConfettiFired(false), 1500)
-    } catch {
+    } catch (err) {
+      console.error('[rdv/manage][reschedule] EXCEPTION pendant l\'appel réseau (fetch a levé une erreur au lieu de répondre) :', err)
       setShowSlotModal(false)
       setRescheduleError('Erreur réseau, veuillez réessayer.')
       setRescheduling(false)
@@ -256,23 +268,30 @@ export default function ManageBookingPage() {
   }
 
   const handleConfirmCancel = async () => {
+    console.log(`[rdv/manage][cancel] clic sur "Oui, annuler" -> token="${token}"`)
     setCancelling(true)
     setCancelError('')
     try {
+      console.log(`[rdv/manage][cancel] appel POST /api/bookings/manage/cancel`)
       const res = await fetch('/api/bookings/manage/cancel', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token }),
       })
+      console.log(`[rdv/manage][cancel] réponse HTTP reçue: status=${res.status} ok=${res.ok}`)
       const json = await res.json() as { success?: boolean; error?: string }
+      console.log('[rdv/manage][cancel] corps de la réponse:', json)
       if (!res.ok || !json.success) {
+        console.warn(`[rdv/manage][cancel] échec — affichage de l'erreur: "${json.error ?? "Impossible d'annuler ce rendez-vous."}"`)
         setCancelError(json.error ?? "Impossible d'annuler ce rendez-vous.")
         setCancelling(false)
         return
       }
+      console.log('[rdv/manage][cancel] succès -> passage à l\'écran de confirmation d\'annulation')
       setShowCancelModal(false)
       setView('cancel-done')
-    } catch {
+    } catch (err) {
+      console.error('[rdv/manage][cancel] EXCEPTION pendant l\'appel réseau (fetch a levé une erreur au lieu de répondre) :', err)
       setCancelError('Erreur réseau, veuillez réessayer.')
       setCancelling(false)
     }
