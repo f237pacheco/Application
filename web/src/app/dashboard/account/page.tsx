@@ -10,7 +10,7 @@ import { useUsage } from '@/hooks/useUsage';
 import { locales, localeNames, localeFlags, isRtl, type Locale } from '@/lib/i18n/config';
 import i18n from '@/lib/i18n/client';
 import { createClient } from '@/lib/supabase/client';
-import { cropSquareImage, extensionForMimeType } from '@/lib/image';
+import { cropSquareImage, compressImage, extensionForMimeType } from '@/lib/image';
 
 /* ── Constants ──────────────────────────────────────────────────────────────── */
 
@@ -35,6 +35,8 @@ interface AccountPhoto {
   id: string;
   url: string;
   path: string;
+  full_url: string | null;
+  full_path: string | null;
   position: number;
 }
 
@@ -76,66 +78,6 @@ function NotifIcon({ type, size = 15 }: { type: NotifIconType; size?: number }) 
     <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
       <path d={paths[type]} />
     </svg>
-  );
-}
-
-/* ── Profile completion ring — replaces the old no-op "Modifier le profil"
-   button with something that's actually informative and actionable: an
-   animated ring showing how complete the profile is, that scrolls straight
-   to the section most likely to still need attention (bio/gallery). ────── */
-
-function ProfileCompletionRing({ percent, onClick }: { percent: number; onClick: () => void }) {
-  const complete = percent >= 100;
-  const size = 52;
-  const stroke = 4;
-  const radius = (size - stroke) / 2;
-  const circumference = 2 * Math.PI * radius;
-
-  return (
-    <motion.button
-      onClick={onClick}
-      whileHover={{ scale: 1.03 }}
-      whileTap={{ scale: 0.97 }}
-      className="flex items-center gap-3 pl-2 pr-4 py-2 rounded-xl shrink-0"
-      style={{
-        border: `1px solid ${complete ? 'rgba(52,211,153,0.35)' : 'rgba(108,92,231,0.35)'}`,
-        background: complete ? 'rgba(52,211,153,0.08)' : 'rgba(108,92,231,0.08)',
-      }}
-    >
-      <div className="relative shrink-0" style={{ width: size, height: size }}>
-        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="-rotate-90">
-          <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={stroke} />
-          <motion.circle
-            cx={size / 2}
-            cy={size / 2}
-            r={radius}
-            fill="none"
-            stroke={complete ? '#34d399' : '#a78bfa'}
-            strokeWidth={stroke}
-            strokeLinecap="round"
-            strokeDasharray={circumference}
-            initial={{ strokeDashoffset: circumference }}
-            animate={{ strokeDashoffset: circumference * (1 - percent / 100) }}
-            transition={{ duration: 0.8, ease: 'easeOut' }}
-          />
-        </svg>
-        <div className="absolute inset-0 flex items-center justify-center">
-          {complete ? (
-            <motion.svg initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 400, damping: 15 }} width="18" height="18" viewBox="0 0 24 24" fill="none">
-              <path d="M20 6L9 17l-5-5" stroke="#34d399" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-            </motion.svg>
-          ) : (
-            <span className="text-[11px] font-bold text-white">{percent}%</span>
-          )}
-        </div>
-      </div>
-      <div className="text-left">
-        <p className="text-xs font-bold" style={{ color: complete ? '#34d399' : '#a78bfa' }}>
-          {complete ? 'Profil complet' : 'Profil incomplet'}
-        </p>
-        <p className="text-[10px] text-gray-500">{complete ? 'Bravo, tout est renseigné' : 'Cliquez pour compléter'}</p>
-      </div>
-    </motion.button>
   );
 }
 
@@ -310,15 +252,6 @@ export default function AccountPage() {
   useEffect(() => { setPortalMounted(true); }, []);
 
   /* Derived data */
-  const profileChecklist = [
-    !!(profile?.first_name),
-    !!avatarPhoto,
-    bio.trim().length > 0,
-    photos.length > 0,
-    profile?.account_type === 'individual' || !!profile?.company_name,
-  ];
-  const profileCompletion = Math.round((profileChecklist.filter(Boolean).length / profileChecklist.length) * 100);
-
   const activePlanKey = subscription?.plan_key ?? profile?.plan_key ?? null;
   const planInfo = PLAN_LABELS[activePlanKey as string] ?? FREE_PLAN;
   const hasPlan = !!(activePlanKey && subscription);
@@ -408,7 +341,7 @@ export default function AccountPage() {
       const supabase = createClient();
       const { data, error } = await supabase
         .from('account_photos')
-        .select('id, url, path, position')
+        .select('id, url, path, full_url, full_path, position')
         .eq('user_id', user.id)
         .order('position', { ascending: true });
       if (error) { console.error('[account] échec du chargement de la galerie', error); setPhotosLoaded(true); return; }
@@ -454,7 +387,10 @@ export default function AccountPage() {
     }, 600);
   };
 
-  /* ── Gallery: upload (crop to square, compress, store, insert row) ──────── */
+  /* ── Gallery: upload — a 640x640 square crop for the grid thumbnail, plus
+     an uncropped, higher-resolution copy (long edge capped at 1920px) for
+     the lightbox, so opening a photo full-screen doesn't just blow up the
+     same small cropped thumbnail. ──────────────────────────────────────── */
   const uploadOnePhoto = async (file: File, position: number) => {
     if (!user?.id) return;
     if (!ACCEPTED_GALLERY_TYPES.includes(file.type)) {
@@ -476,24 +412,40 @@ export default function AccountPage() {
       setUploadingPhotos((prev) => prev.map((u) => (u.id === uploadId ? { ...u, progress } : u)));
 
     try {
-      const cropped = await cropSquareImage(file, 640, 0.9);
-      setProgress(45);
+      const [cropped, full] = await Promise.all([
+        cropSquareImage(file, 640, 0.9),
+        compressImage(file, 1920, 0.9),
+      ]);
+      setProgress(35);
 
       const ext = extensionForMimeType(cropped.type || file.type);
-      const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
+      const fullExt = extensionForMimeType(full.type || file.type);
+      const baseId = crypto.randomUUID();
+      const path = `${user.id}/${baseId}.${ext}`;
+      const fullPath = `${user.id}/${baseId}-full.${fullExt}`;
       const supabase = createClient();
 
-      const { error: uploadError } = await supabase.storage
-        .from('account-gallery')
-        .upload(path, cropped, { contentType: cropped.type || file.type });
+      const [{ error: uploadError }, { error: fullUploadError }] = await Promise.all([
+        supabase.storage.from('account-gallery').upload(path, cropped, { contentType: cropped.type || file.type }),
+        supabase.storage.from('account-gallery').upload(fullPath, full, { contentType: full.type || file.type }),
+      ]);
       if (uploadError) throw uploadError;
+      if (fullUploadError) throw fullUploadError;
       setProgress(80);
 
       const { data: publicUrlData } = supabase.storage.from('account-gallery').getPublicUrl(path);
+      const { data: fullPublicUrlData } = supabase.storage.from('account-gallery').getPublicUrl(fullPath);
       const { data: row, error: insertError } = await supabase
         .from('account_photos')
-        .insert({ user_id: user.id, url: publicUrlData.publicUrl, path, position })
-        .select('id, url, path, position')
+        .insert({
+          user_id: user.id,
+          url: publicUrlData.publicUrl,
+          path,
+          full_url: fullPublicUrlData.publicUrl,
+          full_path: fullPath,
+          position,
+        })
+        .select('id, url, path, full_url, full_path, position')
         .single();
       if (insertError) throw insertError;
 
@@ -537,8 +489,9 @@ export default function AccountPage() {
     setDeletingPhotoId(photo.id);
     setGalleryError('');
     const supabase = createClient();
+    const pathsToRemove = photo.full_path ? [photo.path, photo.full_path] : [photo.path];
     const [{ error: storageError }, { error: dbError }] = await Promise.all([
-      supabase.storage.from('account-gallery').remove([photo.path]),
+      supabase.storage.from('account-gallery').remove(pathsToRemove),
       supabase.from('account_photos').delete().eq('id', photo.id),
     ]);
     setDeletingPhotoId(null);
@@ -629,6 +582,7 @@ export default function AccountPage() {
 
   const handleLanguageChange = async (locale: Locale) => {
     await i18n.changeLanguage(locale);
+    setCurrentLang(locale);
     localStorage.setItem('velona_language', locale);
     document.documentElement.dir = isRtl(locale) ? 'rtl' : 'ltr';
     document.documentElement.lang = locale;
@@ -668,7 +622,9 @@ export default function AccountPage() {
             {/* Avatar column */}
             <div className="flex flex-col items-center gap-3 shrink-0">
               <div className="relative">
-                <div
+                <motion.div
+                  whileHover={{ scale: 1.04 }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 20 }}
                   className="w-24 h-24 rounded-full flex items-center justify-center text-3xl font-bold text-white overflow-hidden"
                   style={{ background: `linear-gradient(135deg, ${avatarColor}, ${avatarColor}cc)`, boxShadow: `0 0 28px ${avatarColor}55` }}
                 >
@@ -682,7 +638,7 @@ export default function AccountPage() {
                       <path d="M4 36c0-8.837 7.163-16 16-16s16 7.163 16 16" stroke="rgba(255,255,255,0.7)" strokeWidth="2.5" strokeLinecap="round"/>
                     </svg>
                   )}
-                </div>
+                </motion.div>
                 {avatarPhoto && (
                   <button
                     onClick={() => setAvatarPhoto(null)}
@@ -753,18 +709,13 @@ export default function AccountPage() {
                     )}
                   </div>
                 </div>
-
-                <ProfileCompletionRing
-                  percent={profileCompletion}
-                  onClick={() => document.getElementById('bio-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-                />
               </div>
             </div>
           </div>
         </SectionCard>
 
         {/* ── BIO ──────────────────────────────────────────────────────────── */}
-        <SectionCard id="bio-section">
+        <SectionCard>
           <div className="flex items-start justify-between gap-4 mb-6">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'rgba(108,92,231,0.18)', color: '#a78bfa' }}>
@@ -1347,59 +1298,84 @@ export default function AccountPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="fixed inset-0 z-[300] flex items-center justify-center p-6 sm:p-10"
-            style={{ background: 'rgba(5,5,8,0.88)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)' }}
+            transition={{ duration: 0.25, ease: 'easeOut' }}
+            className="fixed inset-0 z-[300] flex items-center justify-center p-4 sm:p-10"
+            style={{
+              background: 'radial-gradient(ellipse at center, rgba(20,18,30,0.94) 0%, rgba(5,5,8,0.97) 75%)',
+              backdropFilter: 'blur(16px)',
+              WebkitBackdropFilter: 'blur(16px)',
+            }}
             onClick={closeLightbox}
           >
-            <button
+            <motion.button
               onClick={(e) => { e.stopPropagation(); closeLightbox(); }}
+              whileHover={{ scale: 1.08, background: 'rgba(255,255,255,0.14)' }}
+              whileTap={{ scale: 0.92 }}
               className="absolute top-5 right-5 sm:top-7 sm:right-7 w-10 h-10 rounded-full flex items-center justify-center z-10"
               style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)' }}
               aria-label="Fermer"
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M18 6L6 18M6 6l12 12" stroke="#fff" strokeWidth="2" strokeLinecap="round"/></svg>
-            </button>
+            </motion.button>
 
             {photos.length > 1 && (
-              <button
+              <motion.button
                 onClick={(e) => { e.stopPropagation(); showPrevPhoto(); }}
+                whileHover={{ scale: 1.08, background: 'rgba(255,255,255,0.14)' }}
+                whileTap={{ scale: 0.92 }}
                 className="absolute left-3 sm:left-7 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full flex items-center justify-center z-10"
                 style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)' }}
                 aria-label="Photo précédente"
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="#fff" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round"/></svg>
-              </button>
+              </motion.button>
             )}
 
             <AnimatePresence mode="wait">
-              <motion.img
+              <motion.div
                 key={photos[lightboxIndex].id}
-                src={photos[lightboxIndex].url}
-                alt=""
                 onClick={(e) => e.stopPropagation()}
-                initial={{ opacity: 0, scale: 0.92 }}
+                initial={{ opacity: 0, scale: 0.94 }}
                 animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.96 }}
-                transition={{ duration: 0.22, ease: 'easeOut' }}
-                className="max-w-[min(90vw,640px)] max-h-[80vh] rounded-2xl object-contain"
-                style={{ boxShadow: '0 24px 80px rgba(0,0,0,0.6)' }}
-              />
+                exit={{ opacity: 0, scale: 0.97 }}
+                transition={{ duration: 0.25, ease: 'easeOut' }}
+                className="relative flex items-center justify-center"
+                style={{ width: 'min(92vw, 1400px)', height: '82vh' }}
+              >
+                {/* Blurred thumbnail fills the frame instantly while the
+                    full-resolution image (fetched separately, see the
+                    account-photos migration) decodes on top of it. */}
+                <img
+                  src={photos[lightboxIndex].url}
+                  alt=""
+                  aria-hidden
+                  className="absolute inset-0 w-full h-full object-contain rounded-2xl"
+                  style={{ filter: 'blur(24px) saturate(1.1)', transform: 'scale(1.12)', opacity: 0.85 }}
+                />
+                <img
+                  src={photos[lightboxIndex].full_url ?? photos[lightboxIndex].url}
+                  alt=""
+                  className="relative max-w-full max-h-full rounded-2xl object-contain"
+                  style={{ boxShadow: '0 30px 90px rgba(0,0,0,0.65)' }}
+                />
+              </motion.div>
             </AnimatePresence>
 
             {photos.length > 1 && (
-              <button
+              <motion.button
                 onClick={(e) => { e.stopPropagation(); showNextPhoto(); }}
+                whileHover={{ scale: 1.08, background: 'rgba(255,255,255,0.14)' }}
+                whileTap={{ scale: 0.92 }}
                 className="absolute right-3 sm:right-7 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full flex items-center justify-center z-10"
                 style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)' }}
                 aria-label="Photo suivante"
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M9 18l6-6-6-6" stroke="#fff" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round"/></svg>
-              </button>
+              </motion.button>
             )}
 
             {photos.length > 1 && (
-              <div className="absolute bottom-6 sm:bottom-8 left-1/2 -translate-x-1/2 text-xs font-semibold px-3 py-1.5 rounded-full" style={{ background: 'rgba(255,255,255,0.08)', color: '#D4D4D8' }}>
+              <div className="absolute bottom-6 sm:bottom-8 left-1/2 -translate-x-1/2 text-xs font-semibold px-3 py-1.5 rounded-full" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)', color: '#D4D4D8' }}>
                 {lightboxIndex + 1} / {photos.length}
               </div>
             )}
