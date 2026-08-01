@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/hooks/useAuth';
@@ -53,6 +54,91 @@ const NOTIF_OPTIONS = [
 
 type NotifPrefs = Record<typeof NOTIF_OPTIONS[number]['key'], boolean>;
 
+type NotifIconType = 'check' | 'clock' | 'sparkle' | 'tag' | 'phone';
+
+const NOTIF_META: Record<typeof NOTIF_OPTIONS[number]['key'], { color: string; icon: NotifIconType }> = {
+  creation_done:       { color: '#34d399', icon: 'check' },
+  subscription_ending: { color: '#fbbf24', icon: 'clock' },
+  product_news:        { color: '#a78bfa', icon: 'sparkle' },
+  exclusive_offers:    { color: '#f472b6', icon: 'tag' },
+  push_mobile:         { color: '#60a5fa', icon: 'phone' },
+};
+
+function NotifIcon({ type, size = 15 }: { type: NotifIconType; size?: number }) {
+  const paths: Record<NotifIconType, string> = {
+    check: 'M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z',
+    clock: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm.5 5H11v6l5.25 3.15.75-1.23-4.5-2.67V7z',
+    sparkle: 'M12 2l1.9 5.8L20 9.6l-5.8 1.9L12.3 17l-1.9-5.5L4.6 9.6l5.5-1.8L12 2zM19 15l.9 2.7L22.5 18.6l-2.7.9L19 22.2l-.9-2.7-2.7-.9 2.7-.9L19 15z',
+    tag: 'M21.41 11.58l-9-9C12.05 2.22 11.55 2 11 2H4c-1.1 0-2 .9-2 2v7c0 .55.22 1.05.59 1.41l9 9c.36.36.86.59 1.41.59.55 0 1.05-.22 1.41-.59l7-7c.37-.36.59-.86.59-1.41 0-.55-.23-1.06-.59-1.42zM5.5 7C4.67 7 4 6.33 4 5.5S4.67 4 5.5 4 7 4.67 7 5.5 6.33 7 5.5 7z',
+    phone: 'M17 1H7c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-2-2-2zm0 18H7V4h10v15z',
+  };
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+      <path d={paths[type]} />
+    </svg>
+  );
+}
+
+/* ── Profile completion ring — replaces the old no-op "Modifier le profil"
+   button with something that's actually informative and actionable: an
+   animated ring showing how complete the profile is, that scrolls straight
+   to the section most likely to still need attention (bio/gallery). ────── */
+
+function ProfileCompletionRing({ percent, onClick }: { percent: number; onClick: () => void }) {
+  const complete = percent >= 100;
+  const size = 52;
+  const stroke = 4;
+  const radius = (size - stroke) / 2;
+  const circumference = 2 * Math.PI * radius;
+
+  return (
+    <motion.button
+      onClick={onClick}
+      whileHover={{ scale: 1.03 }}
+      whileTap={{ scale: 0.97 }}
+      className="flex items-center gap-3 pl-2 pr-4 py-2 rounded-xl shrink-0"
+      style={{
+        border: `1px solid ${complete ? 'rgba(52,211,153,0.35)' : 'rgba(108,92,231,0.35)'}`,
+        background: complete ? 'rgba(52,211,153,0.08)' : 'rgba(108,92,231,0.08)',
+      }}
+    >
+      <div className="relative shrink-0" style={{ width: size, height: size }}>
+        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="-rotate-90">
+          <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={stroke} />
+          <motion.circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            fill="none"
+            stroke={complete ? '#34d399' : '#a78bfa'}
+            strokeWidth={stroke}
+            strokeLinecap="round"
+            strokeDasharray={circumference}
+            initial={{ strokeDashoffset: circumference }}
+            animate={{ strokeDashoffset: circumference * (1 - percent / 100) }}
+            transition={{ duration: 0.8, ease: 'easeOut' }}
+          />
+        </svg>
+        <div className="absolute inset-0 flex items-center justify-center">
+          {complete ? (
+            <motion.svg initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 400, damping: 15 }} width="18" height="18" viewBox="0 0 24 24" fill="none">
+              <path d="M20 6L9 17l-5-5" stroke="#34d399" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+            </motion.svg>
+          ) : (
+            <span className="text-[11px] font-bold text-white">{percent}%</span>
+          )}
+        </div>
+      </div>
+      <div className="text-left">
+        <p className="text-xs font-bold" style={{ color: complete ? '#34d399' : '#a78bfa' }}>
+          {complete ? 'Profil complet' : 'Profil incomplet'}
+        </p>
+        <p className="text-[10px] text-gray-500">{complete ? 'Bravo, tout est renseigné' : 'Cliquez pour compléter'}</p>
+      </div>
+    </motion.button>
+  );
+}
+
 const DAY_ABBR = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
 
 /* ── Helpers ────────────────────────────────────────────────────────────────── */
@@ -76,21 +162,33 @@ function useCountUp(target: number, duration = 1300, enabled = true) {
 
 /* ── Toggle component ───────────────────────────────────────────────────────── */
 
-function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
+function Toggle({ checked, onChange, activeColor = '#6366F1' }: { checked: boolean; onChange: (v: boolean) => void; activeColor?: string }) {
   return (
-    <button
+    <motion.button
       role="switch"
       aria-checked={checked}
       onClick={() => onChange(!checked)}
+      whileTap={{ scale: 0.92 }}
+      animate={{ background: checked ? activeColor : 'rgba(255,255,255,0.08)', boxShadow: checked ? `0 0 14px ${activeColor}66` : '0 0 0px transparent' }}
+      transition={{ duration: 0.22, ease: 'easeOut' }}
       className="relative w-11 h-6 rounded-full shrink-0"
-      style={{ background: checked ? '#6366F1' : 'rgba(75,85,99,0.5)', transition: 'background 0.2s' }}
+      style={{ border: `1px solid ${checked ? 'transparent' : 'rgba(255,255,255,0.12)'}` }}
     >
       <motion.div
-        className="absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow-md"
+        className="absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow-md flex items-center justify-center"
         animate={{ x: checked ? 20 : 0 }}
-        transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-      />
-    </button>
+        transition={{ type: 'spring', stiffness: 500, damping: 32 }}
+      >
+        <motion.svg
+          width="10" height="10" viewBox="0 0 24 24" fill="none"
+          initial={false}
+          animate={{ opacity: checked ? 1 : 0, scale: checked ? 1 : 0.5 }}
+          transition={{ duration: 0.15 }}
+        >
+          <path d="M20 6L9 17l-5-5" stroke={activeColor} strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
+        </motion.svg>
+      </motion.div>
+    </motion.button>
   );
 }
 
@@ -137,15 +235,16 @@ function AutoTextarea({
 
 /* ── Card wrapper ────────────────────────────────────────────────────────────── */
 
-function SectionCard({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+function SectionCard({ children, className = '', id }: { children: React.ReactNode; className?: string; id?: string }) {
   return (
     <motion.section
+      id={id}
       initial={{ opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
       transition={{ duration: 0.45, ease: 'easeOut' }}
       className={`relative rounded-2xl p-6 sm:p-8 ${className}`}
-      style={{ background: '#18181B', border: '1px solid #27272A' }}
+      style={{ background: '#18181B', border: '1px solid #27272A', scrollMarginTop: 24 }}
     >
       {children}
     </motion.section>
@@ -189,7 +288,6 @@ export default function AccountPage() {
     product_news: false, exclusive_offers: false, push_mobile: false,
   });
   const [notifSaved, setNotifSaved] = useState(false);
-  const [editMode, setEditMode] = useState(false);
   const [subscription, setSubscription] = useState<SubscriptionRow | null>(null);
   const [currentLang, setCurrentLang] = useState<Locale>('fr');
 
@@ -207,8 +305,20 @@ export default function AccountPage() {
   const [galleryError, setGalleryError] = useState('');
   const [deletingPhotoId, setDeletingPhotoId] = useState<string | null>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const [portalMounted, setPortalMounted] = useState(false);
+  useEffect(() => { setPortalMounted(true); }, []);
 
   /* Derived data */
+  const profileChecklist = [
+    !!(profile?.first_name),
+    !!avatarPhoto,
+    bio.trim().length > 0,
+    photos.length > 0,
+    profile?.account_type === 'individual' || !!profile?.company_name,
+  ];
+  const profileCompletion = Math.round((profileChecklist.filter(Boolean).length / profileChecklist.length) * 100);
+
   const activePlanKey = subscription?.plan_key ?? profile?.plan_key ?? null;
   const planInfo = PLAN_LABELS[activePlanKey as string] ?? FREE_PLAN;
   const hasPlan = !!(activePlanKey && subscription);
@@ -460,6 +570,34 @@ export default function AccountPage() {
     if (errA || errB) console.error('[account] échec de l\'enregistrement du nouvel ordre', errA || errB);
   };
 
+  /* ── Lightbox ─────────────────────────────────────────────────────────── */
+  const closeLightbox = useCallback(() => setLightboxIndex(null), []);
+  const showPrevPhoto = useCallback(() => {
+    setLightboxIndex((i) => (i === null || photos.length === 0 ? i : (i - 1 + photos.length) % photos.length));
+  }, [photos.length]);
+  const showNextPhoto = useCallback(() => {
+    setLightboxIndex((i) => (i === null || photos.length === 0 ? i : (i + 1) % photos.length));
+  }, [photos.length]);
+
+  useEffect(() => {
+    if (lightboxIndex === null) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') closeLightbox();
+      else if (e.key === 'ArrowLeft') showPrevPhoto();
+      else if (e.key === 'ArrowRight') showNextPhoto();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [lightboxIndex, closeLightbox, showPrevPhoto, showNextPhoto]);
+
+  // Clamp the open lightbox index if the photo it points at gets deleted
+  // out from under it (e.g. deleted from another tab/session).
+  useEffect(() => {
+    if (lightboxIndex !== null && lightboxIndex >= photos.length) {
+      setLightboxIndex(photos.length > 0 ? photos.length - 1 : null);
+    }
+  }, [photos.length, lightboxIndex]);
+
   const handleBillingPortal = async () => {
     try {
       setBillingLoading(true);
@@ -507,6 +645,7 @@ export default function AccountPage() {
   }
 
   return (
+    <>
     <div className="relative">
       <div className="page-beam" />
       <div className="flex flex-col gap-6">
@@ -615,20 +754,17 @@ export default function AccountPage() {
                   </div>
                 </div>
 
-                <button
-                  onClick={() => setEditMode((v) => !v)}
-                  className="text-sm font-semibold px-4 py-2 rounded-xl transition-colors shrink-0"
-                  style={{ border: '1px solid rgba(108,92,231,0.4)', color: '#a78bfa', background: editMode ? 'rgba(108,92,231,0.12)' : 'transparent' }}
-                >
-                  {editMode ? 'Annuler' : 'Modifier le profil'}
-                </button>
+                <ProfileCompletionRing
+                  percent={profileCompletion}
+                  onClick={() => document.getElementById('bio-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                />
               </div>
             </div>
           </div>
         </SectionCard>
 
         {/* ── BIO ──────────────────────────────────────────────────────────── */}
-        <SectionCard>
+        <SectionCard id="bio-section">
           <div className="flex items-start justify-between gap-4 mb-6">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'rgba(108,92,231,0.18)', color: '#a78bfa' }}>
@@ -715,14 +851,22 @@ export default function AccountPage() {
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.85 }}
                   transition={{ duration: 0.25, ease: 'easeOut' }}
-                  className="relative aspect-square rounded-xl overflow-hidden group"
+                  className="relative aspect-square rounded-xl overflow-hidden group cursor-pointer"
                   style={{ background: '#27272A', border: '1px solid #3F3F46' }}
+                  onClick={() => setLightboxIndex(index)}
                 >
-                  <img src={photo.url} alt="" className="w-full h-full object-cover" draggable={false} />
+                  <motion.img
+                    src={photo.url}
+                    alt=""
+                    className="w-full h-full object-cover"
+                    draggable={false}
+                    whileHover={{ scale: 1.06 }}
+                    transition={{ duration: 0.25, ease: 'easeOut' }}
+                  />
 
-                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150" style={{ background: 'rgba(0,0,0,0.55)' }}>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none group-hover:pointer-events-auto" style={{ background: 'rgba(0,0,0,0.45)' }}>
                     <button
-                      onClick={() => handleDeletePhoto(photo)}
+                      onClick={(e) => { e.stopPropagation(); handleDeletePhoto(photo); }}
                       disabled={deletingPhotoId === photo.id}
                       className="w-7 h-7 rounded-full flex items-center justify-center disabled:opacity-50"
                       style={{ background: '#ef4444' }}
@@ -732,7 +876,7 @@ export default function AccountPage() {
                     </button>
                     <div className="flex items-center gap-1">
                       <button
-                        onClick={() => handleMovePhoto(index, -1)}
+                        onClick={(e) => { e.stopPropagation(); handleMovePhoto(index, -1); }}
                         disabled={index === 0}
                         className="w-6 h-6 rounded-full flex items-center justify-center disabled:opacity-30"
                         style={{ background: 'rgba(255,255,255,0.15)' }}
@@ -741,7 +885,7 @@ export default function AccountPage() {
                         <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
                       </button>
                       <button
-                        onClick={() => handleMovePhoto(index, 1)}
+                        onClick={(e) => { e.stopPropagation(); handleMovePhoto(index, 1); }}
                         disabled={index === photos.length - 1}
                         className="w-6 h-6 rounded-full flex items-center justify-center disabled:opacity-30"
                         style={{ background: 'rgba(255,255,255,0.15)' }}
@@ -975,23 +1119,52 @@ export default function AccountPage() {
             </AnimatePresence>
           </div>
 
-          <div className="flex flex-col gap-4">
-            {NOTIF_OPTIONS.map((opt) => (
-              <div key={opt.key} className="flex items-center justify-between gap-4 py-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm text-white font-medium">{opt.label}</p>
-                    {'isMobile' in opt && opt.isMobile && (
-                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded" style={{ background: 'rgba(99,102,241,0.2)', color: '#818cf8' }}>
-                        Mobile
-                      </span>
-                    )}
+          <div className="flex flex-col gap-2.5">
+            {NOTIF_OPTIONS.map((opt, i) => {
+              const meta = NOTIF_META[opt.key];
+              const isOn = notifPrefs[opt.key];
+              return (
+                <motion.div
+                  key={opt.key}
+                  initial={{ opacity: 0, y: 10 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.35, delay: i * 0.05, ease: 'easeOut' }}
+                  whileHover={{ borderColor: 'rgba(255,255,255,0.14)' }}
+                  className="flex items-center gap-4 rounded-2xl px-4 py-3.5"
+                  style={{
+                    background: isOn ? `${meta.color}0D` : 'rgba(255,255,255,0.015)',
+                    border: `1px solid ${isOn ? `${meta.color}33` : 'rgba(255,255,255,0.06)'}`,
+                    transition: 'background 0.25s, border-color 0.25s',
+                  }}
+                >
+                  <motion.div
+                    className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                    animate={{
+                      background: isOn ? `${meta.color}22` : 'rgba(255,255,255,0.05)',
+                      color: isOn ? meta.color : '#6b7280',
+                    }}
+                    transition={{ duration: 0.25 }}
+                  >
+                    <NotifIcon type={meta.icon} />
+                  </motion.div>
+
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm text-white font-semibold">{opt.label}</p>
+                      {'isMobile' in opt && opt.isMobile && (
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded" style={{ background: 'rgba(99,102,241,0.2)', color: '#818cf8' }}>
+                          Mobile
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-0.5">{opt.desc}</p>
                   </div>
-                  <p className="text-xs text-gray-500 mt-0.5">{opt.desc}</p>
-                </div>
-                <Toggle checked={notifPrefs[opt.key]} onChange={(v) => handleNotifChange(opt.key, v)} />
-              </div>
-            ))}
+
+                  <Toggle checked={isOn} onChange={(v) => handleNotifChange(opt.key, v)} activeColor={meta.color} />
+                </motion.div>
+              );
+            })}
           </div>
         </SectionCard>
 
@@ -1073,24 +1246,35 @@ export default function AccountPage() {
           }>Préférences</SectionTitle>
 
           {/* Language picker */}
-          <div className="pt-4">
-            <p className="text-xs text-gray-600 uppercase tracking-wider mb-3">Langue</p>
-            <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+          <div className="pt-1">
+            <p className="text-xs text-gray-600 uppercase tracking-wider mb-1">Langue</p>
+            <p className="text-xs text-gray-500 mb-4">La langue utilisée dans toute l&apos;interface</p>
+            <div className="grid grid-cols-3 sm:grid-cols-5 gap-2.5">
               {locales.map((locale) => {
                 const isSelected = currentLang === locale;
                 return (
                   <motion.button
                     key={locale}
                     onClick={() => handleLanguageChange(locale)}
-                    whileHover={{ scale: 1.05 }}
+                    whileHover={{ scale: 1.05, y: -2 }}
+                    whileTap={{ scale: 0.96 }}
                     transition={{ duration: 0.15 }}
-                    className="flex flex-col items-center gap-1 p-2.5 rounded-xl transition-all"
+                    className="relative flex flex-col items-center gap-1.5 p-3 rounded-xl transition-all"
                     style={{
                       border: isSelected ? '1px solid rgba(108,92,231,0.5)' : '1px solid rgba(255,255,255,0.07)',
                       background: isSelected ? 'rgba(108,92,231,0.12)' : 'rgba(255,255,255,0.03)',
-                      boxShadow: isSelected ? '0 0 12px rgba(108,92,231,0.2)' : 'none',
+                      boxShadow: isSelected ? '0 0 16px rgba(108,92,231,0.22)' : 'none',
                     }}
                   >
+                    {isSelected && (
+                      <motion.div
+                        layoutId="lang-selected-dot"
+                        className="absolute top-1.5 right-1.5 w-3.5 h-3.5 rounded-full flex items-center justify-center"
+                        style={{ background: '#6366F1' }}
+                      >
+                        <svg width="8" height="8" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="#fff" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                      </motion.div>
+                    )}
                     <span className="text-xl">{localeFlags[locale]}</span>
                     <span className="text-[10px] font-medium" style={{ color: isSelected ? '#a78bfa' : '#6b7280' }}>
                       {localeNames[locale]}
@@ -1154,5 +1338,76 @@ export default function AccountPage() {
 
       </div>
     </div>
+
+    {portalMounted && createPortal(
+      <AnimatePresence>
+        {lightboxIndex !== null && photos[lightboxIndex] && (
+          <motion.div
+            key="lightbox-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-[300] flex items-center justify-center p-6 sm:p-10"
+            style={{ background: 'rgba(5,5,8,0.88)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)' }}
+            onClick={closeLightbox}
+          >
+            <button
+              onClick={(e) => { e.stopPropagation(); closeLightbox(); }}
+              className="absolute top-5 right-5 sm:top-7 sm:right-7 w-10 h-10 rounded-full flex items-center justify-center z-10"
+              style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)' }}
+              aria-label="Fermer"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M18 6L6 18M6 6l12 12" stroke="#fff" strokeWidth="2" strokeLinecap="round"/></svg>
+            </button>
+
+            {photos.length > 1 && (
+              <button
+                onClick={(e) => { e.stopPropagation(); showPrevPhoto(); }}
+                className="absolute left-3 sm:left-7 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full flex items-center justify-center z-10"
+                style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)' }}
+                aria-label="Photo précédente"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="#fff" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              </button>
+            )}
+
+            <AnimatePresence mode="wait">
+              <motion.img
+                key={photos[lightboxIndex].id}
+                src={photos[lightboxIndex].url}
+                alt=""
+                onClick={(e) => e.stopPropagation()}
+                initial={{ opacity: 0, scale: 0.92 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.96 }}
+                transition={{ duration: 0.22, ease: 'easeOut' }}
+                className="max-w-[min(90vw,640px)] max-h-[80vh] rounded-2xl object-contain"
+                style={{ boxShadow: '0 24px 80px rgba(0,0,0,0.6)' }}
+              />
+            </AnimatePresence>
+
+            {photos.length > 1 && (
+              <button
+                onClick={(e) => { e.stopPropagation(); showNextPhoto(); }}
+                className="absolute right-3 sm:right-7 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full flex items-center justify-center z-10"
+                style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)' }}
+                aria-label="Photo suivante"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M9 18l6-6-6-6" stroke="#fff" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              </button>
+            )}
+
+            {photos.length > 1 && (
+              <div className="absolute bottom-6 sm:bottom-8 left-1/2 -translate-x-1/2 text-xs font-semibold px-3 py-1.5 rounded-full" style={{ background: 'rgba(255,255,255,0.08)', color: '#D4D4D8' }}>
+                {lightboxIndex + 1} / {photos.length}
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>,
+      document.body
+    )}
+    </>
   );
 }
