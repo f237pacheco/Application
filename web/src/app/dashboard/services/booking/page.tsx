@@ -80,8 +80,8 @@ const TIME_OPTIONS = Array.from({ length: 24 * 4 }, (_, i) => {
 // Custom dropdown standing in for a native <input type="time"> — the native
 // picker UI can't be restyled (only the closed-state field can), so a fully
 // custom list is the only way to get a result that matches the dark theme.
-function TimeSelect({ value, onChange, disabled, accent = '#10B981' }: {
-  value: string; onChange: (v: string) => void; disabled?: boolean; accent?: string
+function TimeSelect({ value, onChange, disabled, accent = '#10B981', label = '?' }: {
+  value: string; onChange: (v: string) => void; disabled?: boolean; accent?: string; label?: string
 }) {
   const [open, setOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
@@ -96,16 +96,22 @@ function TimeSelect({ value, onChange, disabled, accent = '#10B981' }: {
   // reveal animation, which would otherwise clip this dropdown the moment
   // it tried to open below the row's visible bounds.
   const openMenu = () => {
+    console.log(`[TimeSelect:${label}] openMenu() — calcul de position et ouverture du menu`)
     const rect = buttonRef.current?.getBoundingClientRect()
+    if (!rect) {
+      console.warn(`[TimeSelect:${label}] ATTENTION — buttonRef.current est null ou getBoundingClientRect a échoué, le menu va s'ouvrir sans position calculée`)
+    }
     if (rect) setCoords({ top: rect.bottom + window.scrollY + 6, left: rect.left + window.scrollX })
     setOpen(true)
   }
 
   useEffect(() => {
     if (!open) return
+    console.log(`[TimeSelect:${label}] menu ouvert — attache les écouteurs (clic extérieur, scroll, resize)`)
     const onClickOutside = (e: MouseEvent) => {
       if (buttonRef.current?.contains(e.target as Node)) return
       if (listRef.current?.contains(e.target as Node)) return
+      console.log(`[TimeSelect:${label}] fermeture — clic détecté en dehors du bouton et de la liste`)
       setOpen(false)
     }
     // Reposition (never close) on scroll/resize — this is `position: fixed`,
@@ -126,7 +132,7 @@ function TimeSelect({ value, onChange, disabled, accent = '#10B981' }: {
       window.removeEventListener('scroll', reposition, true)
       window.removeEventListener('resize', reposition)
     }
-  }, [open])
+  }, [open, label])
 
   useEffect(() => {
     if (!open || !listRef.current) return
@@ -140,7 +146,11 @@ function TimeSelect({ value, onChange, disabled, accent = '#10B981' }: {
         ref={buttonRef}
         type="button"
         disabled={disabled}
-        onClick={() => (open ? setOpen(false) : openMenu())}
+        onClick={() => {
+          console.log(`[TimeSelect:${label}] clic capté sur le bouton (valeur actuelle="${value}", disabled=${!!disabled}, open avant clic=${open})`)
+          if (disabled) { console.warn(`[TimeSelect:${label}] le bouton est disabled — le clic ne fera rien`); return }
+          open ? setOpen(false) : openMenu()
+        }}
         whileHover={!disabled ? { borderColor: 'rgba(255,255,255,0.16)' } : undefined}
         whileTap={!disabled ? { scale: 0.97 } : undefined}
         className="flex items-center gap-1.5 pl-2.5 pr-2 py-1.5 rounded-lg text-xs font-bold disabled:opacity-40"
@@ -170,7 +180,11 @@ function TimeSelect({ value, onChange, disabled, accent = '#10B981' }: {
                     key={t}
                     type="button"
                     data-selected={isSelected}
-                    onClick={() => { onChange(t); setOpen(false) }}
+                    onClick={() => {
+                      console.log(`[TimeSelect:${label}] heure sélectionnée: ${t} (remplace "${value}")`)
+                      onChange(t)
+                      setOpen(false)
+                    }}
                     className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-semibold"
                     style={{ background: isSelected ? `${accent}22` : 'transparent', color: isSelected ? accent : '#D4D4D8' }}
                     onMouseEnter={(e) => { if (!isSelected) e.currentTarget.style.background = 'rgba(255,255,255,0.06)' }}
@@ -637,7 +651,10 @@ export default function BookingSettingsPage() {
 
   // ── Persist one day's availability ranges (debounced, on toggle/range edit) ─
   const persistDay = useCallback((dayOfWeek: number, day: DayState) => {
-    if (!user?.id) return
+    if (!user?.id) {
+      console.warn(`[booking-settings] persistDay(jour=${dayOfWeek}) ignoré — pas d'utilisateur authentifié (user?.id est vide), la modification ne sera PAS enregistrée en base`)
+      return
+    }
     console.log(`[booking-settings] enregistrement en base programmé pour le jour ${dayOfWeek}`, day)
     clearTimeout(dayDebounce.current[dayOfWeek])
     dayDebounce.current[dayOfWeek] = setTimeout(async () => {
@@ -1470,9 +1487,9 @@ export default function BookingSettingsPage() {
                               <AnimatePresence mode="wait">
                                 {day[period].enabled ? (
                                   <motion.div key="pickers" initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }} className="flex items-center gap-2">
-                                    <TimeSelect value={day[period].start} onChange={(v) => updateRange(dayKey, period, { start: v })} />
+                                    <TimeSelect label={`jour=${dayKey} ${period} début`} value={day[period].start} onChange={(v) => updateRange(dayKey, period, { start: v })} />
                                     <span className="w-3 h-px shrink-0" style={{ background: '#3F3F46' }} />
-                                    <TimeSelect value={day[period].end} onChange={(v) => updateRange(dayKey, period, { end: v })} />
+                                    <TimeSelect label={`jour=${dayKey} ${period} fin`} value={day[period].end} onChange={(v) => updateRange(dayKey, period, { end: v })} />
                                   </motion.div>
                                 ) : (
                                   <motion.span key="off" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="text-xs" style={{ color: '#4B5563' }}>
