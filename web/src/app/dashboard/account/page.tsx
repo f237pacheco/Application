@@ -6,11 +6,11 @@ import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
-import { useUsage } from '@/hooks/useUsage';
 import { locales, localeNames, localeFlags, isRtl, type Locale } from '@/lib/i18n/config';
 import i18n from '@/lib/i18n/client';
 import { createClient } from '@/lib/supabase/client';
 import { cropSquareImage, compressImage, extensionForMimeType } from '@/lib/image';
+import { getParisNow, toDateKey } from '@/lib/booking';
 
 /* ── Constants ──────────────────────────────────────────────────────────────── */
 
@@ -217,10 +217,14 @@ interface SubscriptionRow {
   trial_end: string | null;
 }
 
+interface BookingStatRow {
+  booking_date: string;
+  status: string;
+}
+
 export default function AccountPage() {
   const { session, signOut, user } = useAuth();
   const { profile, loading } = useProfile();
-  const { data: usage } = useUsage();
 
   const [billingLoading, setBillingLoading] = useState(false);
   const [avatarColor, setAvatarColor] = useState<string>('#6C5CE7');
@@ -230,7 +234,21 @@ export default function AccountPage() {
     product_news: false, exclusive_offers: false, push_mobile: false,
   });
   const [notifSaved, setNotifSaved] = useState(false);
+  const [notifSaveError, setNotifSaveError] = useState(false);
+  // Mirrors notifPrefs synchronously (unlike the state itself, which only
+  // updates on the next render) — handleNotifChange reads this instead of
+  // the `notifPrefs` closure so that clicking several toggles in quick
+  // succession (very plausibly how "check everything") doesn't have each
+  // write computed from a stale pre-click snapshot and clobber the ones
+  // before it once the last write (which always wins, upsert replaces the
+  // whole row) lands.
+  const notifPrefsRef = useRef<NotifPrefs>({
+    creation_done: true, subscription_ending: true,
+    product_news: false, exclusive_offers: false, push_mobile: false,
+  });
   const [subscription, setSubscription] = useState<SubscriptionRow | null>(null);
+  const [bookingStats, setBookingStats] = useState<BookingStatRow[]>([]);
+  const [bookingStatsLoaded, setBookingStatsLoaded] = useState(false);
   const [currentLang, setCurrentLang] = useState<Locale>('fr');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -270,36 +288,59 @@ export default function AccountPage() {
   };
   const subStatusLabel = subscription ? (statusLabel[subscription.status] ?? subscription.status) : null;
 
-  const totalCreations = usage ? Object.values(usage.usage).reduce((a, b) => a + b, 0) : 0;
-  const hoursSaved = totalCreations * 2;
   const daysActive = user?.created_at
     ? Math.floor((Date.now() - new Date(user.created_at).getTime()) / 86_400_000)
     : 0;
 
-  const countCreations = useCountUp(totalCreations, 1200, !loading);
-  const countHours     = useCountUp(hoursSaved, 1100, !loading);
-  const countDays      = useCountUp(daysActive, 1000, !loading);
+  // Cancelled bookings don't count as real activity for any of these stats.
+  const activeBookings = useMemo(() => bookingStats.filter((b) => b.status !== 'cancelled'), [bookingStats]);
+  const totalBookings = activeBookings.length;
+  const bookingsThisMonth = useMemo(() => {
+    const now = getParisNow();
+    const monthPrefix = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}`;
+    return activeBookings.filter((b) => b.booking_date.startsWith(monthPrefix)).length;
+  }, [activeBookings]);
+
+  const countTotalBookings = useCountUp(totalBookings, 1200, !loading && bookingStatsLoaded);
+  const countBookingsThisMonth = useCountUp(bookingsThisMonth, 1100, !loading && bookingStatsLoaded);
+  const countDays = useCountUp(daysActive, 1000, !loading);
 
   useEffect(() => {
     setCurrentLang((i18n.language?.slice(0, 2) ?? 'fr') as Locale);
   }, []);
 
+  // Real per-day booking counts for the last 7 days — booking_date is
+  // already a plain 'YYYY-MM-DD' string from Postgres, matching toDateKey's
+  // format exactly, so no Date-parsing/timezone risk in the lookup.
   const last7Days = useMemo(() => {
+    const counts = new Map<string, number>();
+    activeBookings.forEach((b) => counts.set(b.booking_date, (counts.get(b.booking_date) ?? 0) + 1));
+    const today = getParisNow();
     return [...Array(7)].map((_, i) => {
-      const d = new Date();
+      const d = new Date(today);
       d.setDate(d.getDate() - (6 - i));
-      return { label: DAY_ABBR[d.getDay()], value: 0 };
+      return { label: DAY_ABBR[d.getDay()], value: counts.get(toDateKey(d)) ?? 0 };
     });
-  }, []);
+  }, [activeBookings]);
 
   /* Load notification prefs */
   useEffect(() => {
     if (!user?.id) return;
     const load = async () => {
       const supabase = createClient();
-      const { data } = await supabase
-        .from('user_preferences').select('notifications').eq('user_id', user.id).single();
-      if (data?.notifications) setNotifPrefs(data.notifications as NotifPrefs);
+      // maybeSingle (not single): a brand-new user has no row yet, which is
+      // an expected case, not an error worth logging as one.
+      const { data, error } = await supabase
+        .from('user_preferences').select('notifications').eq('user_id', user.id).maybeSingle();
+      if (error) {
+        console.error('[account] échec du chargement des préférences de notifications depuis Supabase', error);
+        return;
+      }
+      console.log('[account] préférences de notifications lues depuis Supabase :', data?.notifications ?? '(aucune ligne — valeurs par défaut utilisées)');
+      if (data?.notifications) {
+        notifPrefsRef.current = data.notifications as NotifPrefs;
+        setNotifPrefs(data.notifications as NotifPrefs);
+      }
     };
     load();
   }, [user?.id]);
@@ -318,6 +359,31 @@ export default function AccountPage() {
         .limit(1)
         .single();
       if (data) setSubscription(data as SubscriptionRow);
+    };
+    load();
+  }, [user?.id]);
+
+  /* Load booking stats — real data for the Statistiques section: previously
+     "Créations totales"/"Heures économisées" read from a service_usage
+     table that nothing in this app ever writes to, so they were always 0
+     regardless of real usage. Bookings received via the RDV system are the
+     one thing this account actually does that's worth showing here. */
+  useEffect(() => {
+    if (!user?.id) return;
+    const load = async () => {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from('bookings')
+        .select('booking_date, status')
+        .eq('user_id', user.id);
+      if (error) {
+        console.error('[account] échec du chargement des statistiques de réservation depuis Supabase', error);
+        setBookingStatsLoaded(true);
+        return;
+      }
+      console.log(`[account] statistiques : ${data?.length ?? 0} réservation(s) chargée(s) depuis Supabase`);
+      setBookingStats((data ?? []) as BookingStatRow[]);
+      setBookingStatsLoaded(true);
     };
     load();
   }, [user?.id]);
@@ -567,17 +633,38 @@ export default function AccountPage() {
   };
 
   const handleNotifChange = async (key: typeof NOTIF_OPTIONS[number]['key'], value: boolean) => {
-    const updated = { ...notifPrefs, [key]: value };
+    if (!user?.id) {
+      console.warn('[account] handleNotifChange ignoré — pas d\'utilisateur authentifié, la préférence ne sera pas enregistrée');
+      return;
+    }
+    const previous = notifPrefsRef.current;
+    const updated = { ...previous, [key]: value };
+    notifPrefsRef.current = updated;
     setNotifPrefs(updated);
-    try {
-      const supabase = createClient();
-      await supabase.from('user_preferences').upsert(
-        { user_id: user?.id, notifications: updated },
-        { onConflict: 'user_id' }
-      );
-      setNotifSaved(true);
-      setTimeout(() => setNotifSaved(false), 2000);
-    } catch { /* silent */ }
+    setNotifSaveError(false);
+    console.log(`[account] écriture des préférences de notifications dans Supabase (${key} -> ${value})`, updated);
+
+    const supabase = createClient();
+    const { error } = await supabase.from('user_preferences').upsert(
+      { user_id: user.id, notifications: updated },
+      { onConflict: 'user_id' }
+    );
+
+    if (error) {
+      console.error('[account] échec de l\'enregistrement des préférences de notifications dans Supabase', error);
+      // Don't leave the UI showing a toggle state that isn't actually
+      // saved — revert it, since the previous silent-catch let this
+      // desync from the database while still flashing "Sauvegardé".
+      notifPrefsRef.current = previous;
+      setNotifPrefs(previous);
+      setNotifSaveError(true);
+      setTimeout(() => setNotifSaveError(false), 3000);
+      return;
+    }
+
+    console.log('[account] préférences de notifications enregistrées avec succès dans Supabase');
+    setNotifSaved(true);
+    setTimeout(() => setNotifSaved(false), 2000);
   };
 
   const handleLanguageChange = async (locale: Locale) => {
@@ -1000,11 +1087,11 @@ export default function AccountPage() {
             </svg>
           }>Statistiques</SectionTitle>
 
-          {/* Metric cards */}
+          {/* Metric cards — real counts from the `bookings` table */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
             {[
-              { label: 'Créations totales', value: countCreations, color: '#6C5CE7', icon: '✦' },
-              { label: 'Heures économisées', value: `${countHours}h`, color: '#00b894', icon: '⏱' },
+              { label: 'Rendez-vous totaux', value: countTotalBookings, color: '#6C5CE7', icon: '🗓️' },
+              { label: 'RDV ce mois-ci', value: countBookingsThisMonth, color: '#00b894', icon: '✅' },
               { label: 'Jours actif', value: countDays, color: '#f97316', icon: '📅' },
             ].map(({ label, value, color, icon }) => (
               <div key={label} className="flex items-center gap-3 rounded-2xl px-5 py-4" style={{ background: '#27272A', border: '1px solid #3F3F46' }}>
@@ -1017,9 +1104,9 @@ export default function AccountPage() {
             ))}
           </div>
 
-          {/* 7-day activity chart */}
+          {/* 7-day activity chart — real bookings received per day */}
           <div>
-            <p className="text-xs text-gray-600 uppercase tracking-wider mb-4">Activité — 7 derniers jours</p>
+            <p className="text-xs text-gray-600 uppercase tracking-wider mb-4">Rendez-vous — 7 derniers jours</p>
             <div className="flex items-end gap-2 h-20">
               {last7Days.map(({ label, value }, i) => (
                 <div key={i} className="flex-1 flex flex-col items-center gap-1.5">
@@ -1037,8 +1124,8 @@ export default function AccountPage() {
                 </div>
               ))}
             </div>
-            {totalCreations === 0 && (
-              <p className="text-center text-xs text-gray-700 mt-3 italic">Aucune activité — vos statistiques apparaîtront ici après vos premières créations</p>
+            {bookingStatsLoaded && totalBookings === 0 && (
+              <p className="text-center text-xs text-gray-700 mt-3 italic">Aucun rendez-vous pour l&apos;instant — vos statistiques apparaîtront ici dès votre première réservation reçue</p>
             )}
           </div>
         </SectionCard>
@@ -1055,9 +1142,21 @@ export default function AccountPage() {
               <h2 className="text-base font-bold text-white">Notifications</h2>
               <div className="flex-1 h-px" style={{ background: 'linear-gradient(90deg, rgba(108,92,231,0.35), transparent)' }} />
             </div>
-            <AnimatePresence>
-              {notifSaved && (
+            <AnimatePresence mode="wait">
+              {notifSaveError ? (
                 <motion.span
+                  key="notif-error"
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  className="text-xs font-semibold text-red-400 flex items-center gap-1 shrink-0"
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+                  Échec de la sauvegarde
+                </motion.span>
+              ) : notifSaved ? (
+                <motion.span
+                  key="notif-saved"
                   initial={{ opacity: 0, y: -4 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -4 }}
@@ -1066,7 +1165,7 @@ export default function AccountPage() {
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
                   Sauvegardé
                 </motion.span>
-              )}
+              ) : null}
             </AnimatePresence>
           </div>
 
