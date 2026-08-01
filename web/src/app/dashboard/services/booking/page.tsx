@@ -108,23 +108,23 @@ function TimeSelect({ value, onChange, disabled, accent = '#10B981' }: {
       if (listRef.current?.contains(e.target as Node)) return
       setOpen(false)
     }
-    // Capture phase, deliberately: the page scrolling underneath a fixed-
-    // position dropdown should close it. But scroll events don't bubble, and
-    // the dropdown's OWN internal list also scrolls itself to the selected
-    // time on open (see the effect below) — without excluding events whose
-    // target is that same list, that self-scroll closed the dropdown the
-    // instant it opened, making the whole picker look completely dead.
-    const onScrollOrResize = (e: Event) => {
-      if (listRef.current && e.target instanceof Node && listRef.current.contains(e.target)) return
-      setOpen(false)
+    // Reposition (never close) on scroll/resize — this is `position: fixed`,
+    // so it has to follow the button. Closing on scroll was tried before and
+    // broke opening entirely: clicking a button below the fold makes the
+    // browser auto-scroll it into view as PART of the click, which fired a
+    // scroll event a tick after `open` became true and closed the dropdown
+    // before it was ever visible — every click looked like a dead button.
+    const reposition = () => {
+      const rect = buttonRef.current?.getBoundingClientRect()
+      if (rect) setCoords({ top: rect.bottom + window.scrollY + 6, left: rect.left + window.scrollX })
     }
     document.addEventListener('mousedown', onClickOutside)
-    window.addEventListener('scroll', onScrollOrResize, true)
-    window.addEventListener('resize', onScrollOrResize)
+    window.addEventListener('scroll', reposition, true)
+    window.addEventListener('resize', reposition)
     return () => {
       document.removeEventListener('mousedown', onClickOutside)
-      window.removeEventListener('scroll', onScrollOrResize, true)
-      window.removeEventListener('resize', onScrollOrResize)
+      window.removeEventListener('scroll', reposition, true)
+      window.removeEventListener('resize', reposition)
     }
   }, [open])
 
@@ -638,14 +638,16 @@ export default function BookingSettingsPage() {
   // ── Persist one day's availability ranges (debounced, on toggle/range edit) ─
   const persistDay = useCallback((dayOfWeek: number, day: DayState) => {
     if (!user?.id) return
+    console.log(`[booking-settings] enregistrement en base programmé pour le jour ${dayOfWeek}`, day)
     clearTimeout(dayDebounce.current[dayOfWeek])
     dayDebounce.current[dayOfWeek] = setTimeout(async () => {
       const supabase = createClient()
       const error = await writeDayAvailability(supabase, user.id, dayOfWeek, day)
       if (error) {
-        console.error(`[booking-settings] availability save failed for day ${dayOfWeek}`, error)
+        console.error(`[booking-settings] échec de l'enregistrement pour le jour ${dayOfWeek}`, error)
         setDayErrors((prev) => ({ ...prev, [dayOfWeek]: true }))
       } else {
+        console.log(`[booking-settings] jour ${dayOfWeek} enregistré avec succès`)
         setDayErrors((prev) => {
           if (!prev[dayOfWeek]) return prev
           const next = { ...prev }
@@ -657,6 +659,7 @@ export default function BookingSettingsPage() {
   }, [user?.id])
 
   const updateDay = useCallback((dayOfWeek: number, patch: Partial<DayState>) => {
+    console.log(`[booking-settings] modification jour ${dayOfWeek}`, patch)
     setWeek((prev) => {
       const next = { ...prev, [dayOfWeek]: { ...prev[dayOfWeek], ...patch } }
       persistDay(dayOfWeek, next[dayOfWeek])
@@ -665,6 +668,7 @@ export default function BookingSettingsPage() {
   }, [persistDay])
 
   const updateRange = useCallback((dayOfWeek: number, period: 'morning' | 'afternoon', patch: Partial<Range>) => {
+    console.log(`[booking-settings] modification horaire jour ${dayOfWeek} (${period})`, patch)
     setWeek((prev) => {
       const day = { ...prev[dayOfWeek], [period]: { ...prev[dayOfWeek][period], ...patch } }
       const next = { ...prev, [dayOfWeek]: day }
