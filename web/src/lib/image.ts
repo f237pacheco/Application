@@ -26,6 +26,33 @@ export async function compressImage(file: File, maxDim = 1600, quality = 0.92): 
   });
 }
 
+// Center-crops an image to a square and resizes it to `size`x`size` — the
+// Instagram-style gallery grid needs uniform square thumbnails regardless of
+// the source photo's aspect ratio, instead of letterboxing or stretching it.
+export async function cropSquareImage(file: File, size = 640, quality = 0.9): Promise<Blob> {
+  const bitmap = await createImageBitmap(file);
+  const side = Math.min(bitmap.width, bitmap.height);
+  const sx = (bitmap.width - side) / 2;
+  const sy = (bitmap.height - side) / 2;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Canvas 2D context unavailable');
+  ctx.drawImage(bitmap, sx, sy, side, side, 0, 0, size, size);
+
+  const outputType = file.type === 'image/png' || file.type === 'image/webp' ? file.type : 'image/jpeg';
+
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => (blob ? resolve(blob) : reject(new Error('Le recadrage a échoué'))),
+      outputType,
+      outputType === 'image/png' ? undefined : quality
+    );
+  });
+}
+
 export function extensionForMimeType(mime: string): string {
   if (mime === 'image/png') return 'png';
   if (mime === 'image/webp') return 'webp';

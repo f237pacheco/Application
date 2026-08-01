@@ -9,6 +9,7 @@ import { useUsage } from '@/hooks/useUsage';
 import { locales, localeNames, localeFlags, isRtl, type Locale } from '@/lib/i18n/config';
 import i18n from '@/lib/i18n/client';
 import { createClient } from '@/lib/supabase/client';
+import { cropSquareImage, extensionForMimeType } from '@/lib/image';
 
 /* ── Constants ──────────────────────────────────────────────────────────────── */
 
@@ -23,6 +24,24 @@ const PLAN_LABELS: Record<string, { label: string; color: string; bg: string; bo
 const FREE_PLAN = { label: 'Compte gratuit', color: '#6b7280', bg: 'rgba(75,85,99,0.15)', border: 'rgba(75,85,99,0.25)' };
 
 const AVATAR_COLORS = ['#6C5CE7', '#4834d4', '#e91e8c', '#f97316', '#00b894', '#0984e3'] as const;
+
+const BIO_MAX_LENGTH = 1000;
+const MAX_GALLERY_PHOTOS = 10;
+const ACCEPTED_GALLERY_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+const MAX_GALLERY_FILE_SIZE = 50 * 1024 * 1024; // 50 MB — cropped/re-encoded to 640x640 before upload anyway
+
+interface AccountPhoto {
+  id: string;
+  url: string;
+  path: string;
+  position: number;
+}
+
+interface UploadingPhoto {
+  id: string;
+  name: string;
+  progress: number;
+}
 
 const NOTIF_OPTIONS = [
   { key: 'creation_done' as const,       label: 'Création terminée',         desc: 'Notifié quand une génération est prête' },
@@ -72,6 +91,47 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
         transition={{ type: 'spring', stiffness: 500, damping: 35 }}
       />
     </button>
+  );
+}
+
+/* ── Auto-growing textarea ──────────────────────────────────────────────────── */
+
+function AutoTextarea({
+  value, onChange, placeholder, minRows = 3, className = '', style,
+}: {
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
+  placeholder?: string;
+  minRows?: number;
+  className?: string;
+  style?: React.CSSProperties;
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+
+  const resize = () => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  };
+
+  useEffect(() => { resize(); }, [value]);
+  useEffect(() => {
+    window.addEventListener('resize', resize);
+    return () => window.removeEventListener('resize', resize);
+  }, []);
+
+  return (
+    <textarea
+      ref={ref}
+      value={value}
+      onChange={onChange}
+      onInput={resize}
+      placeholder={placeholder}
+      rows={minRows}
+      className={`resize-none overflow-hidden transition-[height] duration-150 ease-out ${className}`}
+      style={style}
+    />
   );
 }
 
@@ -134,6 +194,19 @@ export default function AccountPage() {
   const [currentLang, setCurrentLang] = useState<Locale>('fr');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [bio, setBio] = useState('');
+  const [bioSaving, setBioSaving] = useState(false);
+  const [bioSaved, setBioSaved] = useState(false);
+  const [bioError, setBioError] = useState(false);
+  const bioDebounce = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  const [photos, setPhotos] = useState<AccountPhoto[]>([]);
+  const [photosLoaded, setPhotosLoaded] = useState(false);
+  const [uploadingPhotos, setUploadingPhotos] = useState<UploadingPhoto[]>([]);
+  const [galleryError, setGalleryError] = useState('');
+  const [deletingPhotoId, setDeletingPhotoId] = useState<string | null>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
 
   /* Derived data */
   const activePlanKey = subscription?.plan_key ?? profile?.plan_key ?? null;
@@ -206,6 +279,35 @@ export default function AccountPage() {
     load();
   }, [user?.id]);
 
+  /* Load bio */
+  useEffect(() => {
+    if (!user?.id) return;
+    const load = async () => {
+      const supabase = createClient();
+      const { data, error } = await supabase.from('profiles').select('bio').eq('id', user.id).maybeSingle();
+      if (error) { console.error('[account] échec du chargement de la bio', error); return; }
+      if (data?.bio) setBio(data.bio);
+    };
+    load();
+  }, [user?.id]);
+
+  /* Load gallery photos */
+  useEffect(() => {
+    if (!user?.id) return;
+    const load = async () => {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from('account_photos')
+        .select('id, url, path, position')
+        .eq('user_id', user.id)
+        .order('position', { ascending: true });
+      if (error) { console.error('[account] échec du chargement de la galerie', error); setPhotosLoaded(true); return; }
+      setPhotos((data ?? []) as AccountPhoto[]);
+      setPhotosLoaded(true);
+    };
+    load();
+  }, [user?.id]);
+
   const getInitial = () => {
     const name = (user?.user_metadata?.full_name as string) || profile?.first_name || user?.email || '?';
     return name.charAt(0).toUpperCase();
@@ -217,6 +319,145 @@ export default function AccountPage() {
     const reader = new FileReader();
     reader.onload = (ev) => setAvatarPhoto(ev.target?.result as string);
     reader.readAsDataURL(file);
+  };
+
+  /* ── Bio: debounced auto-save to profiles.bio ─────────────────────────── */
+  const handleBioChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const next = e.target.value.slice(0, BIO_MAX_LENGTH);
+    setBio(next);
+    setBioSaved(false);
+    setBioError(false);
+    if (!user?.id) return;
+    clearTimeout(bioDebounce.current);
+    bioDebounce.current = setTimeout(async () => {
+      setBioSaving(true);
+      const supabase = createClient();
+      const { error } = await supabase.from('profiles').update({ bio: next }).eq('id', user.id);
+      setBioSaving(false);
+      if (error) {
+        console.error('[account] échec de la sauvegarde de la bio', error);
+        setBioError(true);
+      } else {
+        setBioSaved(true);
+        setTimeout(() => setBioSaved(false), 2000);
+      }
+    }, 600);
+  };
+
+  /* ── Gallery: upload (crop to square, compress, store, insert row) ──────── */
+  const uploadOnePhoto = async (file: File, position: number) => {
+    if (!user?.id) return;
+    if (!ACCEPTED_GALLERY_TYPES.includes(file.type)) {
+      setGalleryError(`Format non accepté pour "${file.name}" — seuls JPG, PNG et WebP sont acceptés.`);
+      return;
+    }
+    if (file.size > MAX_GALLERY_FILE_SIZE) {
+      setGalleryError(`"${file.name}" est trop lourd (50 Mo maximum).`);
+      return;
+    }
+
+    const uploadId = crypto.randomUUID();
+    // Guarded (rather than a bare `[...prev, x]` append) because React 18
+    // Strict Mode double-invokes functional state updaters in dev — an
+    // append that isn't idempotent under that re-invocation silently
+    // double-inserts the same item every time this runs under `next dev`.
+    setUploadingPhotos((prev) => (prev.some((u) => u.id === uploadId) ? prev : [...prev, { id: uploadId, name: file.name, progress: 8 }]));
+    const setProgress = (progress: number) =>
+      setUploadingPhotos((prev) => prev.map((u) => (u.id === uploadId ? { ...u, progress } : u)));
+
+    try {
+      const cropped = await cropSquareImage(file, 640, 0.9);
+      setProgress(45);
+
+      const ext = extensionForMimeType(cropped.type || file.type);
+      const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
+      const supabase = createClient();
+
+      const { error: uploadError } = await supabase.storage
+        .from('account-gallery')
+        .upload(path, cropped, { contentType: cropped.type || file.type });
+      if (uploadError) throw uploadError;
+      setProgress(80);
+
+      const { data: publicUrlData } = supabase.storage.from('account-gallery').getPublicUrl(path);
+      const { data: row, error: insertError } = await supabase
+        .from('account_photos')
+        .insert({ user_id: user.id, url: publicUrlData.publicUrl, path, position })
+        .select('id, url, path, position')
+        .single();
+      if (insertError) throw insertError;
+
+      setProgress(100);
+      const created = row as AccountPhoto;
+      setPhotos((prev) => (prev.some((p) => p.id === created.id) ? prev : [...prev, created]));
+      setTimeout(() => setUploadingPhotos((prev) => prev.filter((u) => u.id !== uploadId)), 450);
+    } catch (err) {
+      console.error('[account] échec de l\'envoi de la photo', err);
+      const message = (err as { message?: string })?.message;
+      setGalleryError(`Échec de l'envoi de "${file.name}"${message ? ` (${message})` : ''}.`);
+      setUploadingPhotos((prev) => prev.filter((u) => u.id !== uploadId));
+    }
+  };
+
+  const handleGalleryFilesSelected = async (fileList: FileList | null) => {
+    if (!fileList || !fileList.length || !user?.id) return;
+    setGalleryError('');
+
+    const currentTotal = photos.length + uploadingPhotos.length;
+    const remaining = MAX_GALLERY_PHOTOS - currentTotal;
+    if (remaining <= 0) {
+      setGalleryError(`Vous avez déjà ${MAX_GALLERY_PHOTOS} photos — supprimez-en une pour en ajouter une nouvelle.`);
+      return;
+    }
+
+    const files = Array.from(fileList).slice(0, remaining);
+    if (fileList.length > remaining) {
+      setGalleryError(`Seules ${remaining} photo${remaining > 1 ? 's' : ''} supplémentaire${remaining > 1 ? 's' : ''} peuvent être ajoutées (maximum ${MAX_GALLERY_PHOTOS}).`);
+    }
+
+    let nextPosition = photos.length ? Math.max(...photos.map((p) => p.position)) + 1 : 0;
+    for (const file of files) {
+      await uploadOnePhoto(file, nextPosition);
+      nextPosition += 1;
+    }
+  };
+
+  const handleDeletePhoto = async (photo: AccountPhoto) => {
+    if (!user?.id) return;
+    setDeletingPhotoId(photo.id);
+    setGalleryError('');
+    const supabase = createClient();
+    const [{ error: storageError }, { error: dbError }] = await Promise.all([
+      supabase.storage.from('account-gallery').remove([photo.path]),
+      supabase.from('account_photos').delete().eq('id', photo.id),
+    ]);
+    setDeletingPhotoId(null);
+    if (storageError || dbError) {
+      console.error('[account] échec de la suppression de la photo', storageError || dbError);
+      setGalleryError('Échec de la suppression de la photo — réessayez.');
+      return;
+    }
+    setPhotos((prev) => prev.filter((p) => p.id !== photo.id));
+  };
+
+  const handleMovePhoto = async (index: number, direction: -1 | 1) => {
+    if (!user?.id) return;
+    const targetIndex = index + direction;
+    if (targetIndex < 0 || targetIndex >= photos.length) return;
+
+    const reordered = [...photos];
+    [reordered[index], reordered[targetIndex]] = [reordered[targetIndex], reordered[index]];
+    const withPositions = reordered.map((p, i) => ({ ...p, position: i }));
+    setPhotos(withPositions);
+
+    const a = withPositions[index];
+    const b = withPositions[targetIndex];
+    const supabase = createClient();
+    const [{ error: errA }, { error: errB }] = await Promise.all([
+      supabase.from('account_photos').update({ position: a.position }).eq('id', a.id),
+      supabase.from('account_photos').update({ position: b.position }).eq('id', b.id),
+    ]);
+    if (errA || errB) console.error('[account] échec de l\'enregistrement du nouvel ordre', errA || errB);
   };
 
   const handleBillingPortal = async () => {
@@ -384,6 +625,193 @@ export default function AccountPage() {
               </div>
             </div>
           </div>
+        </SectionCard>
+
+        {/* ── BIO ──────────────────────────────────────────────────────────── */}
+        <SectionCard>
+          <div className="flex items-start justify-between gap-4 mb-6">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'rgba(108,92,231,0.18)', color: '#a78bfa' }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M14 10H2v2h12v-2zm0-4H2v2h12V6zM2 16h8v-2H2v2zm19.5-4.5L23 13l-6.99 7-4.51-4.5L13 14l2.99 3 6.51-6.5z"/>
+                </svg>
+              </div>
+              <h2 className="text-base font-bold text-white">Bio</h2>
+              <div className="flex-1 h-px" style={{ background: 'linear-gradient(90deg, rgba(108,92,231,0.35), transparent)' }} />
+            </div>
+            <AnimatePresence mode="wait">
+              {bioSaving ? (
+                <motion.span key="saving" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="text-xs font-medium text-gray-500 shrink-0">
+                  Enregistrement...
+                </motion.span>
+              ) : bioError ? (
+                <motion.span key="error" initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} className="text-xs font-semibold text-red-400 shrink-0">
+                  Échec de la sauvegarde
+                </motion.span>
+              ) : bioSaved ? (
+                <motion.span key="saved" initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} className="text-xs font-semibold text-emerald-400 flex items-center gap-1 shrink-0">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                  Sauvegardé
+                </motion.span>
+              ) : null}
+            </AnimatePresence>
+          </div>
+
+          <AutoTextarea
+            value={bio}
+            onChange={handleBioChange}
+            placeholder="Décrivez votre activité, ce que vous faites, votre parcours..."
+            minRows={3}
+            className="w-full text-sm text-gray-200 placeholder:text-gray-600 rounded-xl px-4 py-3.5 focus:outline-none"
+            style={{ background: '#0A0A0F', border: '1px solid #27272A' }}
+          />
+          <div className="flex justify-end mt-2">
+            <span className="text-xs font-medium" style={{ color: bio.length >= BIO_MAX_LENGTH ? '#f87171' : '#6b7280' }}>
+              {bio.length} / {BIO_MAX_LENGTH}
+            </span>
+          </div>
+        </SectionCard>
+
+        {/* ── GALERIE ──────────────────────────────────────────────────────── */}
+        <SectionCard>
+          <div className="flex items-center justify-between gap-4 mb-6 flex-wrap">
+            <div className="flex items-center gap-3 flex-1 min-w-[140px]">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'rgba(108,92,231,0.18)', color: '#a78bfa' }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
+                </svg>
+              </div>
+              <h2 className="text-base font-bold text-white">Galerie</h2>
+              <div className="flex-1 h-px" style={{ background: 'linear-gradient(90deg, rgba(108,92,231,0.35), transparent)' }} />
+            </div>
+            <span className="text-xs font-semibold px-2.5 py-1 rounded-full shrink-0" style={{ background: '#27272A', border: '1px solid #3F3F46', color: '#9CA3AF' }}>
+              {photos.length + uploadingPhotos.length} / {MAX_GALLERY_PHOTOS} photos
+            </span>
+          </div>
+
+          <AnimatePresence>
+            {galleryError && (
+              <motion.div
+                initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+                animate={{ opacity: 1, height: 'auto', marginBottom: 16 }}
+                exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+                className="overflow-hidden"
+              >
+                <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-medium text-red-400" style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)' }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="shrink-0"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+                  {galleryError}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2.5 sm:gap-3">
+            <AnimatePresence initial={false}>
+              {photos.map((photo, index) => (
+                <motion.div
+                  key={photo.id}
+                  layout
+                  initial={{ opacity: 0, scale: 0.85 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.85 }}
+                  transition={{ duration: 0.25, ease: 'easeOut' }}
+                  className="relative aspect-square rounded-xl overflow-hidden group"
+                  style={{ background: '#27272A', border: '1px solid #3F3F46' }}
+                >
+                  <img src={photo.url} alt="" className="w-full h-full object-cover" draggable={false} />
+
+                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150" style={{ background: 'rgba(0,0,0,0.55)' }}>
+                    <button
+                      onClick={() => handleDeletePhoto(photo)}
+                      disabled={deletingPhotoId === photo.id}
+                      className="w-7 h-7 rounded-full flex items-center justify-center disabled:opacity-50"
+                      style={{ background: '#ef4444' }}
+                      aria-label="Supprimer la photo"
+                    >
+                      <span className="text-white text-sm font-bold leading-none">×</span>
+                    </button>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => handleMovePhoto(index, -1)}
+                        disabled={index === 0}
+                        className="w-6 h-6 rounded-full flex items-center justify-center disabled:opacity-30"
+                        style={{ background: 'rgba(255,255,255,0.15)' }}
+                        aria-label="Déplacer vers la gauche"
+                      >
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                      </button>
+                      <button
+                        onClick={() => handleMovePhoto(index, 1)}
+                        disabled={index === photos.length - 1}
+                        className="w-6 h-6 rounded-full flex items-center justify-center disabled:opacity-30"
+                        style={{ background: 'rgba(255,255,255,0.15)' }}
+                        aria-label="Déplacer vers la droite"
+                      >
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M9 18l6-6-6-6" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+
+              {uploadingPhotos.map((u) => (
+                <motion.div
+                  key={u.id}
+                  layout
+                  initial={{ opacity: 0, scale: 0.85 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.85 }}
+                  className="relative aspect-square rounded-xl overflow-hidden flex flex-col items-center justify-center gap-2 px-2"
+                  style={{ background: '#111117', border: '1px solid #3F3F46' }}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="animate-spin" style={{ color: '#a78bfa' }}>
+                    <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2.5" strokeOpacity="0.25" />
+                    <path d="M21 12a9 9 0 00-9-9" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+                  </svg>
+                  <div className="w-full h-1 rounded-full overflow-hidden" style={{ background: '#27272A' }}>
+                    <motion.div
+                      className="h-full rounded-full"
+                      style={{ background: '#a78bfa' }}
+                      animate={{ width: `${u.progress}%` }}
+                      transition={{ duration: 0.3, ease: 'easeOut' }}
+                    />
+                  </div>
+                  <span className="text-[9px] text-gray-500 truncate w-full text-center">{u.name}</span>
+                </motion.div>
+              ))}
+
+              {photosLoaded && photos.length + uploadingPhotos.length < MAX_GALLERY_PHOTOS && (
+                <motion.button
+                  key="add-photo"
+                  layout
+                  initial={{ opacity: 0, scale: 0.85 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.85 }}
+                  whileHover={{ borderColor: 'rgba(167,139,250,0.5)' }}
+                  whileTap={{ scale: 0.96 }}
+                  onClick={() => galleryInputRef.current?.click()}
+                  className="aspect-square rounded-xl flex flex-col items-center justify-center gap-1.5 transition-colors"
+                  style={{ background: 'rgba(255,255,255,0.02)', border: '1.5px dashed #3F3F46' }}
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="#6b7280" strokeWidth="2" strokeLinecap="round"/></svg>
+                  <span className="text-[10px] font-medium text-gray-600">Ajouter</span>
+                </motion.button>
+              )}
+            </AnimatePresence>
+          </div>
+
+          <input
+            ref={galleryInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            multiple
+            className="hidden"
+            onChange={(e) => { handleGalleryFilesSelected(e.target.files); e.target.value = ''; }}
+          />
+
+          {photosLoaded && photos.length === 0 && uploadingPhotos.length === 0 && (
+            <p className="text-xs text-gray-600 mt-4 text-center italic">Aucune photo — ajoutez-en jusqu&apos;à {MAX_GALLERY_PHOTOS} pour illustrer votre activité</p>
+          )}
         </SectionCard>
 
         {/* ── ABONNEMENT ──────────────────────────────────────────────────── */}
