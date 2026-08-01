@@ -2,9 +2,6 @@ import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getAvailableSlotsForDate } from '@/lib/availability';
 
-// Free slots change with every booking — never let this be served from a stale cache.
-export const dynamic = 'force-dynamic';
-
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const slug = (searchParams.get('slug') ?? '').trim().toLowerCase();

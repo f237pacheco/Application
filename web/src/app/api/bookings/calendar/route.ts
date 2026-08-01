@@ -3,10 +3,6 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { getAvailableSlotsForDate } from '@/lib/availability';
 import { toDateKey, getParisNow } from '@/lib/booking';
 
-// Which dates are bookable changes constantly (new bookings, blocked dates,
-// the passage of "today" itself) — never let this be served from a stale cache.
-export const dynamic = 'force-dynamic';
-
 // Returns which days of a given month have at least one free slot, so the
 // public booking page can grey out empty/blocked days without one request per day.
 export async function GET(request: Request) {
@@ -44,7 +40,6 @@ export async function GET(request: Request) {
 
     const daysInMonth = new Date(year, month, 0).getDate();
     const availableDates: string[] = [];
-    const slotCounts: Record<string, number> = {};
 
     for (let d = 1; d <= daysInMonth; d++) {
       const date = new Date(year, month - 1, d);
@@ -58,13 +53,10 @@ export async function GET(request: Request) {
         settings.buffer_time,
         settings.advance_booking_days
       );
-      if (slots.length > 0) {
-        availableDates.push(dateKey);
-        slotCounts[dateKey] = slots.length;
-      }
+      if (slots.length > 0) availableDates.push(dateKey);
     }
 
-    return NextResponse.json({ availableDates, slotCounts });
+    return NextResponse.json({ availableDates });
   } catch (err) {
     console.error(`[bookings/calendar] EXCEPTION pour slug="${slug}":`, JSON.stringify(err), err);
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
