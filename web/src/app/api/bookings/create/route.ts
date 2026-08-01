@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getAvailableSlotsForDate } from '@/lib/availability';
 import { sendBookingConfirmationToClient, sendBookingNotificationToPro } from '@/lib/email';
+import { generateManageToken } from '@/lib/token';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -38,7 +39,7 @@ export async function POST(request: Request) {
     const supabase = createAdminClient();
     const { data: settings, error: settingsError } = await supabase
       .from('booking_settings')
-      .select('user_id, business_name, address, phone, logo_url, slot_duration, buffer_time, advance_booking_days')
+      .select('user_id, business_name, address, phone, logo_url, services, instructions, payment_methods, slot_duration, buffer_time, advance_booking_days')
       .eq('slug', slug)
       .maybeSingle();
 
@@ -60,6 +61,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Ce créneau n'est plus disponible" }, { status: 409 });
     }
 
+    const manageToken = generateManageToken();
     const { data: newBooking, error: insertError } = await supabase.from('bookings').insert({
       user_id: settings.user_id,
       client_name: clientName,
@@ -69,6 +71,7 @@ export async function POST(request: Request) {
       booking_date: date,
       booking_time: time,
       status: 'confirmed',
+      manage_token: manageToken,
     }).select('id').single();
 
     if (insertError) {
@@ -98,20 +101,29 @@ export async function POST(request: Request) {
       businessAddress: settings.address ?? undefined,
       businessPhone: settings.phone ?? undefined,
       businessLogoUrl: settings.logo_url ?? undefined,
+      businessServices: settings.services ?? undefined,
+      businessInstructions: settings.instructions ?? undefined,
+      businessPaymentMethods: settings.payment_methods ?? undefined,
       slotDuration: settings.slot_duration,
       date,
       time,
       proEmail: proProfile?.email ?? undefined,
+      manageToken,
     };
 
-    console.log('[bookings/create] Appel des fonctions d\'envoi d\'email (confirmation client + notification pro)...');
-    await Promise.all([
+    console.log(`[bookings/create] Appel des fonctions d'envoi d'email — destinataire client="${clientEmail}" | destinataire pro="${proProfile?.email ?? '(aucun, notification pro sautée)'}"`);
+    // allSettled, pas all : un échec/exception sur l'un des deux envois ne doit
+    // jamais empêcher l'autre de partir (avant ce correctif, Promise.all pouvait
+    // faire échouer silencieusement les DEUX emails si un seul levait une exception).
+    const [clientResult, proResult] = await Promise.allSettled([
       sendBookingConfirmationToClient(emailData),
       sendBookingNotificationToPro(emailData),
     ]);
+    if (clientResult.status === 'rejected') console.error('[bookings/create] EXCEPTION email client (non rattrapée par lib/email.ts):', clientResult.reason);
+    if (proResult.status === 'rejected') console.error('[bookings/create] EXCEPTION email pro (non rattrapée par lib/email.ts):', proResult.reason);
     console.log('[bookings/create] Envoi des emails terminé (voir logs [email] ci-dessus pour le résultat de chacun).');
 
-    return NextResponse.json({ success: true, date, time, bookingId: newBooking.id });
+    return NextResponse.json({ success: true, date, time, bookingId: newBooking.id, manageToken });
   } catch (err) {
     console.error('[bookings/create]', err);
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
