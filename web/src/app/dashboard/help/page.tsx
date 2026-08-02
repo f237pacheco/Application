@@ -2,6 +2,19 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useAuth } from '@/hooks/useAuth';
+import { useProfile } from '@/hooks/useProfile';
+
+/* ── Contact addresses — easy to change later without touching the rest of
+   this file: set NEXT_PUBLIC_SUPPORT_EMAIL / NEXT_PUBLIC_PARTNERSHIP_EMAIL
+   in .env.local (documented in .env.local.example) and redeploy. Both
+   currently fall back to the same placeholder address. ────────────────── */
+const SUPPORT_EMAIL = process.env.NEXT_PUBLIC_SUPPORT_EMAIL || 'f237pacheco@gmail.com';
+const PARTNERSHIP_EMAIL = process.env.NEXT_PUBLIC_PARTNERSHIP_EMAIL || 'f237pacheco@gmail.com';
+
+function buildMailto(email: string, subject: string, body: string): string {
+  return `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+}
 
 /* ── Data ───────────────────────────────────────────────────────────────────── */
 
@@ -47,7 +60,8 @@ const CONTACT_CARDS = [
     color: '#6C5CE7',
     glow: 'rgba(108,92,231,0.4)',
     iconBg: 'rgba(108,92,231,0.18)',
-    email: 'support@velona.io',
+    kind: 'support' as const,
+    email: SUPPORT_EMAIL,
     label: 'Support client',
     badge: 'Réponse sous 48h',
     badgeColor: '#34d399',
@@ -67,7 +81,8 @@ const CONTACT_CARDS = [
     color: '#f97316',
     glow: 'rgba(249,115,22,0.4)',
     iconBg: 'rgba(249,115,22,0.15)',
-    email: 'hello@velona.io',
+    kind: 'partnership' as const,
+    email: PARTNERSHIP_EMAIL,
     label: 'Partenariats & Entreprises',
     badge: 'Grands comptes & agences',
     badgeColor: '#fb923c',
@@ -142,8 +157,9 @@ function FaqItem({ q, a, index }: { q: string; a: string; index: number }) {
       className="rounded-xl overflow-hidden"
       style={{ border: open ? '1px solid rgba(99,102,241,0.35)' : '1px solid #27272A' }}
     >
-      <button
+      <motion.button
         onClick={() => setOpen((v) => !v)}
+        whileTap={{ scale: 0.99 }}
         className="w-full text-left px-5 py-4 flex items-center justify-between gap-4 group"
         style={{ background: open ? 'rgba(99,102,241,0.08)' : '#18181B' }}
       >
@@ -160,7 +176,7 @@ function FaqItem({ q, a, index }: { q: string; a: string; index: number }) {
             <path d="M19 13H13v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
           </svg>
         </motion.div>
-      </button>
+      </motion.button>
 
       <AnimatePresence initial={false}>
         {open && (
@@ -184,13 +200,32 @@ function FaqItem({ q, a, index }: { q: string; a: string; index: number }) {
 /* ── Page ───────────────────────────────────────────────────────────────────── */
 
 export default function HelpPage() {
+  const { user } = useAuth();
+  const { profile } = useProfile();
   const [search, setSearch] = useState('');
+
+  const firstName = profile?.first_name ?? (user?.user_metadata?.full_name as string)?.split(' ')[0];
 
   const filtered = FAQ_ITEMS.filter(({ q, a }) => {
     if (!search.trim()) return true;
     const q2 = search.toLowerCase();
     return q.toLowerCase().includes(q2) || a.toLowerCase().includes(q2);
   });
+
+  const supportMailto = buildMailto(
+    SUPPORT_EMAIL,
+    firstName ? `Support Velona - ${firstName}` : 'Support Velona',
+    "Bonjour,\n\nJ'ai besoin d'aide concernant :\n\n"
+  );
+  const partnershipMailto = buildMailto(
+    PARTNERSHIP_EMAIL,
+    'Partenariat Velona',
+    "Bonjour,\n\nJe souhaite échanger au sujet d'un partenariat avec Velona.\n\n"
+  );
+  const contactMailto: Record<'support' | 'partnership', string> = {
+    support: supportMailto,
+    partnership: partnershipMailto,
+  };
 
   return (
     <div className="relative">
@@ -278,13 +313,14 @@ export default function HelpPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             {CONTACT_CARDS.map((card, i) => (
               <motion.a
-                key={card.email}
-                href={`mailto:${card.email}`}
+                key={card.kind}
+                href={contactMailto[card.kind]}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ type: 'spring', stiffness: 180, damping: 24, delay: i * 0.1 }}
                 whileHover={{ y: -4, boxShadow: `0 20px 50px ${card.glow}` }}
+                whileTap={{ scale: 0.98 }}
                 className="relative flex flex-col gap-4 rounded-2xl p-6 overflow-hidden group"
                 style={{ background: '#18181B', border: '1px solid #27272A' }}
               >
@@ -333,7 +369,7 @@ export default function HelpPage() {
               className="text-xs font-bold px-2 py-0.5 rounded-full"
               style={{ background: 'rgba(108,92,231,0.18)', color: '#a78bfa' }}
             >
-              {FAQ_ITEMS.length}
+              {search.trim() ? filtered.length : FAQ_ITEMS.length}
             </span>
             <div className="flex-1 h-px" style={{ background: 'linear-gradient(90deg, rgba(108,92,231,0.4), transparent)' }} />
           </div>
@@ -377,11 +413,13 @@ export default function HelpPage() {
               <motion.a
                 key={res.label}
                 href={res.href}
+                onClick={(e) => { if (res.href === '#') e.preventDefault(); }}
                 initial={{ opacity: 0, y: 16 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ type: 'spring', stiffness: 180, damping: 24, delay: i * 0.08 }}
                 whileHover={{ y: -3, boxShadow: `0 16px 40px rgba(0,0,0,0.3)` }}
+                whileTap={{ scale: 0.98 }}
                 className="relative flex items-center gap-4 rounded-2xl p-5 group"
                 style={{ background: '#18181B', border: '1px solid #27272A' }}
               >
@@ -409,17 +447,6 @@ export default function HelpPage() {
                   <p className="text-xs text-gray-500 mt-0.5">{res.desc}</p>
                 </div>
 
-                <span
-                  className="text-gray-600 group-hover:text-gray-300 shrink-0"
-                  style={{ transition: 'color 0.2s, opacity 0.2s', opacity: 0 }}
-                  ref={(el) => {
-                    if (el) {
-                      el.style.opacity = '0';
-                    }
-                  }}
-                >
-                  →
-                </span>
                 <motion.span
                   className="absolute right-5 text-gray-400 shrink-0"
                   initial={{ opacity: 0, x: -4 }}
@@ -462,7 +489,7 @@ export default function HelpPage() {
           </div>
 
           <motion.a
-            href="mailto:support@velona.io"
+            href={supportMailto}
             animate={{ scale: [1, 1.03, 1] }}
             transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
             className="relative overflow-hidden px-6 py-3 rounded-xl text-sm font-bold shrink-0 group"
