@@ -32,10 +32,13 @@ export function useProfile() {
       );
       if (res.ok) setProfile(await res.json());
     } catch (err) {
-      // The backend (NEXT_PUBLIC_API_URL) can be down or unreachable —
-      // that shouldn't take the whole dashboard down with it, just leave
-      // profile as null and let callers fall back gracefully.
-      console.error('[useProfile] échec du fetch profil (backend indisponible ?)', err);
+      // /api/auth/profile lives on the separate Express backend
+      // (NEXT_PUBLIC_API_URL), not this Next.js app — it's expected to be
+      // unreachable whenever that backend isn't running (e.g. only `web`
+      // was started locally). That's a recoverable, non-blocking case:
+      // callers already fall back gracefully with profile left null, so
+      // this stays a warn (not error) to avoid looking like a real crash.
+      console.warn('[useProfile] profil non chargé — backend (NEXT_PUBLIC_API_URL) injoignable', err);
     } finally {
       setLoading(false);
     }

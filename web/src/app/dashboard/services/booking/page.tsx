@@ -101,7 +101,11 @@ function TimeSelect({ value, onChange, disabled, accent = '#10B981', label = '?'
     if (!rect) {
       console.warn(`[TimeSelect:${label}] ATTENTION — buttonRef.current est null ou getBoundingClientRect a échoué, le menu va s'ouvrir sans position calculée`)
     }
-    if (rect) setCoords({ top: rect.bottom + window.scrollY + 6, left: rect.left + window.scrollX })
+    // getBoundingClientRect() is viewport-relative already — exactly what a
+    // `position: fixed` element needs. Adding window.scrollY/scrollX here
+    // used to double-count the scroll offset (see the identical fix in
+    // reposition() below for the full story of what that broke).
+    if (rect) setCoords({ top: rect.bottom + 6, left: rect.left })
     setOpen(true)
   }
 
@@ -122,7 +126,17 @@ function TimeSelect({ value, onChange, disabled, accent = '#10B981', label = '?'
     // before it was ever visible — every click looked like a dead button.
     const reposition = () => {
       const rect = buttonRef.current?.getBoundingClientRect()
-      if (rect) setCoords({ top: rect.bottom + window.scrollY + 6, left: rect.left + window.scrollX })
+      // getBoundingClientRect() is already viewport-relative, which is
+      // exactly what a `position: fixed` element needs — adding
+      // window.scrollY/scrollX on top double-counts the scroll offset and
+      // pushes the dropdown further off-screen the more the page is
+      // scrolled. On this page (a lot of content sits above the weekly
+      // hours section), that reliably rendered the list thousands of
+      // pixels below the viewport: technically "open" (the button's
+      // chevron flips, the console logs fire) but invisible and
+      // unreachable, so a click could never land on an option — exactly
+      // the "menu opens but selecting does nothing" symptom.
+      if (rect) setCoords({ top: rect.bottom + 6, left: rect.left })
     }
     document.addEventListener('mousedown', onClickOutside)
     window.addEventListener('scroll', reposition, true)
@@ -1426,7 +1440,22 @@ export default function BookingSettingsPage() {
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3, delay: idx * 0.03 }}
-                  whileHover={{ borderColor: day.dayActive ? 'rgba(16,185,129,0.35)' : 'rgba(255,255,255,0.12)' }}
+                  // Only the top/right/bottom sides are animated on hover —
+                  // deliberately NOT borderLeftColor, since that side carries
+                  // the permanent "day active" accent strip below and must
+                  // stay untouched by hover. Animating the `borderColor`
+                  // shorthand instead (as this used to) targets all 4 sides
+                  // as one non-uniform value (3 sides at rgba(255,255,255,0.06)
+                  // + a differently-colored left side from the `borderLeft`
+                  // override below) — framer-motion can't animate that and
+                  // logs "not an animatable color", which was severe enough
+                  // to break click handling on the TimeSelect dropdowns
+                  // nested inside these rows.
+                  whileHover={{
+                    borderTopColor: day.dayActive ? 'rgba(16,185,129,0.35)' : 'rgba(255,255,255,0.12)',
+                    borderRightColor: day.dayActive ? 'rgba(16,185,129,0.35)' : 'rgba(255,255,255,0.12)',
+                    borderBottomColor: day.dayActive ? 'rgba(16,185,129,0.35)' : 'rgba(255,255,255,0.12)',
+                  }}
                   className="rounded-xl p-4 overflow-hidden"
                   style={{
                     background: day.dayActive ? 'rgba(16,185,129,0.04)' : '#111117',
